@@ -122,11 +122,13 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
     # Project
     $routeProvider.when("/project/new",
         {
-            title: "PROJECT.CREATE.TITLE",
-            templateUrl: "projects/create/create-project.html",
-            loader: true,
-            controller: "CreateProjectCtrl",
-            controllerAs: "vm"
+            # Pol Alcoverro performed the change: redirect the project creation flow to Scrum by default.
+            redirectTo: "/project/new/scrum"
+            # title: "PROJECT.CREATE.TITLE",
+            # templateUrl: "projects/create/create-project.html",
+            # loader: true,
+            # controller: "CreateProjectCtrl",
+            # controllerAs: "vm"
         }
     )
 
