@@ -51,10 +51,11 @@ class CreateProjectController
         }
 
     displayOnPremise: () ->
-        if !@.dontAsk
-            @lightboxFactory.create("tg-newsletter-email-lightbox", {
-                "class": "lightbox newsletter-email"
-            })
+        # Pol Alcoverro: This commented fragment removes the Taiga communications lightbox.
+        # if !@.dontAsk
+        # @lightboxFactory.create("tg-newsletter-email-lightbox", {
+        #     "class": "lightbox newsletter-email"
+        # })
 
     displayHelp: (type, $event) ->
         $event.stopPropagation()
