@@ -345,6 +345,9 @@
     },
     "LOGIN_FORM": {
         "ERROR_AUTH_INCORRECT": "According to the Taiga, your username/email or password are incorrect.",
+        "ERROR_GOOGLE_INIT": "Google sign-in is temporarily unavailable. Please try again later.",
+        "GOOGLE_LOADING": "Contacting Google...",
+        "GOOGLE_DOMAIN_HINT": "Only {{domains}} accounts are accepted.",
         "SUCCESS": "Welcome to Taiga."
     },
     "REGISTER": {

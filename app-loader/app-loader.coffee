@@ -29,6 +29,11 @@ window.taigaConfig = {
     "enableGithubImporter": false,
     "enableJiraImporter": false,
     "enableTrelloImporter": false,
+    "googleAuth": {
+        "enabled": false,
+        "clientId": null,
+        "allowedDomains": []
+    },
     "contribPlugins": [],
     "baseHref": "/"
 }
@@ -92,20 +97,42 @@ loadPlugins = (plugins) ->
 
     return Promise.all(promises)
 
+loadGoogleClient = (config) ->
+    googleConfig = (config && config.googleAuth) or {}
+
+    if !googleConfig.enabled or !googleConfig.clientId
+        return Promise.resolve()
+
+    if window.google? and window.google.accounts? and window.google.accounts.id?
+        return Promise.resolve()
+
+    return new Promise (resolve, reject) ->
+        script = document.createElement('script')
+        script.src = 'https://accounts.google.com/gsi/client'
+        script.async = true
+        script.defer = true
+        script.onload = resolve
+        script.onerror = (err) ->
+            console.error('Error loading Google Identity Services', err)
+            resolve()
+        document.head.appendChild(script)
+
 mainLoad = ->
     emojisPromise = fetch("#{window._version}/emojis/emojis-data.json")
     .then((response) => response.json())
     .then (emojis) ->
         window.emojis = emojis
+    googlePromise = loadGoogleClient(window.taigaConfig)
+
+    loader = loadJS("#{window._version}/js/libs.js")
+        .then(() => loadJS("#{window._version}/js/templates.js"))
+
     if window.taigaConfig.contribPlugins.length > 0
-        loadJS("#{window._version}/js/libs.js")
-            .then(() => loadJS("#{window._version}/js/templates.js"))
-            .then(() => loadPlugins(window.taigaConfig.contribPlugins))
-            .then(() => loadApp(emojisPromise))
-    else
-        loadJS("#{window._version}/js/libs.js")
-            .then(() => loadJS("#{window._version}/js/templates.js"))
-            .then(() => loadApp(emojisPromise))
+        loader = loader.then(() => loadPlugins(window.taigaConfig.contribPlugins))
+
+    loader
+        .then(() => googlePromise)
+        .then(() => loadApp(emojisPromise))
 
 loadApp = (emojisPromise) ->
     loadJS("#{window._version}/js/elements.js").then () ->

@@ -11,6 +11,133 @@ debounce = @.taiga.debounce
 
 module = angular.module("taigaAuth", ["taigaResources"])
 
+googleClientPromise = null
+
+waitForGoogleClient = ($window) ->
+    return googleClientPromise if googleClientPromise
+
+    googleClientPromise = new Promise (resolve, reject) ->
+        attempts = 0
+        maxAttempts = 40
+        delay = 250
+
+        check = ->
+            if $window.google? and $window.google.accounts? and $window.google.accounts.id?
+                resolve($window.google.accounts.id)
+            else if attempts >= maxAttempts
+                reject(new Error("GOOGLE_CLIENT_TIMEOUT"))
+            else
+                attempts += 1
+                $window.setTimeout(check, delay)
+
+        check()
+
+    return googleClientPromise
+
+
+attachGoogleLogin = (options={}) ->
+    scope = options.scope
+    element = options.element
+    auth = options.auth
+    config = options.config
+    confirm = options.confirm
+    translate = options.translate
+    $window = options.$window
+    onSuccess = options.onSuccess
+    onError = options.onError
+    buildPayload = options.buildPayload
+    loginType = options.loginType or "google"
+    placeholderSelector = options.placeholderSelector or ".google-signin-placeholder"
+
+    googleSettings = config.get("googleAuth") or {}
+    enabled = Boolean(googleSettings.enabled and googleSettings.clientId)
+
+    scope.googleAuthEnabled = enabled
+    scope.googleLoading = false
+
+    allowedDomains = googleSettings.allowedDomains or []
+    formattedDomains = allowedDomains.map (domain) ->
+        value = (domain or "").toString().trim()
+        if value and value.charAt(0) == '@'
+            return value
+        return "@#{value}"
+
+    formattedDomains = formattedDomains.filter (domain) -> domain.length > 1
+
+    scope.googleAllowedDomains = formattedDomains
+
+    domainsLabel = ""
+    if formattedDomains.length > 0
+        if formattedDomains.length == 1
+            domainsLabel = formattedDomains[0]
+        else
+            head = formattedDomains.slice(0, formattedDomains.length - 1)
+            tail = formattedDomains[formattedDomains.length - 1]
+            orWord = translate.instant("COMMON.OR") or "or"
+            if head.length == 1
+                domainsLabel = "#{head[0]} #{orWord} #{tail}"
+            else
+                domainsLabel = "#{head.join(', ')} #{orWord} #{tail}"
+    scope.googleDomainsLabel = domainsLabel
+
+    return unless enabled
+
+    buttonRendered = false
+
+    onCredential = (googleResponse) ->
+        credential = googleResponse?.credential
+        return unless credential
+
+        payload = null
+        if buildPayload
+            payload = buildPayload(credential, googleSettings) or {}
+        else
+            payload = {
+                credential: credential
+                client_id: googleSettings.clientId
+            }
+
+        payload.client_id ?= googleSettings.clientId
+
+        scope.googleLoading = true
+        scope.$applyAsync()
+
+        auth.login(payload, loginType).then(onSuccess, (response) ->
+            scope.googleLoading = false
+            scope.$applyAsync()
+            onError(response)
+        )
+
+    waitForGoogleClient($window).then (googleId) ->
+        placeholder = element[0].querySelector(placeholderSelector)
+        return unless placeholder
+        return if buttonRendered
+
+        googleId.initialize({
+            client_id: googleSettings.clientId,
+            callback: onCredential,
+            cancel_on_tap_outside: true,
+            auto_select: false
+        })
+
+        placeholder.innerHTML = ""
+        googleId.renderButton(placeholder, {
+            type: "standard",
+            theme: "outline",
+            size: "large",
+            text: "signin_with",
+            shape: "rectangular",
+            logo_alignment: "center",
+            width: 260,
+            locale: translate.use() or "en"
+        })
+
+        buttonRendered = true
+    , (err) ->
+        scope.googleAuthEnabled = false
+        scope.$applyAsync()
+        confirm.notify("light-error", translate.instant("LOGIN_FORM.ERROR_GOOGLE_INIT"))
+
 class LoginPage
     @.$inject = [
         'tgCurrentUserService',
@@ -301,7 +428,9 @@ LoginDirective = ($auth, $confirm, $location, $config, $routeParams, $navUrls, $
                 $location.url($scope.nextUrl)
 
         onError = (response) ->
-            $confirm.notify("light-error", $translate.instant("LOGIN_FORM.ERROR_AUTH_INCORRECT"))
+            message = response?.data?._error_message or response?.data?.detail
+            message = message or $translate.instant("LOGIN_FORM.ERROR_AUTH_INCORRECT")
+            $confirm.notify("light-error", message)
 
         $scope.onKeyUp = (event) ->
             target = angular.element(event.currentTarget)
@@ -325,6 +454,18 @@ LoginDirective = ($auth, $confirm, $location, $config, $routeParams, $navUrls, $
 
             promise = $auth.login(data, loginFormType)
             return promise.then(onSuccess, onError)
+
+        attachGoogleLogin({
+            scope: $scope,
+            element: $el,
+            auth: $auth,
+            config: $config,
+            confirm: $confirm,
+            translate: $translate,
+            $window: $window,
+            onSuccess: onSuccess,
+            onError: onError
+        })
 
         $el.on "submit", "form", submit
 
@@ -508,7 +649,7 @@ module.directive("tgChangePasswordFromRecovery", ["$tgAuth", "$tgConfirm", "$tgL
 ## Invitation
 #############################################################################
 
-InvitationDirective = ($auth, $confirm, $location, $config, $params, $navUrls, $analytics, $translate, config) ->
+InvitationDirective = ($auth, $confirm, $location, $config, $params, $navUrls, $analytics, $translate, $window, config) ->
     link = ($scope, $el, $attrs) ->
         token = $params.token
 
@@ -537,7 +678,9 @@ InvitationDirective = ($auth, $confirm, $location, $config, $params, $navUrls, $
             $confirm.notify("success", text)
 
         onErrorSubmitLogin = (response) ->
-            $confirm.notify("light-error", response.data._error_message)
+            message = response?.data?._error_message or response?.data?.detail
+            message = message or $translate.instant("LOGIN_FORM.ERROR_AUTH_INCORRECT")
+            $confirm.notify("light-error", message)
 
         submitLogin = debounce 2000, (event) =>
             event.preventDefault()
@@ -557,6 +700,24 @@ InvitationDirective = ($auth, $confirm, $location, $config, $params, $navUrls, $
 
         $el.on "submit", "form.login-form", submitLogin
         $el.on "click", ".button-login", submitLogin
+
+        attachGoogleLogin({
+            scope: $scope,
+            element: $el,
+            auth: $auth,
+            config: $config,
+            confirm: $confirm,
+            translate: $translate,
+            $window: $window,
+            onSuccess: onSuccessSubmitLogin,
+            onError: onErrorSubmitLogin,
+            buildPayload: (credential, googleSettings) ->
+                {
+                    credential: credential
+                    client_id: googleSettings.clientId
+                    invitation_token: token
+                }
+        })
 
         # Register form
         $scope.dataRegister = {token: token}
@@ -596,7 +757,7 @@ InvitationDirective = ($auth, $confirm, $location, $config, $params, $navUrls, $
     return {link:link}
 
 module.directive("tgInvitation", ["$tgAuth", "$tgConfirm", "$tgLocation", "$tgConfig", "$routeParams",
-                                  "$tgNavUrls", "$tgAnalytics", "$translate", "$tgConfig", InvitationDirective])
+                                  "$tgNavUrls", "$tgAnalytics", "$translate", "$window", "$tgConfig", InvitationDirective])
 
 
 #############################################################################

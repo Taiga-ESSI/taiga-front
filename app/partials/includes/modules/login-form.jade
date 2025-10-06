@@ -46,12 +46,14 @@
                 translate="LOGIN_COMMON.ACTION_SIGN_IN"
             )
 
-    .contrib-plugins-wrapper(ng-if="authPlugins.length")
+    .contrib-plugins-wrapper(ng-if="authPlugins.length || googleAuthEnabled")
         label(translate="LOGIN_COMMON.ALT_LOGIN", ng-if="defaultLoginEnabled")
 
         fieldset(
             ng-repeat="plugin in authPlugins"
             ng-include="plugin.template"
         )
+
+        include google-login
 
     tg-public-register-message
