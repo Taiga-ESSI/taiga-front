@@ -406,7 +406,10 @@ module.directive("tgPublicRegisterMessage", ["$tgConfig", "$tgNavUrls", "$routeP
 
 LoginDirective = ($auth, $confirm, $location, $config, $routeParams, $navUrls, $events, $translate, $window, $analytics) ->
     link = ($scope, $el, $attrs) ->
-        form = new checksley.Form($el.find("form.login-form"))
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el flujo de validacion del login clasico.
+        # form = new checksley.Form($el.find("form.login-form"))
+        ###
         $scope.defaultLoginEnabled = $config.get("defaultLoginEnabled", true)
 
         # ignore next param if is the login or discover page
@@ -439,21 +442,24 @@ LoginDirective = ($auth, $confirm, $location, $config, $routeParams, $navUrls, $
             if value != value.toLowerCase()
                 $scope.iscapsLockActivated = true
 
-        submit = debounce 2000, (event) =>
-            event.preventDefault()
-
-            if not form.validate()
-                return
-
-            data = {
-                "username": $el.find("form.login-form input[name=username]").val(),
-                "password": $el.find("form.login-form input[name=password]").val()
-            }
-
-            loginFormType = $config.get("loginFormType", "normal")
-
-            promise = $auth.login(data, loginFormType)
-            return promise.then(onSuccess, onError)
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el submit del login clasico.
+        # submit = debounce 2000, (event) =>
+        #     event.preventDefault()
+        #
+        #     if not form.validate()
+        #         return
+        #
+        #     data = {
+        #         "username": $el.find("form.login-form input[name=username]").val(),
+        #         "password": $el.find("form.login-form input[name=password]").val()
+        #     }
+        #
+        #     loginFormType = $config.get("loginFormType", "normal")
+        #
+        #     promise = $auth.login(data, loginFormType)
+        #     return promise.then(onSuccess, onError)
+        ###
 
         attachGoogleLogin({
             scope: $scope,
@@ -467,7 +473,10 @@ LoginDirective = ($auth, $confirm, $location, $config, $routeParams, $navUrls, $
             onError: onError
         })
 
-        $el.on "submit", "form", submit
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el binding del formulario clasico.
+        # $el.on "submit", "form", submit
+        ###
 
         window.prerenderReady = true
 
@@ -491,7 +500,10 @@ RegisterDirective = ($auth, $confirm, $location, $navUrls, $config, $routeParams
             $location.replace()
 
         $scope.data = {}
-        form = $el.find("form").checksley({onlyOneErrorElement: true})
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el flujo de validacion del registro clasico.
+        # form = $el.find("form").checksley({onlyOneErrorElement: true})
+        ###
 
         if $routeParams['next'] and $routeParams['next'] != $navUrls.resolve("login")
             $scope.nextUrl = decodeURIComponent($routeParams['next'])
@@ -511,18 +523,27 @@ RegisterDirective = ($auth, $confirm, $location, $navUrls, $config, $routeParams
                 text = $translate.instant("COMMON.GENERIC_ERROR", {error: response.data._error_message})
                 $confirm.notify("light-error", text)
 
-            form.setErrors(response.data)
+            ###
+            # Pol Alcoverro: comentado codigo por deshabilitar el marcado de errores del registro clasico.
+            # form.setErrors(response.data)
+            ###
 
-        submit = debounce 2000, (event) =>
-            event.preventDefault()
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el submit del registro clasico.
+        # submit = debounce 2000, (event) =>
+        #     event.preventDefault()
+        #
+        #     if not form.validate()
+        #         return
+        #
+        #     promise = $auth.register($scope.data)
+        #     promise.then(onSuccessSubmit, onErrorSubmit)
+        ###
 
-            if not form.validate()
-                return
-
-            promise = $auth.register($scope.data)
-            promise.then(onSuccessSubmit, onErrorSubmit)
-
-        $el.on "submit", "form", submit
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el binding del registro clasico.
+        # $el.on "submit", "form", submit
+        ###
 
         $scope.$on "$destroy", ->
             $el.off()
@@ -666,7 +687,10 @@ InvitationDirective = ($auth, $confirm, $location, $config, $params, $navUrls, $
 
         # Login form
         $scope.dataLogin = {token: token}
-        loginForm = $el.find("form.login-form").checksley({onlyOneErrorElement: true})
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar la validacion del login clasico en invitaciones.
+        # loginForm = $el.find("form.login-form").checksley({onlyOneErrorElement: true})
+        ###
 
         onSuccessSubmitLogin = (response) ->
             $analytics.trackEvent("auth", "invitationAccept", "invitation accept with existing user", 1)
@@ -682,24 +706,30 @@ InvitationDirective = ($auth, $confirm, $location, $config, $params, $navUrls, $
             message = message or $translate.instant("LOGIN_FORM.ERROR_AUTH_INCORRECT")
             $confirm.notify("light-error", message)
 
-        submitLogin = debounce 2000, (event) =>
-            event.preventDefault()
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el submit del login clasico en invitaciones.
+        # submitLogin = debounce 2000, (event) =>
+        #     event.preventDefault()
+        #
+        #     if not loginForm.validate()
+        #         return
+        #
+        #     loginFormType = $config.get("loginFormType", "normal")
+        #     data = $scope.dataLogin
+        #
+        #     promise = $auth.login({
+        #         username: data.username,
+        #         password: data.password,
+        #         invitation_token: data.token
+        #     }, loginFormType)
+        #     promise.then(onSuccessSubmitLogin, onErrorSubmitLogin)
+        ###
 
-            if not loginForm.validate()
-                return
-
-            loginFormType = $config.get("loginFormType", "normal")
-            data = $scope.dataLogin
-
-            promise = $auth.login({
-                username: data.username,
-                password: data.password,
-                invitation_token: data.token
-            }, loginFormType)
-            promise.then(onSuccessSubmitLogin, onErrorSubmitLogin)
-
-        $el.on "submit", "form.login-form", submitLogin
-        $el.on "click", ".button-login", submitLogin
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el binding del login clasico en invitaciones.
+        # $el.on "submit", "form.login-form", submitLogin
+        # $el.on "click", ".button-login", submitLogin
+        ###
 
         attachGoogleLogin({
             scope: $scope,
@@ -721,7 +751,10 @@ InvitationDirective = ($auth, $confirm, $location, $config, $params, $navUrls, $
 
         # Register form
         $scope.dataRegister = {token: token}
-        registerForm = $el.find("form.register-form").checksley({onlyOneErrorElement: true})
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar la validacion del registro clasico en invitaciones.
+        # registerForm = $el.find("form.register-form").checksley({onlyOneErrorElement: true})
+        ###
 
         onSuccessSubmitRegister = (response) ->
             $analytics.trackEvent("auth", "invitationAccept", "invitation accept with new user", 1)
@@ -737,19 +770,28 @@ InvitationDirective = ($auth, $confirm, $location, $config, $params, $navUrls, $
                 text = $translate.instant("COMMON.GENERIC_ERROR", {error: response.data._error_message})
                 $confirm.notify("light-error", text)
 
-            registerForm.setErrors(response.data)
+            ###
+            # Pol Alcoverro: comentado codigo por deshabilitar el marcado de errores del registro clasico en invitaciones.
+            # registerForm.setErrors(response.data)
+            ###
 
-        submitRegister = debounce 2000, (event) =>
-            event.preventDefault()
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el submit del registro clasico en invitaciones.
+        # submitRegister = debounce 2000, (event) =>
+        #     event.preventDefault()
+        #
+        #     if not registerForm.validate()
+        #         return
+        #
+        #     promise = $auth.acceptInvitiationWithNewUser($scope.dataRegister)
+        #     promise.then(onSuccessSubmitRegister, onErrorSubmitRegister)
+        ###
 
-            if not registerForm.validate()
-                return
-
-            promise = $auth.acceptInvitiationWithNewUser($scope.dataRegister)
-            promise.then(onSuccessSubmitRegister, onErrorSubmitRegister)
-
-        $el.on "submit", "form.register-form", submitRegister
-        $el.on "click", ".button-register", submitRegister
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el binding del registro clasico en invitaciones.
+        # $el.on "submit", "form.register-form", submitRegister
+        # $el.on "click", ".button-register", submitRegister
+        ###
 
         $scope.$on "$destroy", ->
             $el.off()
