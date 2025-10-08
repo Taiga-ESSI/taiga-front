@@ -106,6 +106,7 @@ loadGoogleClient = (config) ->
     if window.google? and window.google.accounts? and window.google.accounts.id?
         return Promise.resolve()
 
+    # Pol Alcoverro: cargamos el script oficial de Google para el nuevo login.
     return new Promise (resolve, reject) ->
         script = document.createElement('script')
         script.src = 'https://accounts.google.com/gsi/client'

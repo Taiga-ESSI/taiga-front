@@ -35,6 +35,7 @@ waitForGoogleClient = ($window) ->
     return googleClientPromise
 
 
+# Pol Alcoverro: helper para adjuntar el nuevo flujo de login con Google.
 attachGoogleLogin = (options={}) ->
     scope = options.scope
     element = options.element
