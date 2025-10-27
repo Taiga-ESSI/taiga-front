@@ -6,52 +6,55 @@
 //- Copyright (c) 2021-present Kaleidos INC
 
 .login-form-container(tg-login)
-    form.login-form(ng-if="defaultLoginEnabled")
-        fieldset
-            input(
-                type="text"
-                autocorrect="off"
-                autocapitalize="none"
-                autofocus
-                required
-                name="username"
-                data-required="true"
-                placeholder="{{'LOGIN_COMMON.PLACEHOLDER_AUTH_NAME' | translate}}"
-            )
+    //- Pol Alcoverro: comentado codigo por deshabilitar el formulario clasico de credenciales.
+        form.login-form(ng-if="defaultLoginEnabled")
+            fieldset
+                input(
+                    type="text"
+                    autocorrect="off"
+                    autocapitalize="none"
+                    autofocus
+                    required
+                    name="username"
+                    data-required="true"
+                    placeholder="{{'LOGIN_COMMON.PLACEHOLDER_AUTH_NAME' | translate}}"
+                )
 
-        fieldset.login-password
-            input(
-                type="password"
-                name="password"
-                data-required="true"
-                placeholder="{{'LOGIN_COMMON.PLACEHOLDER_AUTH_PASSWORD' | translate}}"
-                ng-focus="capslockIcon = !capslockIcon"
-                ng-keyup="onKeyUp($event)"
-            )
+            fieldset.login-password
+                input(
+                    type="password"
+                    name="password"
+                    data-required="true"
+                    placeholder="{{'LOGIN_COMMON.PLACEHOLDER_AUTH_PASSWORD' | translate}}"
+                    ng-focus="capslockIcon = !capslockIcon"
+                    ng-keyup="onKeyUp($event)"
+                )
 
-            a.forgot-pass(
-                href=""
-                tg-nav="forgot-password"
-                title="{{'LOGIN_COMMON.TITLE_LINK_FORGOT_PASSWORD' | translate}}"
-                translate="LOGIN_COMMON.LINK_FORGOT_PASSWORD"
-            )
+                a.forgot-pass(
+                    href=""
+                    tg-nav="forgot-password"
+                    title="{{'LOGIN_COMMON.TITLE_LINK_FORGOT_PASSWORD' | translate}}"
+                    translate="LOGIN_COMMON.LINK_FORGOT_PASSWORD"
+                )
 
-            tg-capslock
+                tg-capslock
 
-        fieldset.end
-            button.btn-small.full(
-                variant="primary"
-                type="submit"
-                title="{{'LOGIN_COMMON.ACTION_SIGN_IN' | translate}}"
-                translate="LOGIN_COMMON.ACTION_SIGN_IN"
-            )
+            fieldset.end
+                button.btn-small.full(
+                    variant="primary"
+                    type="submit"
+                    title="{{'LOGIN_COMMON.ACTION_SIGN_IN' | translate}}"
+                    translate="LOGIN_COMMON.ACTION_SIGN_IN"
+                )
 
-    .contrib-plugins-wrapper(ng-if="authPlugins.length")
-        label(translate="LOGIN_COMMON.ALT_LOGIN", ng-if="defaultLoginEnabled")
+    .contrib-plugins-wrapper(ng-if="authPlugins.length || googleAuthEnabled")
 
         fieldset(
             ng-repeat="plugin in authPlugins"
             ng-include="plugin.template"
         )
 
-    tg-public-register-message
+        include google-login
+
+    //- Pol Alcoverro: comentado codigo por deshabilitar el acceso al registro clasico desde el login.
+        tg-public-register-message

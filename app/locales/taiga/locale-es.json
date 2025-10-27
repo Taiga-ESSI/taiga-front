@@ -344,6 +344,9 @@
     },
     "LOGIN_FORM": {
         "ERROR_AUTH_INCORRECT": "La Taiga indica que tu nombre de usuario/correo o contraseña son incorrectos.",
+        "ERROR_GOOGLE_INIT": "El acceso con Google no está disponible temporalmente. Inténtalo de nuevo más tarde.",
+        "GOOGLE_LOADING": "Conectando con Google...",
+        "GOOGLE_DOMAIN_HINT": "Solo se aceptan cuentas {{domains}}.",
         "SUCCESS": "Bienvenido a Taiga."
     },
     "REGISTER": {

@@ -15,8 +15,8 @@
     "defaultLoginEnabled": true,
     "publicRegisterEnabled": true,
     "googleAuth": {
-        "enabled": false,
-        "clientId": null,
+        "enabled": true,
+        "clientId": "286907234950-enq7c1j4085fbj662otfptqqo24hk93u.apps.googleusercontent.com",
         "allowedDomains": [
             "upc.edu",
             "estudiantat.upc.edu"
