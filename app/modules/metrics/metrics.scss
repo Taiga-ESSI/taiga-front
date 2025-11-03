@@ -1147,7 +1147,7 @@ $metrics-color-slate-600: rgb(71, 85, 105);
     gap: .5rem;
 }
 
-.team-historical-filters input[type="date"] {
+.team-historical-filters input[type='date'] {
     appearance: none;
     background: rgba(255, 255, 255, .85);
     border: 1px solid rgba(148, 163, 184, .35);
@@ -1166,7 +1166,7 @@ $metrics-color-slate-600: rgb(71, 85, 105);
     }
 }
 
-.team-historical-filters input[type="date"]::-webkit-calendar-picker-indicator {
+.team-historical-filters input[type='date']::-webkit-calendar-picker-indicator {
     filter: invert(35%);
 }
 
@@ -1196,9 +1196,9 @@ $metrics-color-slate-600: rgb(71, 85, 105);
     &:disabled {
         background: rgba(148, 163, 184, .18);
         border-color: rgba(148, 163, 184, .24);
+        box-shadow: none;
         color: rgba(71, 85, 105, .65);
         cursor: default;
-        box-shadow: none;
         transform: none;
     }
 }
@@ -1346,7 +1346,7 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 }
 
 .historical-toggle .button {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, .15);
     border: 1px solid transparent;
     color: $white;
 }
@@ -1362,11 +1362,6 @@ $metrics-color-slate-600: rgb(71, 85, 105);
     font-weight: 700;
     padding: .3rem .8rem;
     text-transform: uppercase;
-}
-
-.category-high {
-    background: rgba(34, 197, 94, .2);
-    color: rgb(34, 197, 94);
 }
 
 .category-high {
@@ -2282,8 +2277,8 @@ tg-area-chart {
     width: 100%;
 
     canvas {
-        height: auto !important;
-        width: 100% !important;
+        height: auto;
+        width: 100%;
     }
 }
 
