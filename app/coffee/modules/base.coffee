@@ -64,6 +64,8 @@ urls = {
     "project-taskboard": "/project/:project/taskboard/:sprint"
     "project-kanban": "/project/:project/kanban"
     "project-issues": "/project/:project/issues"
+    # Pol Alcoverro: nueva ruta para la sección de métricas del proyecto
+    "project-metrics": "/project/:project/metrics"
     "project-epics": "/project/:project/epics"
     "project-search": "/project/:project/search"
     "project-timeline": "/project/:project/timeline"

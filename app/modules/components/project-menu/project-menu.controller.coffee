@@ -56,6 +56,7 @@ class ProjectMenuController
             backlog: false,
             kanban: false,
             issues: false,
+            metrics: false,
             wiki: false
         })
 
@@ -70,6 +71,10 @@ class ProjectMenuController
 
         if @.project.get("is_issues_activated") && @.project.get("my_permissions").indexOf("view_issues") != -1
             @.menu = @.menu.set("issues", true)
+
+        # Pol Alcoverro: activa la pestaña de métricas cuando el usuario posee el permiso view_metrics
+        if @.project.get("my_permissions").indexOf("view_metrics") != -1
+            @.menu = @.menu.set("metrics", true)
 
         if @.project.get("is_wiki_activated") && @.project.get("my_permissions").indexOf("view_wiki_pages") != -1
             @.menu = @.menu.set("wiki", true)

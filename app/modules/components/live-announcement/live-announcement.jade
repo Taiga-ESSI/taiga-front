@@ -7,7 +7,8 @@
 
 .live-announcement(ng-class="{visible: vm.open}")
     .live-announcement-inner
-        img.anouncement-decoration(src="#{v}/images/notification-decoration.png", alt="Loading...")
+        //- Pol Alcoverro: ocultamos la imagen decorativa que generaba errores de carga en local
+        //- img.anouncement-decoration(src="#{v}/images/notification-decoration.png", alt="Loading...")
         .text
             h2.title {{vm.title}}
             p.warning(ng-bind-html="vm.desc")

@@ -36,6 +36,8 @@
     .announcement-decoration {
         align-self: flex-end;
         margin-right: 1rem;
+        // Pol Alcoverro: ocultar decoración para evitar parpadeos al cargar la notificación
+        display: none;
     }
     .text {
         padding: 1.25rem 3rem 1.25rem 2rem;

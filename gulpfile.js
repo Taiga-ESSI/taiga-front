@@ -158,6 +158,8 @@ paths.coffee_order = [
     paths.app + "coffee/modules/profile/*.js",
     paths.app + "coffee/modules/base/*.coffee",
     paths.app + "coffee/modules/resources/*.coffee",
+    // Pol Alcoverro: incluir los archivos CoffeeScript del nuevo módulo de métricas
+    paths.app + "coffee/modules/metrics/*.coffee",
     paths.app + "coffee/modules/user-settings/*.coffee",
     paths.app + "coffee/modules/integrations/*.coffee",
     paths.app + "modules/**/*.module.coffee",
@@ -193,6 +195,8 @@ paths.libs = [
     paths.modules + "awesomplete/awesomplete.js",
     paths.modules + "autolinker/dist/Autolinker.js",
     paths.modules + "dom-autoscroller/dist/dom-autoscroller.js",
+    // Pol Alcoverro: empaquetamos Chart.js para renderizar los gráficos del dashboard de métricas
+    paths.modules + "chart.js/dist/chart.umd.js",
     paths.app + "js/angular-sanitize.js",
     paths.app + "js/dragula-drag-multiple.js",
     paths.app + "js/boards.js",

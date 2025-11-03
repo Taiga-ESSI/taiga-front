@@ -99,22 +99,25 @@ describe "ProjectMenu", ->
 
                 menu = ctrl.menu.toJS()
 
+                # Pol Alcoverro: añadimos métricas al mapa de menús para cubrir activación/desactivación
                 expect(menu).to.be.eql({
                     epics: false,
                     backlog: false,
                     kanban: false,
                     issues: false,
+                    metrics: false,
                     wiki: false
                 })
 
             it "all options enabled", () ->
+                # Pol Alcoverro: incluimos view_metrics para validar la nueva pestaña en el menú
                 project = Immutable.fromJS({
                     is_epics_activated: true,
                     is_backlog_activated: true,
                     is_kanban_activated: true,
                     is_issues_activated: true,
                     is_wiki_activated: true,
-                    my_permissions: ["view_epics", "view_us", "view_issues", "view_wiki_pages"]
+                    my_permissions: ["view_epics", "view_us", "view_issues", "view_metrics", "view_wiki_pages"]
                 })
 
                 mocks.projectService.project = project
@@ -131,6 +134,7 @@ describe "ProjectMenu", ->
                     backlog: true,
                     kanban: true,
                     issues: true,
+                    metrics: true,
                     wiki: true
                 })
 
@@ -158,6 +162,7 @@ describe "ProjectMenu", ->
                     backlog: false,
                     kanban: false,
                     issues: false,
+                    metrics: false,
                     wiki: false
                 })
 

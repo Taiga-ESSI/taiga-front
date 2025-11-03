@@ -237,6 +237,13 @@ urls = {
     "importers-asana-list-projects": "/importers/asana/list_projects"
     "importers-asana-list-users": "/importers/asana/list_users"
     "importers-asana-import-project": "/importers/asana/import_project"
+
+    # Pol Alcoverro: endpoints del API de métricas proxys con Learning Dashboard
+    "metrics": "/metrics"
+    "metrics-login": "/metrics/login"
+    "metrics-logout": "/metrics/logout"
+    "metrics-status": "/metrics/status"
+    "metrics-historical": "/metrics/historical"
 }
 
 # Initialize api urls service
