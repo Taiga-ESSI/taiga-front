@@ -300,7 +300,23 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
     # Pol Alcoverro added - Metrics
     $routeProvider.when("/project/:pslug/metrics",
         {
-            templateUrl: "metrics/metrics.html",
+            redirectTo: (params) -> "/project/#{params.pslug}/metrics/team"
+        }
+    )
+
+    # Metrics - Team
+    $routeProvider.when("/project/:pslug/metrics/team",
+        {
+            templateUrl: "metrics/metrics-team.html",
+            loader: true,
+            section: "metrics"
+        }
+    )
+
+    # Metrics - Project
+    $routeProvider.when("/project/:pslug/metrics/project",
+        {
+            templateUrl: "metrics/metrics-project.html",
             loader: true,
             section: "metrics"
         }

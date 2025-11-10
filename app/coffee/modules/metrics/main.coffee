@@ -87,6 +87,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             historicalExpanded: {}  # Control de acordeón para secciones históricas
             teamSubTab: "overview"
             projectSubTab: "overview"
+            teamOverview: @.buildTeamOverviewDefaultState()
             teamHistoricalFilters:
                 metric: "all"
                 user: "all"
@@ -168,6 +169,12 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             return unless filters?
             filters.dateFrom = null
             filters.dateTo = null
+
+        @scope.toggleTeamOverviewUser = (username) =>
+            @.toggleTeamOverviewUser(username)
+
+        @scope.resetTeamOverviewUsers = =>
+            @.resetTeamOverviewUsers()
 
         @scope.$watch "metricsView.teamHistoricalFilters", (newFilters, oldFilters) =>
             return unless newFilters?
@@ -310,6 +317,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         @scope.metricsView.error = null
         @scope.metricsView.isNewProject = false
         @scope.metricsView.errors = {}
+        @.resetTeamOverviewState()
 
         url = @urls.resolve("metrics")
         @http.get(url, params, {withCredentials: true})
@@ -426,6 +434,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 else
                     @scope.metricsView.data = viewData
 
+                @.initializeTeamOverviewState()
+
                 @scope.metricsView.teamHistoricalSource = null
                 @scope.metricsView.teamHistoricalCharts = []
                 @scope.metricsView.projectHistoricalCharts = []
@@ -443,6 +453,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 @scope.metricsView.loading = false
                 @scope.metricsView.error = @.resolveErrorKey(error?.data?.error, "METRICS.LOAD_ERROR")
                 @scope.metricsView.data = null
+                @.resetTeamOverviewState()
                 @scope.metricsView.teamHistoricalSource = null
                 @scope.metricsView.teamHistoricalCharts = []
                 @scope.metricsView.projectHistoricalCharts = []
@@ -1031,12 +1042,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         transformed = @metricsHooks.transformProjectMetrics(context)
 
         if transformed isnt undefined and angular.isArray(transformed)
-            return transformed
+            finalMetrics = transformed
+        else if angular.isArray(context.metrics)
+            finalMetrics = context.metrics
+        else
+            finalMetrics = collected
 
-        if angular.isArray(context.metrics)
-            return context.metrics
-
-        return collected
+        return @.scaleProjectMetricsByProjectMax(finalMetrics)
 
     buildProjectMetricEntry: (metric) ->
         return null unless metric
@@ -1060,13 +1072,66 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             name: metric.name or metric.id
             description: metric.description or ""
             value: numericValue
+            absoluteValue: numericValue
             displayValueRounded: roundedValue
             displayValuePrecise: formattedPrecise
+            absoluteDisplayValueRounded: roundedValue
+            absoluteDisplayValuePrecise: formattedPrecise
             minLabel: "0%"
             maxLabel: "100%"
             qualityFactor: if angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0 then metric.qualityFactors[0] else null
             raw: metric
         }
+    
+    scaleProjectMetricsByProjectMax: (metricsArray) ->
+        return metricsArray unless angular.isArray(metricsArray) and metricsArray.length > 0
+
+        absoluteValues = []
+
+        for metric in metricsArray when metric?
+            absolute = metric.absoluteValue
+
+            if typeof absolute isnt "number" or !isFinite(absolute)
+                parsed = parseFloat(absolute)
+                absolute = if isNaN(parsed) then null else parsed
+
+            if typeof absolute isnt "number" or !isFinite(absolute)
+                fallback = parseFloat(metric?.value)
+                absolute = if isNaN(fallback) then null else fallback
+
+            if typeof absolute is "number" and isFinite(absolute) and absolute isnt undefined
+                absoluteValues.push(Math.max(0, absolute))
+
+        return metricsArray unless absoluteValues.length
+
+        maxValue = Math.max.apply(Math, absoluteValues)
+        return metricsArray unless maxValue > 0
+
+        for metric in metricsArray when metric?
+            absolute = metric.absoluteValue
+
+            if typeof absolute isnt "number" or !isFinite(absolute)
+                parsed = parseFloat(absolute)
+                absolute = if isNaN(parsed) then 0 else parsed
+
+            unless typeof absolute is "number" and isFinite(absolute)
+                fallback = parseFloat(metric?.value)
+                absolute = if isNaN(fallback) then 0 else fallback
+
+            absolute = Math.max(0, absolute or 0)
+
+            ratio = if maxValue > 0 then absolute / maxValue else 0
+            relativePercent = ratio * 100
+            relativePercent = Math.max(0, relativePercent)
+            relativePercent = Math.round(relativePercent * 100) / 100
+
+            metric.relativePercent = relativePercent
+            metric.maxReferenceValue = maxValue
+            metric.value = relativePercent
+            metric.displayValueRounded = Math.round(relativePercent)
+            metric.displayValuePrecise = relativePercent.toFixed(2)
+
+        metricsArray
     
     # Prepare pie chart for hours distribution
     prepareHoursPieData: (hoursData) ->
@@ -1171,6 +1236,10 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 borderSkipped: false
                 maxBarThickness: 48
             }]
+            options:
+                plugins:
+                    legend:
+                        display: false
         }
 
     prepareStrategicIndicators: (indicators) ->
@@ -2571,6 +2640,222 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             @.applyProjectHistoricalFilters(historicalMetrics)
         else
             @scope.metricsView.projectHistoricalCharts = []
+
+    buildTeamOverviewDefaultState: ->
+        {
+            usersList: []
+            uiUsers: []
+            activeUsers: {}
+            activeCount: 0
+            baseRadar: null
+            baseClosedTasks: null
+            filteredRadar: null
+            filteredClosedTasks: null
+            userLabels: {}
+            datasetLabelToUser: {}
+            barLabelToUser: {}
+        }
+
+    resetTeamOverviewState: ->
+        @scope.metricsView.teamOverview = @.buildTeamOverviewDefaultState()
+
+    initializeTeamOverviewState: ->
+        @.resetTeamOverviewState()
+
+        data = @scope.metricsView.data
+        if !data?
+            return
+
+        overview = @scope.metricsView.teamOverview
+        overview.baseRadar = angular.copy(data.studentsOverallRadar) or null
+        overview.baseClosedTasks = angular.copy(data.studentsClosedTasksBar) or null
+
+        usersList = data?.usersMetricsList
+        unless angular.isArray(usersList) and usersList.length > 0
+            overview.filteredRadar = angular.copy(overview.baseRadar) or null
+            overview.filteredClosedTasks = angular.copy(overview.baseClosedTasks) or null
+            overview.activeCount = 0
+            return
+
+        overview.usersList = usersList.slice()
+        overview.uiUsers = []
+        overview.userLabels = {}
+        overview.datasetLabelToUser = {}
+        overview.barLabelToUser = {}
+        overview.activeUsers = {}
+
+        for user in usersList when user?
+            username = user.username or user.displayName or user.name or user.id
+            continue unless username?
+            username = username.toString()
+            displayName = user.displayName or user.name or username
+            overview.userLabels[username] = displayName
+            overview.activeUsers[username] = true
+
+            colorPalette = @.resolveUserColor(user)
+            primaryColor = colorPalette?.solid or colorPalette?.fill or "rgba(79, 70, 229, 0.85)"
+            borderColor = colorPalette?.border or "#312e81"
+
+            overview.uiUsers.push({
+                username: username
+                displayName: displayName
+                color: primaryColor
+                borderColor: borderColor
+            })
+
+        if overview.baseRadar?.datasets
+            for dataset in overview.baseRadar.datasets when dataset?.label?
+                label = dataset.label
+                matchedUsername = @.matchUserByLabel(label, overview)
+                overview.datasetLabelToUser[label] = matchedUsername if matchedUsername?
+
+        if angular.isArray(overview.baseClosedTasks?.labels)
+            for label in overview.baseClosedTasks.labels when label?
+                matchedUsername = @.matchUserByLabel(label, overview)
+                overview.barLabelToUser[label] = matchedUsername if matchedUsername?
+
+        overview.activeCount = overview.uiUsers.length
+        @.updateTeamOverviewCharts()
+
+    updateTeamOverviewCharts: ->
+        overview = @scope.metricsView.teamOverview
+        return unless overview?
+
+        usersList = overview.usersList or []
+        unless angular.isArray(usersList) and usersList.length > 0
+            overview.activeCount = 0
+            overview.filteredRadar = angular.copy(overview.baseRadar) or null
+            overview.filteredClosedTasks = angular.copy(overview.baseClosedTasks) or null
+            return
+
+        activeUsernames = []
+        for user in usersList when user?
+            username = user.username or user.displayName or user.id
+            continue unless username?
+            username = username.toString()
+            isActive = !!overview.activeUsers?[username]
+            activeUsernames.push(username) if isActive
+
+        if activeUsernames.length is 0
+            for user in usersList when user?.username?
+                username = user.username.toString()
+                overview.activeUsers[username] = true
+                activeUsernames.push(username)
+
+        overview.activeCount = activeUsernames.length
+
+        activeLabels = {}
+        for username in activeUsernames
+            label = overview.userLabels?[username] or username
+            activeLabels[label] = true
+
+        if overview.baseRadar?
+            filteredRadar = angular.copy(overview.baseRadar) or {}
+            datasets = []
+            for dataset in overview.baseRadar?.datasets or []
+                label = dataset?.label
+                include = false
+                if label?
+                    username = overview.datasetLabelToUser?[label] or @.matchUserByLabel(label, overview)
+                    if username?
+                        include = !!overview.activeUsers[username]
+                    else
+                        include = !!activeLabels[label]
+                include = true unless label?
+                datasets.push(angular.copy(dataset)) if include
+            if datasets.length is 0
+                overview.filteredRadar = angular.copy(overview.baseRadar) or null
+            else
+                filteredRadar.datasets = datasets
+                overview.filteredRadar = filteredRadar
+        else
+            overview.filteredRadar = null
+
+        if overview.baseClosedTasks?
+            baseBar = overview.baseClosedTasks
+            filteredLabels = []
+            selectedIndices = []
+
+            for label, idx in baseBar.labels or []
+                include = false
+                if label?
+                    username = overview.barLabelToUser?[label] or @.matchUserByLabel(label, overview)
+                    if username?
+                        include = !!overview.activeUsers[username]
+                    else
+                        include = !!activeLabels[label]
+                include = true unless label?
+                if include
+                    filteredLabels.push(label)
+                    selectedIndices.push(idx)
+
+            if filteredLabels.length is 0
+                overview.filteredClosedTasks = angular.copy(baseBar) or null
+            else
+                filteredBar = angular.copy(baseBar) or {}
+                filteredBar.labels = filteredLabels
+                filteredDatasets = []
+
+                for dataset in baseBar.datasets or []
+                    cloned = angular.copy(dataset) or {}
+                    if angular.isArray(dataset?.data)
+                        cloned.data = selectedIndices.map (index) -> dataset.data[index]
+                    if angular.isArray(dataset?.backgroundColor)
+                        cloned.backgroundColor = selectedIndices.map (index) -> dataset.backgroundColor[index]
+                    if angular.isArray(dataset?.borderColor)
+                        cloned.borderColor = selectedIndices.map (index) -> dataset.borderColor[index]
+                    if angular.isArray(dataset?.hoverBackgroundColor)
+                        cloned.hoverBackgroundColor = selectedIndices.map (index) -> dataset.hoverBackgroundColor[index]
+                    filteredDatasets.push(cloned)
+
+                filteredBar.datasets = filteredDatasets
+                overview.filteredClosedTasks = filteredBar
+        else
+            overview.filteredClosedTasks = null
+
+    toggleTeamOverviewUser: (username) ->
+        return unless username?
+
+        overview = @scope.metricsView.teamOverview
+        return unless overview?.activeUsers?
+
+        normalized = username.toString()
+        isActive = !!overview.activeUsers[normalized]
+
+        if isActive and overview.activeCount <= 1
+            return
+
+        overview.activeUsers[normalized] = !isActive
+        @.updateTeamOverviewCharts()
+
+    resetTeamOverviewUsers: ->
+        overview = @scope.metricsView.teamOverview
+        return unless overview?
+
+        for user in overview.usersList or []
+            username = user?.username or user?.displayName or user?.id
+            continue unless username?
+            overview.activeUsers[username.toString()] = true
+
+        @.updateTeamOverviewCharts()
+
+    matchUserByLabel: (label, overview = null) ->
+        return null unless label?
+
+        labelStr = label.toString()
+        return null unless labelStr.length
+
+        overview ?= @scope.metricsView.teamOverview
+        return null unless overview?
+
+        username = overview.datasetLabelToUser?[labelStr] or overview.barLabelToUser?[labelStr]
+        return username if username?
+
+        for user in overview.uiUsers or [] when user?
+            if user.displayName is labelStr or user.username is labelStr
+                return user.username
+
+        null
 
     initializeTeamHistoricalUsers: (usersList) ->
         baseOption = {id: "all", label: "METRICS.TEAM_HISTORICAL_ALL_USERS", translate: true}

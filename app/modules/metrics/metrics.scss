@@ -992,6 +992,137 @@ $metrics-color-slate-600: rgb(71, 85, 105);
     }
 }
 
+.team-comparison-grid {
+    align-items: stretch;
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 1.5rem;
+}
+
+.team-user-filter {
+    align-items: stretch;
+    backdrop-filter: blur(18px) saturate(160%);
+    background: rgba(255, 255, 255, .75);
+    border: 1px solid rgba(255, 255, 255, .82);
+    border-radius: 18px;
+    box-shadow:
+        0 16px 36px rgba(15, 23, 42, .16),
+        0 0 0 1px rgba(255, 255, 255, .55) inset;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    margin-top: 1.25rem;
+    padding: 1.5rem 1.75rem;
+}
+
+.team-user-filter .filter-header {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.team-user-filter .filter-info {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
+
+.team-user-filter .filter-title {
+    color: $metrics-color-slate-900;
+    font-size: .95rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+}
+
+.team-user-filter .filter-count {
+    background: rgba(15, 23, 42, .08);
+    border-radius: 999px;
+    color: $metrics-color-slate-600;
+    font-size: .85rem;
+    font-weight: 600;
+    padding: .25rem .8rem;
+}
+
+.team-user-reset {
+    background: rgba(14, 165, 233, .12);
+    border: 1px solid rgba(14, 165, 233, .24);
+    border-radius: 999px;
+    color: rgb(14, 165, 233);
+    cursor: pointer;
+    font-size: .85rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+    padding: .45rem 1.25rem;
+    transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+
+    &:hover:enabled {
+        background: rgba(14, 165, 233, .2);
+        box-shadow: 0 12px 28px rgba(14, 165, 233, .22);
+        transform: translateY(-1px);
+    }
+
+    &:disabled {
+        background: rgba(148, 163, 184, .18);
+        border-color: rgba(148, 163, 184, .24);
+        box-shadow: none;
+        color: rgba(71, 85, 105, .65);
+        cursor: default;
+    }
+}
+
+.team-user-filter .filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    width: 100%;
+}
+
+.team-user-chip {
+    align-items: center;
+    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, .95);
+    border: 1px solid rgba(255, 255, 255, .85);
+    border-radius: 999px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .12);
+    color: $metrics-color-slate-800;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: .9rem;
+    font-weight: 600;
+    gap: .6rem;
+    padding: .45rem 1.15rem;
+    transition: transform .2s ease, box-shadow .2s ease, background .2s ease, opacity .2s ease;
+
+    &:hover {
+        box-shadow: 0 14px 30px rgba(15, 23, 42, .18);
+        transform: translateY(-2px);
+    }
+
+    &.inactive {
+        background: rgba(255, 255, 255, .45);
+        box-shadow: none;
+        opacity: .55;
+
+        .user-color {
+            opacity: .6;
+        }
+    }
+}
+
+.team-user-chip .user-color {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    height: 12px;
+    transition: opacity .2s ease;
+    width: 12px;
+}
+
 .team-chart-container {
     animation: slideUp .6s ease-out forwards;
     backdrop-filter: blur(20px) saturate(180%);
@@ -1002,7 +1133,10 @@ $metrics-color-slate-600: rgb(71, 85, 105);
         0 8px 32px rgba(31, 38, 135, .15),
         0 0 0 1px rgba(255, 255, 255, .5) inset;
     display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
     justify-content: center;
+    min-height: 420px;
     padding: 2.5rem;
     position: relative;
     transition: all .3s ease;
@@ -1030,10 +1164,11 @@ $metrics-color-slate-600: rgb(71, 85, 105);
     }
 
     tg-radar-chart,
+    tg-bar-chart,
     tg-pie-chart {
         display: block;
         margin: 0 auto;
-        max-width: 600px;
+        max-width: 520px;
         position: relative;
         width: 100%;
         z-index: 1;
@@ -1050,6 +1185,22 @@ $metrics-color-slate-600: rgb(71, 85, 105);
             filter: drop-shadow(0 4px 12px rgba(31, 38, 135, .12));
         }
     }
+}
+
+.team-chart-container .chart-title {
+    color: $metrics-color-slate-900;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0;
+    text-align: center;
+}
+
+.team-chart-container .chart-subtitle {
+    color: $metrics-color-slate-600;
+    font-size: .92rem;
+    margin: 0 auto;
+    max-width: 420px;
+    text-align: center;
 }
 
 .team-subtabs,
@@ -1089,6 +1240,23 @@ $metrics-color-slate-600: rgb(71, 85, 105);
             0 10px 30px rgba(72, 52, 212, .3),
             0 0 0 1px rgba(255, 255, 255, .45) inset;
         color: $white;
+    }
+}
+
+@media (max-width: 1280px) {
+    .team-comparison-grid {
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .team-user-filter {
+        padding: 1.25rem;
+    }
+
+    .team-user-chip {
+        justify-content: flex-start;
+        width: 100%;
     }
 }
 
@@ -2332,3 +2500,5 @@ tg-area-chart {
         }
     }
 }
+
+/* Metrics Sidebar Styles */

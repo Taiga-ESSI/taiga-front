@@ -66,6 +66,8 @@ urls = {
     "project-issues": "/project/:project/issues"
     # Pol Alcoverro: nueva ruta para la sección de métricas del proyecto
     "project-metrics": "/project/:project/metrics"
+    "project-metrics-team": "/project/:project/metrics/team"
+    "project-metrics-project": "/project/:project/metrics/project"
     "project-epics": "/project/:project/epics"
     "project-search": "/project/:project/search"
     "project-timeline": "/project/:project/timeline"

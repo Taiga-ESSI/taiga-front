@@ -252,8 +252,28 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                     console.error("Error destroying speedometer:", e)
                 chart = null
         
-        renderChart = (value, label) ->
-            console.log("Speedometer renderChart:", value, label)
+        formatScaleValue = (value, unit) ->
+            return "" unless isFinite(value)
+
+            absValue = Math.abs(value)
+            decimals = if absValue >= 100
+                0
+            else if absValue >= 10
+                1
+            else
+                2
+
+            formatted = value.toFixed(decimals)
+            formatted = formatted.replace(/\.0+$/, '')
+            formatted = formatted.replace(/(\.\d*[1-9])0+$/, '$1')
+
+            if unit? and unit.length > 0
+                "#{formatted}#{unit}"
+            else
+                formatted
+
+        renderChart = (value, label, maxValue, rawValue, unit, metricKey) ->
+            console.log("Speedometer renderChart:", value, label, maxValue, rawValue)
             
             return if isRendering
             isRendering = true
@@ -267,22 +287,59 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                             isRendering = false
                             return
                         
-                        val = parseFloat(value) || 0
-                        val = Math.max(0, Math.min(100, val))
-                        
                         destroyChart()
-                        
-                        # Create gradient color for the gauge
-                        gradientColor = getGradientForValue(ctx, val)
+
+                        maxRef = parseFloat(maxValue)
+                        hasCustomScale = isFinite(maxRef) and maxRef > 0
+
+                        normalized = parseFloat(value)
+                        normalized = null unless isFinite(normalized)
+
+                        absolute = parseFloat(rawValue)
+                        absolute = null unless isFinite(absolute)
+
+                        if absolute is null
+                            if normalized? and normalized isnt null
+                                if hasCustomScale and maxRef > 0
+                                    absolute = (maxRef * normalized) / 100
+                                else
+                                    absolute = normalized
+                            else
+                                absolute = 0
+
+                        if normalized is null
+                            if hasCustomScale and maxRef > 0
+                                normalized = (absolute / maxRef) * 100
+                            else
+                                normalized = absolute
+
+                        normalized = Number(normalized) or 0
+                        normalized = Math.max(0, Math.min(100, normalized))
+
+                        absolute = Number(absolute) or 0
+
+                        if hasCustomScale
+                            absolute = Math.max(0, Math.min(maxRef, absolute))
+                            totalValue = if maxRef > 0 then maxRef else absolute
+                            datasetValue = absolute
+                            datasetRemainder = Math.max(totalValue - datasetValue, 0)
+                        else
+                            totalValue = 100
+                            datasetValue = normalized
+                            datasetRemainder = Math.max(100 - normalized, 0)
+
+                        gaugeFillStyle = getGradientForValue(ctx, normalized, label, metricKey)
+                        gaugeBaseColor = gaugeFillStyle?.fill or gaugeFillStyle
+                        gaugeRemainderColor = gaugeFillStyle?.remainder or 'rgba(220, 220, 220, 0.15)'
                         
                         config = {
                             type: 'doughnut'
                             data: {
                                 datasets: [{
-                                    data: [val, 100 - val]
+                                    data: [datasetValue, datasetRemainder]
                                     backgroundColor: [
-                                        gradientColor
-                                        'rgba(220, 220, 220, 0.15)'
+                                        gaugeBaseColor
+                                        gaugeRemainderColor
                                     ]
                                     borderWidth: 0
                                     circumference: 180  # Full 180 degrees
@@ -311,7 +368,7 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                             }
                             plugins: [{
                                 id: 'gaugeEnhancements'
-                                afterDatasetDraw: (chart) ->
+                                afterDatasetDraw: (chart) =>
                                     meta = chart.getDatasetMeta(0)
                                     arc = meta?.data?[0]
                                     return unless arc?
@@ -329,10 +386,10 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                                     ctx.save()
                                     
                                     # Draw scale marks
-                                    drawScaleMarks(ctx, cx, cy, outerRadius, innerRadius)
+                                    drawScaleMarks(ctx, cx, cy, outerRadius, innerRadius, hasCustomScale, maxRef, unit)
                                     
                                     # Draw value text in the center
-                                    drawCenterText(ctx, cx, cy, val, label)
+                                    drawCenterText(ctx, cx, cy, normalized, label, absolute, unit, hasCustomScale, maxRef)
                                     
                                     # Draw enhanced pointer
                                     drawPointer(ctx, cx, cy, pointerAngle, innerRadius, outerRadius)
@@ -350,7 +407,7 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                         isRendering = false
                 , 250  # Increased timeout for stability
         
-        drawScaleMarks = (ctx, cx, cy, outerRadius, innerRadius) ->
+        drawScaleMarks = (ctx, cx, cy, outerRadius, innerRadius, hasCustomScale, maxRef, unit) ->
             ctx.strokeStyle = 'rgba(30, 41, 59, 0.4)'
             ctx.lineWidth = 2
             
@@ -370,23 +427,31 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                 ctx.lineTo(x2, y2)
                 ctx.stroke()
                 
-                # Draw percentage labels (keep only 25% and 75%)
-                labelValue = i * 25
-                continue unless labelValue in [25, 75]
-
+                # Draw scale labels at strategic positions
                 labelRadius = outerRadius + 28
                 labelX = cx + labelRadius * Math.cos(angle)
                 labelY = cy + labelRadius * Math.sin(angle)
+
+                shouldDraw = i in [0, 2, 4]
+                continue unless shouldDraw
+
+                if hasCustomScale
+                    labelValue = (maxRef or 0) * (i / 4)
+                else
+                    labelValue = i * 25
+
+                labelText = formatScaleValue(labelValue, if hasCustomScale then unit else "%")
                 
                 ctx.fillStyle = '#1e293b'
                 ctx.font = 'bold 12px sans-serif'
                 ctx.textAlign = 'center'
                 ctx.textBaseline = 'middle'
-                ctx.fillText("#{labelValue}%", labelX, labelY)
+                ctx.fillText(labelText, labelX, labelY)
         
-        drawCenterText = (ctx, cx, cy, value, label) ->
-            # Center text removed - value is displayed below the gauge
-            # to avoid duplication and prevent content cut-off
+        drawCenterText = (ctx, cx, cy, normalized, label, absolute, unit, hasCustomScale, maxRef) ->
+            # Center readout intentionally suppressed
+            return
+
         
         drawPointer = (ctx, cx, cy, angle, innerRadius, outerRadius) ->
             pointerRadius = innerRadius + (outerRadius - innerRadius) * 0.8
@@ -448,32 +513,49 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             ctx.arc(cx, cy, 4, 0, Math.PI * 2)
             ctx.fill()
         
-        getGradientForValue = (ctx, value) ->
-            # Create a gradient based on value range
+        getGradientForValue = (ctx, value, label, metricKey) ->
+            identifier = metricKey or label or ""
+            normalizedIdentifier = identifier.toString().toLowerCase()
+            treatAsUnassigned = normalizedIdentifier.indexOf("unassigned") isnt -1
+
+            if !treatAsUnassigned
+                # Solid blue fill for the rest of project metrics
+                return {
+                    fill: 'rgba(37, 99, 235, 0.92)'
+                    remainder: 'rgba(37, 99, 235, 0.18)'
+                }
+
             gradient = ctx.createLinearGradient(0, 0, 400, 0)
-            
+            remainderGradient = ctx.createLinearGradient(0, 0, 400, 0)
+
+            remainderGradient.addColorStop(0, 'rgba(34, 197, 94, 0.18)')
+            remainderGradient.addColorStop(0.5, 'rgba(251, 191, 36, 0.18)')
+            remainderGradient.addColorStop(1, 'rgba(239, 68, 68, 0.18)')
+
             if value < 33
-                # Red gradient
-                gradient.addColorStop(0, 'rgba(239, 68, 68, 0.9)')
-                gradient.addColorStop(1, 'rgba(220, 38, 38, 0.9)')
+                # Low unassigned percentage -> green
+                gradient.addColorStop(0, 'rgba(34, 197, 94, 0.9)')
+                gradient.addColorStop(1, 'rgba(22, 163, 74, 0.9)')
             else if value < 66
-                # Yellow/Orange gradient
+                # Mid values -> orange
                 gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)')
                 gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)')
             else
-                # Green gradient
-                gradient.addColorStop(0, 'rgba(34, 197, 94, 0.9)')
-                gradient.addColorStop(1, 'rgba(22, 163, 74, 0.9)')
-            
-            return gradient
+                # High unassigned percentage -> red
+                gradient.addColorStop(0, 'rgba(239, 68, 68, 0.9)')
+                gradient.addColorStop(1, 'rgba(220, 38, 38, 0.9)')
+
+            return {
+                fill: gradient
+                remainder: remainderGradient
+            }
         
-        scope.$watch 'value', (newVal) ->
-            if newVal?
-                renderChart(newVal, scope.label)
+        scheduleRender = ->
+            return unless scope.value? or scope.rawValue?
+            renderChart(scope.value, scope.label, scope.maxValue, scope.rawValue, scope.unit, scope.metricKey)
         
-        scope.$watch 'label', (newVal) ->
-            if scope.value?
-                renderChart(scope.value, newVal)
+        scope.$watchGroup ['value', 'label', 'maxValue', 'rawValue', 'unit', 'metricKey'], ->
+            scheduleRender()
         
         scope.$on '$destroy', ->
             destroyChart()
@@ -484,6 +566,10 @@ SpeedometerChartDirective = ($parse, $timeout) ->
         scope: {
             value: '='
             label: '@'
+            maxValue: '=?'
+            rawValue: '=?'
+            unit: '@?'
+            metricKey: '@?'
         }
     }
 
@@ -712,6 +798,13 @@ BarChartDirective = ($parse, $timeout) ->
                                                 parts.push("#{label}:") if label
                                                 parts.push("#{Number(value or 0).toFixed(2)}%")
                                                 parts.join(' ')
+
+                        if data?.options?
+                            customOptions = angular.copy(data.options)
+                            if angular.merge?
+                                config.options = angular.merge({}, config.options, customOptions)
+                            else
+                                config.options = angular.extend({}, config.options, customOptions)
                         
                         chart = new ChartLib(ctx, config)
                         console.log("✓ Bar chart created")

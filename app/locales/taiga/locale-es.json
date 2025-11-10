@@ -1781,6 +1781,8 @@
         "PROJECT_HISTORICAL_CLEAR_DATES": "Limpiar fechas",
         "PROJECT_HISTORICAL_NO_DATA": "No hay métricas históricas del proyecto disponibles.",
         "STUDENTS_OVERALL": "Resumen del alumnado",
+        "TEAM_USER_FILTER_TITLE": "Usuarios visibles",
+        "TEAM_USER_FILTER_RESET": "Restablecer selección",
         "TEAM_RADAR_BREAKDOWN": "Comparativa de rendimiento del equipo",
         "CLOSED_TASKS_COMPARISON_TITLE": "Comparativa de tareas cerradas",
         "CLOSED_TASKS_LABEL": "Tareas cerradas (%)",
@@ -1829,7 +1831,12 @@
         "ASSOCIATED_METRICS": "Métricas Asociadas",
         "SHOWING_FIRST_50": "Mostrando las primeras 50 de {{total}} métricas",
         "LAST_UPDATED_AT": "Actualizado el {{date}}.",
-        "VALUE_IN_PERCENT": "Valor en %: {{value}}%"
+        "VALUE_IN_PERCENT": "Valor en %: {{value}}%",
+        "SIDEBAR": {
+            "TITLE": "Métricas",
+            "TEAM": "Team",
+            "PROJECT": "Project"
+        }
     },
     "USER_SETTINGS": {
         "AVATAR_MAX_SIZE": "[Tamaño Max.: {{maxFileSize}}]",

@@ -134,7 +134,13 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics'")
                                             div.project-metric-gauge
                                                 div.project-metric-body
                                                     div.project-metric-chart
-                                                        tg-speedometer-chart(value="metric.value" label="{{ metric.name }}")
+                                                        tg-speedometer-chart(
+                                                            value="metric.relativePercent || metric.value"
+                                                            raw-value="metric.absoluteValue"
+                                                            max-value="metric.maxReferenceValue"
+                                                            label="{{ metric.name }}"
+                                                            metric-id="{{ metric.id }}"
+                                                        )
                                                     div.project-metric-insights
                                                         div.metric-value-wrapper
                                                             span.metric-value {{ metric.displayValuePrecise || metric.displayValueRounded }}
@@ -187,13 +193,24 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics'")
                                     //- Students Overall Radar Chart and Closed Tasks comparison
                                     div.team-section(ng-if="metricsView.data.studentsOverallRadar || metricsView.data.studentsClosedTasksBar")
                                         h3(translate="METRICS.STUDENTS_OVERALL")
+                                        div.team-user-filter(ng-if="metricsView.teamOverview.uiUsers.length > 0")
+                                            div.filter-header
+                                                div.filter-info
+                                                    span.filter-title(translate="METRICS.TEAM_USER_FILTER_TITLE")
+                                                    span.filter-count {{ metricsView.teamOverview.activeCount }} / {{ metricsView.teamOverview.uiUsers.length }}
+                                                button.team-user-reset(type="button", ng-click="resetTeamOverviewUsers()", ng-disabled="metricsView.teamOverview.activeCount === metricsView.teamOverview.uiUsers.length")
+                                                    span(translate="METRICS.TEAM_USER_FILTER_RESET")
+                                            div.filter-chips
+                                                button.team-user-chip(type="button", ng-repeat="user in metricsView.teamOverview.uiUsers track by user.username", ng-click="toggleTeamOverviewUser(user.username)", ng-class="{'inactive': !metricsView.teamOverview.activeUsers[user.username]}")
+                                                    span.user-color(style="background-color: {{ user.color }}; border-color: {{ user.borderColor }};")
+                                                    span {{ user.displayName }}
                                         div.team-comparison-grid
-                                            div.team-chart-container(ng-if="metricsView.data.studentsOverallRadar")
+                                            div.team-chart-container(ng-if="metricsView.teamOverview.filteredRadar && metricsView.teamOverview.filteredRadar.datasets.length > 0")
                                                 h4.chart-title(translate="METRICS.TEAM_RADAR_BREAKDOWN")
-                                                tg-radar-chart(data="metricsView.data.studentsOverallRadar")
-                                            div.team-chart-container(ng-if="metricsView.data.studentsClosedTasksBar")
+                                                tg-radar-chart(data="metricsView.teamOverview.filteredRadar")
+                                            div.team-chart-container(ng-if="metricsView.teamOverview.filteredClosedTasks && metricsView.teamOverview.filteredClosedTasks.labels && metricsView.teamOverview.filteredClosedTasks.labels.length > 0")
                                                 h4.chart-title(translate="METRICS.CLOSED_TASKS_COMPARISON_TITLE")
-                                                tg-bar-chart(data="metricsView.data.studentsClosedTasksBar")
+                                                tg-bar-chart(data="metricsView.teamOverview.filteredClosedTasks")
                                     
                                     div.team-section(ng-if="metricsView.data.metricsCategories && Object.keys(metricsView.data.metricsCategories).length > 0")
                                         h3(translate="METRICS.METRICS_CATEGORIES")
@@ -222,26 +239,6 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics'")
                                     div.team-historical-header
                                         h3(translate="METRICS.TEAM_HISTORICAL_TITLE")
                                         p.description(translate="METRICS.TEAM_HISTORICAL_DESCRIPTION")
-
-                                    div.team-historical-filters
-                                        div.filter-group
-                                            label.filter-label(for="teamHistoricalMetric", translate="METRICS.TEAM_HISTORICAL_METRIC_FILTER")
-                                            div.select-wrapper
-                                                select#teamHistoricalMetric(ng-model="metricsView.teamHistoricalFilters.metric")
-                                                    option(ng-repeat="option in metricsView.teamHistoricalMetricOptions track by option.id", ng-value="option.id") {{ option.label | translate }}
-                                        div.filter-group
-                                            label.filter-label(for="teamHistoricalUser", translate="METRICS.TEAM_HISTORICAL_USER_FILTER")
-                                            div.select-wrapper
-                                                select#teamHistoricalUser(ng-model="metricsView.teamHistoricalFilters.user")
-                                                    option(ng-repeat="option in metricsView.teamHistoricalUserOptions track by option.id", ng-value="option.id") {{ option.translate ? (option.label | translate) : option.label }}
-                                        div.filter-group.date-group
-                                            label.filter-label(for="teamHistoricalDateFrom", translate="METRICS.TEAM_HISTORICAL_DATE_FROM")
-                                            input#teamHistoricalDateFrom(type="date", ng-model="metricsView.teamHistoricalFilters.dateFrom")
-                                        div.filter-group.date-group
-                                            label.filter-label(for="teamHistoricalDateTo", translate="METRICS.TEAM_HISTORICAL_DATE_TO")
-                                            input#teamHistoricalDateTo(type="date", ng-model="metricsView.teamHistoricalFilters.dateTo")
-                                        div.filter-group.filter-actions
-                                            button.filter-action(type="button", ng-click="clearTeamHistoricalDates()", ng-disabled="!metricsView.teamHistoricalFilters.dateFrom && !metricsView.teamHistoricalFilters.dateTo", translate="METRICS.TEAM_HISTORICAL_CLEAR_DATES")
 
                                     div.team-historical-grid(ng-if="metricsView.teamHistoricalCharts.length > 0")
                                         div.team-historical-card(ng-repeat="historicalChart in metricsView.teamHistoricalCharts track by historicalChart.id")

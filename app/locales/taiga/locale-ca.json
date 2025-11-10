@@ -1778,6 +1778,8 @@
         "PROJECT_HISTORICAL_CLEAR_DATES": "Neteja les dates",
         "PROJECT_HISTORICAL_NO_DATA": "No hi ha mètriques històriques del projecte disponibles.",
         "STUDENTS_OVERALL": "Resum de l'alumnat",
+        "TEAM_USER_FILTER_TITLE": "Usuaris visibles",
+        "TEAM_USER_FILTER_RESET": "Restableix la selecció",
         "TEAM_RADAR_BREAKDOWN": "Comparativa de rendiment de l'equip",
         "CLOSED_TASKS_COMPARISON_TITLE": "Comparativa de tasques tancades",
         "CLOSED_TASKS_LABEL": "Tasques tancades (%)",
