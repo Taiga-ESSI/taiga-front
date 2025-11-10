@@ -17,4 +17,43 @@ tg-project-menu {
         height: 100%;
         width: 100%;
     }
+
+    // Añadido por Pol Alcoverro
+    .metrics-has-dropdown {
+        position: relative;
+
+        .menu-option-button {
+            align-items: center;
+            background: none;
+            border: 0;
+            color: inherit;
+            cursor: pointer;
+            display: flex;
+            font: inherit;
+            gap: .5rem;
+            padding: 0;
+            width: 100%;
+        }
+
+        .agile-chevron {
+            height: 12px;
+            transition: transform .2s ease;
+            width: 12px;
+        }
+
+        .metrics-child-menu {
+            display: none;
+            margin-top: .5rem;
+        }
+
+        &.metrics-open {
+            .agile-chevron {
+                transform: rotate(180deg);
+            }
+
+            .metrics-child-menu {
+                display: block;
+            }
+        }
+    }
 }

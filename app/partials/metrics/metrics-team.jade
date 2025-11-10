@@ -61,6 +61,13 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-team'")
                         button.button.small(ng-click="reloadMetrics()", translate="METRICS.RETRY")
 
                 div.metrics-body(ng-if="metricsView.data && !metricsView.loading")
+                    //- Añadido por Pol Alcoverro
+                    div.metrics-view-switch
+                        button.button.secondary.active(type="button")
+                            span(translate="METRICS.TABS.TEAM")
+                        a.button.secondary(tg-nav="project-metrics-project:project=projectSlug")
+                            span(translate="METRICS.TABS.PROJECT")
+
                     h2.section-title(translate="METRICS.TEAM_METRICS_TITLE")
 
                     div.team-subtabs

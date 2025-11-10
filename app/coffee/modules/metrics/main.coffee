@@ -1129,7 +1129,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             metric.maxReferenceValue = maxValue
             metric.value = relativePercent
             metric.displayValueRounded = Math.round(relativePercent)
-            metric.displayValuePrecise = relativePercent.toFixed(2)
+            # Modificado por Pol Alcoverro
+            metric.displayValuePrecise = String(Math.round(relativePercent))
 
         metricsArray
     
