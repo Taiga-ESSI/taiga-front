@@ -18,7 +18,37 @@ tg-project-menu {
         width: 100%;
     }
 
-    // Añadido por Pol Alcoverro
+    // Añadido por Pol Alcoverro - Estilos para los nuevos items de métricas separados
+    .metrics-menu-item {
+        a {
+            align-items: center;
+            color: inherit;
+            display: flex;
+            gap: .5rem;
+            padding: .75rem 1rem;
+            text-decoration: none;
+            transition: background-color .2s ease;
+
+            &:hover {
+                background-color: rgba(255, 255, 255, .1);
+            }
+
+            svg {
+                flex-shrink: 0;
+                height: 24px;
+                width: 24px;
+            }
+
+            .menu-option-text {
+                flex: 1;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+        }
+    }
+
+    // Añadido por Pol Alcoverro - Estilos para dropdown (código antiguo, ya no usado)
     .metrics-has-dropdown {
         position: relative;
 
