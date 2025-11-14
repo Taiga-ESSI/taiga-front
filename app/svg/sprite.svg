@@ -46,7 +46,12 @@
             <path class="path1" d="M512 618.112l-362.040 362.040 45.256 45.256 316.785-316.785 316.785 316.785 45.256-45.256zM195.215-1.408l-45.256 45.256 362.040 362.040 362.040-362.040-45.256-45.256-316.785 316.785z"></path>
         </symbol>
         <symbol id="icon-graph" viewBox="0 0 1024 1024">
-            <title>graph</title>
+<!--  -->            <title>graph</title>
+            <path class="path1" d="M960 0v1024h64v-1024h-64zM652.8 292.57v731.43h64v-731.43h-64zM335.36 577.83v446.17h64v-446.17h-64zM0 789.944v234.056h64v-234.056h-64z"></path>
+        </symbol>
+        <!-- Placeholder for the custom metrics icon used only in the lateral menu -->
+        <symbol id="icon-metrics" viewBox="0 0 1024 1024">
+            <title>metrics</title>
             <path class="path1" d="M960 0v1024h64v-1024h-64zM652.8 292.57v731.43h64v-731.43h-64zM335.36 577.83v446.17h64v-446.17h-64zM0 789.944v234.056h64v-234.056h-64z"></path>
         </symbol>
         <symbol id="icon-kanban" viewBox="0 0 400 400">

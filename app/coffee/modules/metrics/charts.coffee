@@ -136,13 +136,15 @@ RadarChartDirective = ($parse, $timeout) ->
                                         color: 'rgba(30, 41, 59, 0.15)'
                             baseConfig.options.plugins =
                                 legend:
-                                    display: (data.datasets ? []).length > 1
-                                    position: 'bottom'
-                                    labels:
-                                        color: '#1e293b'
-                                        font:
-                                            size: 12
-                                            weight: 500
+                                    # Pol Alcoverro - Leyenda desactivada para evitar selector interno en radar chart
+                                    display: false
+                                    # display: (data.datasets ? []).length > 1
+                                    # position: 'bottom'
+                                    # labels:
+                                    #     color: '#1e293b'
+                                    #     font:
+                                    #         size: 12
+                                    #         weight: 500
                                 tooltip:
                                     callbacks:
                                         label: (context) ->
@@ -166,11 +168,13 @@ RadarChartDirective = ($parse, $timeout) ->
                                 gridLines:
                                     color: 'rgba(30, 41, 59, 0.15)'
                             baseConfig.options.legend =
-                                display: (data.datasets ? []).length > 1
-                                position: 'bottom'
-                                labels:
-                                    fontColor: '#1e293b'
-                                    fontSize: 12
+                                # Pol Alcoverro - Leyenda desactivada para evitar selector interno en radar chart
+                                display: false
+                                # display: (data.datasets ? []).length > 1
+                                # position: 'bottom'
+                                # labels:
+                                #     fontColor: '#1e293b'
+                                #     fontSize: 12
                             baseConfig.options.tooltips =
                                 callbacks:
                                     label: (tooltipItem, chartData) ->

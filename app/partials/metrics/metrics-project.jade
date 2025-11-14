@@ -12,7 +12,6 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-project
     main.main.metrics
 
         section.metrics-content
-            include ../includes/components/mainTitle
 
             //- Authentication status check
             div.metrics-auth-status(ng-if="metricsAuth.checking")
@@ -61,12 +60,6 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-project
                         button.button.small(ng-click="reloadMetrics()", translate="METRICS.RETRY")
 
                 div.metrics-body(ng-if="metricsView.data && !metricsView.loading")
-                    //- Añadido por Pol Alcoverro
-                    div.metrics-view-switch
-                        a.button.secondary(tg-nav="project-metrics-team:project=projectSlug")
-                            span(translate="METRICS.TABS.TEAM")
-                        button.button.secondary.active(type="button")
-                            span(translate="METRICS.TABS.PROJECT")
 
                     h2.section-title(translate="METRICS.PROJECT_METRICS_TITLE")
 
@@ -120,7 +113,6 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-project
 
                             div.project-historical-grid(ng-if="metricsView.projectHistoricalCharts.length > 0")
                                 div.project-historical-card(ng-repeat="chart in metricsView.projectHistoricalCharts track by chart.id")
-                                    h4.chart-title {{ chart.title }}
                                     tg-area-chart(data="chart.chartData")
 
                             div.project-historical-empty(ng-if="metricsView.projectHistoricalCharts.length === 0")

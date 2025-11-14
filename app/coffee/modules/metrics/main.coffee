@@ -2062,27 +2062,29 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         @.generateColorFromHue(hue)
 
     buildUserColorPalette: ->
+        # Pol Alcoverro - Paleta optimizada para equipos de 6-8 personas
+        # Los primeros 8 colores están máximamente diferenciados para evitar confusión
         baseHex = [
-            "#3B82F6"
-            "#F97316"
-            "#22C55E"
-            "#6366F1"
-            "#EC4899"
-            "#0EA5E9"
-            "#A855F7"
-            "#EAB308"
-            "#14B8A6"
-            "#F43F5E"
-            "#10B981"
-            "#8B5CF6"
-            "#F59E0B"
-            "#2DD4BF"
-            "#EF4444"
-            "#1D4ED8"
-            "#D946EF"
-            "#34D399"
-            "#2563EB"
-            "#FB7185"
+            "#DC2626"  # 1. Rojo intenso
+            "#2563EB"  # 2. Azul rey brillante
+            "#059669"  # 3. Verde bosque
+            "#F59E0B"  # 4. Ámbar/Naranja cálido
+            "#9333EA"  # 5. Púrpura profundo
+            "#0891B2"  # 6. Cyan/Turquesa
+            "#7C3AED"  # 7. Violeta vivid
+            "#65A30D"  # 8. Lima/Verde oliva
+            "#6366F1"  # 9. Índigo
+            "#F97316"  # 10. Naranja oscuro
+            "#14B8A6"  # 11. Teal
+            "#A855F7"  # 12. Violeta
+            "#EF4444"  # 13. Rojo
+            "#0EA5E9"  # 14. Sky blue
+            "#22C55E"  # 15. Verde
+            "#D946EF"  # 16. Magenta
+            "#F43F5E"  # 17. Rosa
+            "#3B82F6"  # 18. Azul medio
+            "#10B981"  # 19. Verde esmeralda
+            "#E53E3E"  # 20. Rojo claro
         ]
 
         baseHex.map (hex) => @.prepareColorFromHex(hex)
