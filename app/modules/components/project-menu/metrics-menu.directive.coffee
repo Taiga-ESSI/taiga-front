@@ -10,7 +10,9 @@
 angular.module("taigaComponents").directive "tgMetricsMenu", [
     "$timeout",
     "$translate",
-    ($timeout, $translate) ->
+    "$rootScope",
+    "$location",
+    ($timeout, $translate, $rootScope, $location) ->
         link = (scope, element) ->
             navElement = null
             originalMetricsItem = null
@@ -21,6 +23,7 @@ angular.module("taigaComponents").directive "tgMetricsMenu", [
             maxSetupAttempts = 20
             locateAttempts = 0
             maxLocateAttempts = 10
+            deregisterLocationListener = null
 
             translations = {
                 team: $translate.instant("METRICS.TEAM_METRICS_TITLE")
@@ -139,21 +142,13 @@ angular.module("taigaComponents").directive "tgMetricsMenu", [
                 projectLink?.addEventListener "click", ->
                     $timeout(updateActiveState, 100)
                 
-                # Observar cambios en la URL (para cuando se navega con botones del navegador)
+                # Escuchar cambios de ruta desde Angular para evitar polling
+                deregisterLocationListener = $rootScope.$on "$locationChangeSuccess", ->
+                    $timeout(updateActiveState, 0)
+
+                # También cubrir navegaciones del navegador
                 window.addEventListener "popstate", updateActiveState
                 window.addEventListener "hashchange", updateActiveState
-                
-                # Usar $timeout para verificar periódicamente la URL y actualizar el estado
-                # Esto maneja el caso de Angular routing
-                checkInterval = null
-                checkRouteChanges = ->
-                    updateActiveState()
-                    checkInterval = $timeout(checkRouteChanges, 500)
-                
-                checkRouteChanges()
-                
-                # Guardar el interval para limpiarlo después
-                scope.checkInterval = checkInterval
 
             # Localiza el elemento de métricas original
             locateMetricsItem = ->
@@ -227,8 +222,7 @@ angular.module("taigaComponents").directive "tgMetricsMenu", [
                 mutationObserver?.disconnect()
                 window.removeEventListener("popstate", updateActiveState)
                 window.removeEventListener("hashchange", updateActiveState)
-                if scope.checkInterval
-                    $timeout.cancel(scope.checkInterval)
+                deregisterLocationListener?()
 
         {
             restrict: "A"

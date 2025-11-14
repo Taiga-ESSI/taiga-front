@@ -111,6 +111,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 dateTo: null
 
         @userColorPalette = @.buildUserColorPalette()
+        @metricsCategoryPalettes = {}
         @resetUserColorAssignments()
 
         @scope.availableTabs = [
@@ -339,6 +340,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
                 @scope.metricsAuth.externalProjectId = data.external_project_id or externalId
 
+                metricsCategoriesData = data.metrics_categories or data.metricsCategories or {}
+                @metricsCategoryPalettes = @.buildMetricCategoryPalettes(metricsCategoriesData)
+
                 processedMetrics = @.processGessiMetrics(data.metrics or [])
                 projectMetricsList = @.prepareProjectMetrics(data.metrics or [])
                 studentsRaw = data.students
@@ -378,8 +382,6 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 hoursData = data.hours or {}
                 hasHoursData = hoursData? and typeof hoursData is "object" and Object.keys(hoursData).length > 0
                 hoursChart = if hasHoursData then @.prepareHoursPieData(hoursData) else null
-                metricsCategoriesData = data.metrics_categories or data.metricsCategories or {}
-                
                 # Prepare strategic indicators for display
                 processedStrategicIndicators = @.prepareStrategicIndicators(data.strategic_indicators or [])
                 
@@ -538,6 +540,53 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             return normalized
 
         return []
+
+    normalizeCategoryKey: (name) ->
+        return null unless name?
+        key = name.toString().trim().toLowerCase()
+        return if key.length then key else null
+
+    buildMetricCategoryPalettes: (categoriesData) ->
+        grouped = {}
+        return grouped unless categoriesData?
+
+        entries = []
+
+        if angular.isArray(categoriesData)
+            entries = categoriesData
+        else if typeof categoriesData is "object"
+            for own _, value of categoriesData when value?
+                if angular.isArray(value)
+                    entries = entries.concat(value)
+                else
+                    entries.push(value)
+
+        for entry in entries when entry?
+            nameKey = @.normalizeCategoryKey(entry.name or entry.category or entry.displayName)
+            continue unless nameKey
+
+            grouped[nameKey] ?= []
+            upper = parseFloat(entry.upperThreshold)
+
+            grouped[nameKey].push({
+                color: entry.color or entry.hex or "#2563EB"
+                upperThreshold: if isFinite(upper) then Math.max(0, upper) else null
+                type: entry.type or null
+                raw: entry
+            })
+
+        for nameKey, palette of grouped
+            valid = palette.filter (item) -> item.upperThreshold? and isFinite(item.upperThreshold)
+            if valid.length > 0
+                valid.sort (a, b) ->
+                    if a.upperThreshold < b.upperThreshold then -1
+                    else if a.upperThreshold > b.upperThreshold then 1
+                    else 0
+                grouped[nameKey] = valid
+            else
+                grouped[nameKey] = palette.slice()
+
+        grouped
 
     normalizeMetricValue: (rawValue) ->
         return 0 unless rawValue?
@@ -1050,6 +1099,28 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         return @.scaleProjectMetricsByProjectMax(finalMetrics)
 
+    resolveMetricCategoryColor: (categoryName, percentValue) ->
+        return null unless categoryName?
+        key = @.normalizeCategoryKey(categoryName)
+        palette = if key then @metricsCategoryPalettes?[key] else null
+        return null unless palette? and palette.length
+
+        percent = Number(percentValue)
+        percent = 0 unless isFinite(percent)
+        ratio = Math.max(0, percent) / 100
+
+        matchedColor = null
+
+        for item in palette when item?.upperThreshold? and isFinite(item.upperThreshold)
+            if ratio <= item.upperThreshold + 1e-9
+                matchedColor = item.color
+                break
+
+        unless matchedColor?
+            matchedColor = (palette[palette.length - 1]?.color) or palette[0]?.color
+
+        matchedColor or null
+
     buildProjectMetricEntry: (metric) ->
         return null unless metric
 
@@ -1067,6 +1138,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         roundedValue = Math.round(numericValue)
         formattedPrecise = Number(preciseValue or 0).toFixed(2)
 
+        categoryName = metric.categoryName or metric.category_name or metric.category?.name or metric.category
+        categoryColor = @.resolveMetricCategoryColor(categoryName, preciseValue or numericValue)
+
         return {
             id: metric.id
             name: metric.name or metric.id
@@ -1081,6 +1155,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             maxLabel: "100%"
             qualityFactor: if angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0 then metric.qualityFactors[0] else null
             raw: metric
+            categoryName: categoryName
+            categoryColor: categoryColor
         }
     
     scaleProjectMetricsByProjectMax: (metricsArray) ->

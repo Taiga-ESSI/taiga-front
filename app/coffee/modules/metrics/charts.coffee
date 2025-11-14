@@ -276,7 +276,29 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             else
                 formatted
 
-        renderChart = (value, label, maxValue, rawValue, unit, metricKey) ->
+        deriveRemainderColor = (color) ->
+            base = if typeof color is "string" then color.trim() else ""
+            return 'rgba(148, 163, 184, 0.25)' unless base.length
+
+            hexMatch = base.match(/^#([0-9a-f]{6})$/i)
+            if hexMatch
+                hex = hexMatch[1]
+                r = parseInt(hex.substr(0, 2), 16)
+                g = parseInt(hex.substr(2, 2), 16)
+                b = parseInt(hex.substr(4, 2), 16)
+                return "rgba(#{r}, #{g}, #{b}, 0.18)"
+
+            rgbMatch = base.match(/^rgba?\(([^)]+)\)$/i)
+            if rgbMatch
+                parts = rgbMatch[1].split(',').map (part) -> part.trim()
+                r = parseInt(parts[0], 10) or 148
+                g = parseInt(parts[1], 10) or 163
+                b = parseInt(parts[2], 10) or 184
+                return "rgba(#{r}, #{g}, #{b}, 0.18)"
+
+            'rgba(148, 163, 184, 0.25)'
+
+        renderChart = (value, label, maxValue, rawValue, unit, metricKey, customColor) ->
             console.log("Speedometer renderChart:", value, label, maxValue, rawValue)
             
             return if isRendering
@@ -333,8 +355,14 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                             datasetRemainder = Math.max(100 - normalized, 0)
 
                         gaugeFillStyle = getGradientForValue(ctx, normalized, label, metricKey)
-                        gaugeBaseColor = gaugeFillStyle?.fill or gaugeFillStyle
-                        gaugeRemainderColor = gaugeFillStyle?.remainder or 'rgba(220, 220, 220, 0.15)'
+                        providedColor = if typeof customColor is "string" and customColor.trim().length > 0 then customColor.trim() else null
+
+                        if providedColor
+                            gaugeBaseColor = providedColor
+                            gaugeRemainderColor = deriveRemainderColor(providedColor)
+                        else
+                            gaugeBaseColor = gaugeFillStyle?.fill or gaugeFillStyle
+                            gaugeRemainderColor = gaugeFillStyle?.remainder or 'rgba(220, 220, 220, 0.15)'
                         
                         config = {
                             type: 'doughnut'
@@ -556,9 +584,9 @@ SpeedometerChartDirective = ($parse, $timeout) ->
         
         scheduleRender = ->
             return unless scope.value? or scope.rawValue?
-            renderChart(scope.value, scope.label, scope.maxValue, scope.rawValue, scope.unit, scope.metricKey)
+            renderChart(scope.value, scope.label, scope.maxValue, scope.rawValue, scope.unit, scope.metricKey, scope.color)
         
-        scope.$watchGroup ['value', 'label', 'maxValue', 'rawValue', 'unit', 'metricKey'], ->
+        scope.$watchGroup ['value', 'label', 'maxValue', 'rawValue', 'unit', 'metricKey', 'color'], ->
             scheduleRender()
         
         scope.$on '$destroy', ->
@@ -574,6 +602,7 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             rawValue: '=?'
             unit: '@?'
             metricKey: '@?'
+            color: '=?'
         }
     }
 
