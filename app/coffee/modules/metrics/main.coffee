@@ -65,6 +65,17 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         @metricsHooks = _.defaults(@metricsHooks or {}, fallbackHooks)
 
+        providerResolver = @metricsConfig?.resolveProvider
+        if angular.isFunction(providerResolver)
+            @metricsProvider = providerResolver.call(@metricsConfig)
+        else
+            @metricsProvider = @metricsConfig?.provider or "external"
+
+        if angular.isString(@metricsProvider)
+            @metricsProvider = @metricsProvider.toLowerCase()
+        else
+            @metricsProvider = "external"
+
         @scope.metricsAuth =
             authenticated: false
             username: null
@@ -225,7 +236,10 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         @scope.metricsAuth.error = null
 
         url = @urls.resolve("metrics-status")
-        @http.get(url, null, {withCredentials: true})
+        params =
+            source: @metricsProvider
+
+        @http.get(url, params, {withCredentials: true})
             .then (response) =>
                 data = response?.data || {}
                 if data.authenticated
@@ -254,6 +268,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         payload = {
             username: username
             project: externalId
+            source: @metricsProvider
         }
 
         @scope.metricsAuth.loading = true
@@ -282,7 +297,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         @scope.metricsAuth.error = null
 
         url = @urls.resolve("metrics-logout")
-        @http.post(url, null, null, {withCredentials: true})
+        payload =
+            source: @metricsProvider
+        @http.post(url, payload, null, {withCredentials: true})
             .then =>
                 @scope.metricsAuth.loading = false
                 @scope.metricsAuth.authenticated = false
@@ -310,6 +327,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         params =
             project: projectSlug
+            source: @metricsProvider
 
         if externalId
             params.external = externalId
@@ -470,6 +488,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         params =
             project: projectSlug
+            source: @metricsProvider
 
         if externalId
             params.external = externalId
@@ -1077,10 +1096,21 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             if entry
                 collected.push(entry)
 
+        # Si no hay coincidencias en el orden predefinido, usamos métricos globales evitando los de usuario/equipo.
         if collected.length is 0
-            for metric in metricsArray when metric?.id? and metric.id.indexOf("_") is -1
+            seen = {}
+            userMetricPrefixes = ["assignedtasks_", "closedtasks_", "totalus_", "completedus_"]
+            for metric in metricsArray when metric?.id?
+                idLower = metric.id.toString().toLowerCase()
+                # Descarta métricos per-usuario (Team) para no duplicar en Project
+                isUserMetric = userMetricPrefixes.some (prefix) -> idLower.indexOf(prefix) is 0
+                if isUserMetric or (angular.isArray(metric.qualityFactors) and metric.qualityFactors.indexOf("Team") isnt -1)
+                    continue
+                continue if seen[metric.id]
                 entry = @.buildProjectMetricEntry(metric)
-                collected.push(entry) if entry
+                if entry
+                    collected.push(entry)
+                    seen[metric.id] = true
 
         context =
             metrics: collected
