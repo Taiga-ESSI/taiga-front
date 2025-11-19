@@ -93,6 +93,7 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-team'")
                                         button.team-user-chip(type="button", ng-repeat="user in metricsView.teamOverview.uiUsers track by user.username", ng-click="toggleTeamOverviewUser(user.username)", ng-class="{'inactive': !metricsView.teamOverview.activeUsers[user.username]}")
                                             span.user-color(style="background-color: {{ user.color }}; border-color: {{ user.borderColor }};")
                                             span {{ user.displayName }}
+
                             
                             div.team-section(ng-if="metricsView.data.metricsCategories && Object.keys(metricsView.data.metricsCategories).length > 0")
                                 h3(translate="METRICS.METRICS_CATEGORIES")

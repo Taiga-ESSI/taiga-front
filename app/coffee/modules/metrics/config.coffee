@@ -11,7 +11,7 @@ module.factory "tgMetricsConfiguration", ["$log", ($log) ->
     # Description: Builds the default configuration object and merges external overrides.
     ###
     defaultConfig =
-        provider: "internal"
+        provider: "external"
         externalProjectIds: [
             "AMEP11Beats",
             "AMEP11ChopChop",

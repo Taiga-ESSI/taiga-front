@@ -298,7 +298,46 @@ SpeedometerChartDirective = ($parse, $timeout) ->
 
             'rgba(148, 163, 184, 0.25)'
 
-        renderChart = (value, label, maxValue, rawValue, unit, metricKey, customColor) ->
+        buildPaletteDataset = (segments, fallbackColor, maxRangeRatio = 1) ->
+            return null unless Array.isArray(segments) and segments.length > 0
+
+            entries = []
+            totalRatio = 0
+
+            for segment in segments when segment?
+                segmentValue = Number(segment.value)
+                continue unless isFinite(segmentValue) and segmentValue > 0
+                colorValue = if typeof segment.color is "string" and segment.color.trim().length > 0 then segment.color.trim() else fallbackColor
+                entries.push({
+                    ratio: segmentValue
+                    color: colorValue
+                })
+                totalRatio += segmentValue
+
+            return null unless entries.length
+
+            rangeRatio = if isFinite(maxRangeRatio) and maxRangeRatio > 0 then maxRangeRatio else totalRatio
+
+            if rangeRatio > totalRatio
+                entries.push({
+                    ratio: rangeRatio - totalRatio
+                    color: fallbackColor or 'rgba(148, 163, 184, 0.25)'
+                })
+                totalRatio = rangeRatio
+
+            totalRatio = rangeRatio if rangeRatio < totalRatio
+            totalRatio = 1 if totalRatio <= 0
+
+            scaleFactor = 100 / totalRatio
+            data = entries.map (entry) -> Math.max(0, entry.ratio * scaleFactor)
+            colors = entries.map (entry) -> entry.color
+
+            return {
+                data: data
+                colors: colors
+            }
+
+        renderChart = (value, label, maxValue, rawValue, unit, metricKey, customColor, paletteSegments) ->
             console.log("Speedometer renderChart:", value, label, maxValue, rawValue)
             
             return if isRendering
@@ -315,44 +354,22 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                         
                         destroyChart()
 
-                        maxRef = parseFloat(maxValue)
-                        hasCustomScale = isFinite(maxRef) and maxRef > 0
+                        maxRefRatio = parseFloat(maxValue)
+                        if !isFinite(maxRefRatio) or maxRefRatio <= 0
+                            maxRefRatio = 1
 
-                        normalized = parseFloat(value)
-                        normalized = null unless isFinite(normalized)
+                        hasCustomScale = true
 
-                        absolute = parseFloat(rawValue)
-                        absolute = null unless isFinite(absolute)
+                        inputRatio = parseFloat(value)
+                        inputRatio = 0 unless isFinite(inputRatio)
 
-                        if absolute is null
-                            if normalized? and normalized isnt null
-                                if hasCustomScale and maxRef > 0
-                                    absolute = (maxRef * normalized) / 100
-                                else
-                                    absolute = normalized
-                            else
-                                absolute = 0
+                        ratioClamped = Math.max(0, Math.min(inputRatio, maxRefRatio))
+                        normalized = if maxRefRatio > 0 then (ratioClamped / maxRefRatio) * 100 else 0
 
-                        if normalized is null
-                            if hasCustomScale and maxRef > 0
-                                normalized = (absolute / maxRef) * 100
-                            else
-                                normalized = absolute
-
-                        normalized = Number(normalized) or 0
-                        normalized = Math.max(0, Math.min(100, normalized))
-
-                        absolute = Number(absolute) or 0
-
-                        if hasCustomScale
-                            absolute = Math.max(0, Math.min(maxRef, absolute))
-                            totalValue = if maxRef > 0 then maxRef else absolute
-                            datasetValue = absolute
-                            datasetRemainder = Math.max(totalValue - datasetValue, 0)
-                        else
-                            totalValue = 100
-                            datasetValue = normalized
-                            datasetRemainder = Math.max(100 - normalized, 0)
+                        absoluteRatio = parseFloat(rawValue)
+                        if !isFinite(absoluteRatio)
+                            absoluteRatio = ratioClamped
+                        absoluteRatio = Math.max(0, absoluteRatio)
 
                         gaugeFillStyle = getGradientForValue(ctx, normalized, label, metricKey)
                         providedColor = if typeof customColor is "string" and customColor.trim().length > 0 then customColor.trim() else null
@@ -363,22 +380,50 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                         else
                             gaugeBaseColor = gaugeFillStyle?.fill or gaugeFillStyle
                             gaugeRemainderColor = gaugeFillStyle?.remainder or 'rgba(220, 220, 220, 0.15)'
+
+                        paletteDataset = buildPaletteDataset(paletteSegments, gaugeRemainderColor, maxRefRatio)
+
+                        datasetData = []
+                        datasetColors = []
+
+                        if paletteDataset?
+                            datasetData = paletteDataset.data
+                            datasetColors = paletteDataset.colors
+                        else
+                            datasetData = [
+                                normalized
+                                Math.max(100 - normalized, 0)
+                            ]
+                            datasetColors = [
+                                gaugeBaseColor
+                                gaugeRemainderColor
+                            ]
                         
+                        datasetObject = {
+                            data: datasetData
+                            backgroundColor: datasetColors
+                            borderWidth: 0
+                            circumference: 180
+                            rotation: 270
+                            cutout: '75%'
+                            borderRadius: 0
+                        }
+
+                        datasetObject._taigaContext =
+                            normalized: normalized
+                            hasCustomScale: hasCustomScale
+                            maxRef: maxRefRatio
+                            unit: unit
+                            absolute: absoluteRatio
+                            label: label
+                            pointerColor: providedColor or '#000000'
+                            displayAsRatio: true
+                            ratioValue: ratioClamped
+
                         config = {
                             type: 'doughnut'
                             data: {
-                                datasets: [{
-                                    data: [datasetValue, datasetRemainder]
-                                    backgroundColor: [
-                                        gaugeBaseColor
-                                        gaugeRemainderColor
-                                    ]
-                                    borderWidth: 0
-                                    circumference: 180  # Full 180 degrees
-                                    rotation: 270       # Start from left (-90 degrees)
-                                    cutout: '75%'
-                                    borderRadius: 8
-                                }]
+                                datasets: [datasetObject]
                             }
                             options: {
                                 responsive: true
@@ -402,30 +447,61 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                                 id: 'gaugeEnhancements'
                                 afterDatasetDraw: (chart) =>
                                     meta = chart.getDatasetMeta(0)
-                                    arc = meta?.data?[0]
-                                    return unless arc?
+                                    firstArc = meta?.data?[0]
+                                    dataset = chart.config?.data?.datasets?[0]
+                                    contextInfo = dataset?._taigaContext or {}
+                                    return unless firstArc?
 
                                     ctx = chart.ctx
-                                    cx = arc.x
-                                    cy = arc.y
-                                    outerRadius = arc.outerRadius or 0
-                                    innerRadius = arc.innerRadius or 0
-                                    
-                                    # Calculate pointer angle
-                                    pointerAngle = arc.endAngle
-                                    pointerAngle = arc.startAngle unless isFinite(pointerAngle)
+                                    cx = firstArc.x
+                                    cy = firstArc.y
+                                    outerRadius = firstArc.outerRadius or 0
+                                    innerRadius = firstArc.innerRadius or 0
+
+                                    gaugeStart = null
+                                    gaugeEnd = null
+
+                                    if meta?.data and meta.data.length > 0
+                                        for arcItem in meta.data when arcItem?
+                                            startAngle = arcItem.startAngle
+                                            endAngle = arcItem.endAngle
+                                            continue unless isFinite(startAngle) and isFinite(endAngle)
+                                            gaugeStart = startAngle if gaugeStart is null or startAngle < gaugeStart
+                                            gaugeEnd = endAngle if gaugeEnd is null or endAngle > gaugeEnd
+
+                                    unless gaugeStart? and gaugeEnd?
+                                        rotationDeg = dataset?.rotation or 270
+                                        circumferenceDeg = dataset?.circumference or 180
+                                        gaugeStart = rotationDeg * Math.PI / 180
+                                        gaugeEnd = gaugeStart + (circumferenceDeg * Math.PI / 180)
+
+                                    normalizedValue = contextInfo.normalized or 0
+                                    span = gaugeEnd - gaugeStart
+                                    pointerAngle = gaugeStart + (Math.max(0, Math.min(100, normalizedValue)) / 100) * span
 
                                     ctx.save()
-                                    
-                                    # Draw scale marks
-                                    drawScaleMarks(ctx, cx, cy, outerRadius, innerRadius, hasCustomScale, maxRef, unit)
-                                    
-                                    # Draw value text in the center
-                                    drawCenterText(ctx, cx, cy, normalized, label, absolute, unit, hasCustomScale, maxRef)
-                                    
-                                    # Draw enhanced pointer
-                                    drawPointer(ctx, cx, cy, pointerAngle, innerRadius, outerRadius)
-                                    
+                                    drawScaleMarks(
+                                        ctx, cx, cy, outerRadius, innerRadius,
+                                        contextInfo.hasCustomScale,
+                                        contextInfo.maxRef,
+                                        contextInfo.unit,
+                                        contextInfo.displayAsRatio
+                                    )
+
+                                    drawCenterText(
+                                        ctx, cx, cy, normalizedValue,
+                                        contextInfo.label,
+                                        contextInfo.absolute,
+                                        contextInfo.unit,
+                                        contextInfo.hasCustomScale,
+                                        contextInfo.maxRef
+                                    )
+
+                                    drawPointer(
+                                        ctx, cx, cy, pointerAngle,
+                                        innerRadius, outerRadius,
+                                        contextInfo.pointerColor
+                                    )
                                     ctx.restore()
                             }]
                         }
@@ -439,7 +515,7 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                         isRendering = false
                 , 250  # Increased timeout for stability
         
-        drawScaleMarks = (ctx, cx, cy, outerRadius, innerRadius, hasCustomScale, maxRef, unit) ->
+        drawScaleMarks = (ctx, cx, cy, outerRadius, innerRadius, hasCustomScale, maxRef, unit, displayAsRatio = false) ->
             ctx.strokeStyle = 'rgba(30, 41, 59, 0.4)'
             ctx.lineWidth = 2
             
@@ -472,7 +548,10 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                 else
                     labelValue = i * 25
 
-                labelText = formatScaleValue(labelValue, if hasCustomScale then unit else "%")
+                if displayAsRatio
+                    labelText = Number(labelValue or 0).toFixed(2)
+                else
+                    labelText = formatScaleValue(labelValue, if hasCustomScale then unit else "%")
                 
                 ctx.fillStyle = '#1e293b'
                 ctx.font = 'bold 12px sans-serif'
@@ -485,7 +564,7 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             return
 
         
-        drawPointer = (ctx, cx, cy, angle, innerRadius, outerRadius) ->
+        drawPointer = (ctx, cx, cy, angle, innerRadius, outerRadius, pointerColor) ->
             pointerRadius = innerRadius + (outerRadius - innerRadius) * 0.8
             pointerWidth = 6
             headLength = 10
@@ -502,7 +581,7 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             # Draw pointer line with gradient
             ctx.lineWidth = pointerWidth
             ctx.lineCap = 'round'
-            ctx.strokeStyle = '#1f2937'
+            ctx.strokeStyle = pointerColor or '#1f2937'
             
             ctx.beginPath()
             ctx.moveTo(cx, cy)
@@ -516,7 +595,7 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             ctx.shadowOffsetY = 0
             
             # Draw arrow head
-            ctx.fillStyle = '#1f2937'
+            ctx.fillStyle = pointerColor or '#1f2937'
             ctx.beginPath()
             ctx.moveTo(endX, endY)
             ctx.lineTo(
@@ -584,9 +663,9 @@ SpeedometerChartDirective = ($parse, $timeout) ->
         
         scheduleRender = ->
             return unless scope.value? or scope.rawValue?
-            renderChart(scope.value, scope.label, scope.maxValue, scope.rawValue, scope.unit, scope.metricKey, scope.color)
+            renderChart(scope.value, scope.label, scope.maxValue, scope.rawValue, scope.unit, scope.metricKey, scope.color, scope.palette)
         
-        scope.$watchGroup ['value', 'label', 'maxValue', 'rawValue', 'unit', 'metricKey', 'color'], ->
+        scope.$watchGroup ['value', 'label', 'maxValue', 'rawValue', 'unit', 'metricKey', 'color', 'palette'], ->
             scheduleRender()
         
         scope.$on '$destroy', ->
@@ -603,6 +682,7 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             unit: '@?'
             metricKey: '@?'
             color: '=?'
+            palette: '=?'
         }
     }
 
