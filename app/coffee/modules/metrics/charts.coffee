@@ -416,7 +416,7 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                             unit: unit
                             absolute: absoluteRatio
                             label: label
-                            pointerColor: providedColor or '#000000'
+                            pointerColor: '#000000'
                             displayAsRatio: true
                             ratioValue: ratioClamped
 
@@ -581,7 +581,7 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             # Draw pointer line with gradient
             ctx.lineWidth = pointerWidth
             ctx.lineCap = 'round'
-            ctx.strokeStyle = pointerColor or '#1f2937'
+            ctx.strokeStyle = pointerColor or '#000000'
             
             ctx.beginPath()
             ctx.moveTo(cx, cy)
@@ -595,7 +595,7 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             ctx.shadowOffsetY = 0
             
             # Draw arrow head
-            ctx.fillStyle = pointerColor or '#1f2937'
+            ctx.fillStyle = pointerColor or '#000000'
             ctx.beginPath()
             ctx.moveTo(endX, endY)
             ctx.lineTo(
@@ -612,7 +612,7 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             # Draw center circle with shadow
             ctx.shadowColor = 'rgba(0, 0, 0, 0.2)'
             ctx.shadowBlur = 4
-            ctx.fillStyle = '#1f2937'
+            ctx.fillStyle = '#000000'
             ctx.beginPath()
             ctx.arc(cx, cy, 8, 0, Math.PI * 2)
             ctx.fill()

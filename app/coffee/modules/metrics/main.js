@@ -1702,8 +1702,8 @@
      * Description: Renders the semicircle gauge that paints the acceptance criteria indicator as a half moon.
      */
 
-    MetricsController.prototype.renderSemicircleWithChartJS = function(canvas) {
-      var color, config, ctx, gaugeContext, ref, resolvedValue, value;
+MetricsController.prototype.renderSemicircleWithChartJS = function(canvas) {
+  var color, config, ctx, gaugeContext, ref, resolvedValue, value;
       ctx = canvas.getContext("2d");
       if (!ctx) {
         return;
@@ -1725,8 +1725,8 @@
       } else {
         value = 0;
       }
-      value = Math.max(0, Math.min(100, value || 0));
-      color = value < 33 ? "#f44336" : value < 66 ? "#ff9800" : "#4caf50";
+  value = Math.max(0, Math.min(100, value || 0));
+  color = value < 33 ? "#f44336" : value < 66 ? "#ff9800" : "#4caf50";
       config = {
         type: 'doughnut',
         data: {
