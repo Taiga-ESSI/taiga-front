@@ -76,6 +76,10 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         else
             @metricsProvider = "external"
 
+        @localConfig = @.loadLocalConfig()
+        if @localConfig?.provider
+            @metricsProvider = @localConfig.provider
+
         @scope.metricsAuth =
             authenticated: false
             username: null
@@ -216,6 +220,15 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             @.loadAuthStatus()
 
         promise.then null, @.onInitialDataError.bind(@)
+
+    loadLocalConfig: ->
+        try
+            slug = @params.pslug
+            saved = localStorage.getItem("taigaMetricsConfig_#{slug}")
+            return JSON.parse(saved) if saved
+        catch e
+            console.error "Error loading local config", e
+        return null
 
     loadProject: ->
         project = @projectService.project.toJS()
@@ -1193,6 +1206,11 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
     isUserMetricId: (metricId) ->
         return false unless metricId?
+        
+        # Check local config first
+        if @localConfig?.classification?[metricId]
+            return @localConfig.classification[metricId] is 'team'
+
         lowerId = metricId.toString().toLowerCase()
         prefixes = [
             "assignedtasks_"
@@ -1223,6 +1241,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             bucket[name].push(angular.copy(entry))
 
         for metric in rawMetrics when metric?
+            if @localConfig?.classification?[metric.id] is 'hidden'
+                continue
+
             normalizedValue = @.normalizeMetricValue(metric.value)
             ratioValue = Math.max(0, Math.min(normalizedValue / 100, 1))
 
@@ -1234,6 +1255,15 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 description: metric.description
                 rawValue: normalizedValue
                 raw: metric
+
+            # Pol Alcoverro added: Resolve colors for gauges
+            categoryName = metric.categoryName or metric.category_name or metric.category?.name or metric.category
+            # If no explicit category name, try to use the first quality factor if available
+            if !categoryName and angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
+                categoryName = metric.qualityFactors[0]
+
+            entry.categoryColor = @.resolveMetricCategoryColor(categoryName, normalizedValue)
+            entry.categorySegments = @.buildMetricCategorySegments(categoryName)
 
             isUserMetric = @.isUserMetricId(metric.id)
             targetBuckets = if isUserMetric then teamBuckets else projectBuckets

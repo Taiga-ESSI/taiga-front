@@ -519,8 +519,8 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             ctx.strokeStyle = 'rgba(30, 41, 59, 0.4)'
             ctx.lineWidth = 2
             
-            # Draw marks at 0%, 25%, 50%, 75%, 100%
-            for i in [0..4]
+            # Draw marks at 0%, 50%, 100% only (removed 25% and 75%)
+            for i in [0, 2, 4]
                 angle = Math.PI + (i * Math.PI / 4)  # From 180° to 0°
                 startRadius = outerRadius + 5
                 endRadius = outerRadius + 15
@@ -539,9 +539,6 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                 labelRadius = outerRadius + 28
                 labelX = cx + labelRadius * Math.cos(angle)
                 labelY = cy + labelRadius * Math.sin(angle)
-
-                shouldDraw = i in [0, 2, 4]
-                continue unless shouldDraw
 
                 if hasCustomScale
                     labelValue = (maxRef or 0) * (i / 4)

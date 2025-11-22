@@ -1,0 +1,66 @@
+//- CREADOR POR: POL ALCOVERRO
+//- Descripción: Vista para el panel de configuración de métricas.
+
+div.metrics-config-page
+    header
+        h1 Metrics Configuration (LIVE)
+        p.help-text Creado por Pol Alcoverro - Panel de clasificación de métricas
+
+    div.config-controls
+        div.provider-switch
+            label Provider Source: 
+            button.button(ng-click="vm.toggleProvider()", ng-class="{'button-success': vm.scope.config.provider == 'internal', 'button-secondary': vm.scope.config.provider == 'external'}")
+                | {{ vm.scope.config.provider | uppercase }}
+        
+        div.actions
+            button.button.button-primary(ng-click="vm.saveConfig()") Save to LocalStorage (Test)
+            button.button.button-secondary(ng-click="vm.exportConfig()") Export JSON
+
+    div.config-inputs
+        label External Project ID / Slug:
+        div.input-group
+            input(type="text", ng-model="vm.scope.externalProjectId", placeholder="Enter external project ID")
+            button.button(ng-click="vm.loadMetrics()") Reload Metrics
+
+    div.loading(ng-if="vm.scope.loading")
+        span.spinner
+        span Loading metrics...
+
+    div.error-message(ng-if="vm.scope.error")
+        | {{ vm.scope.error }}
+
+    div.warning-message(ng-if="vm.scope.authRequired")
+        h3 Authentication Required
+        p You are not logged in to the {{ vm.scope.config.provider | uppercase }} metrics provider.
+        p Please go to the 
+            a(href="/project/{{vm.scope.projectSlug}}/metrics/team") Team Metrics
+            |  tab and login, then return here to configure.
+
+    div.empty-message(ng-if="!vm.scope.loading && !vm.scope.authRequired && !vm.scope.error && vm.scope.metrics.length == 0")
+        p No metrics found for this project.
+        p Ensure the project ID is correct and metrics are available in the provider.
+
+    table.table-list(ng-if="!vm.scope.loading && vm.scope.metrics.length > 0")
+        thead
+            tr
+                th Metric ID
+                th Name
+                th Default Type
+                th Classification
+        tbody
+            tr(ng-repeat="metric in vm.scope.metrics")
+                td {{ metric.id }}
+                td {{ metric.name }}
+                td {{ metric.defaultType | uppercase }}
+                td
+                    div.classification-switch
+                        label
+                            input(type="radio", ng-model="vm.scope.config.classification[metric.id]", value="project")
+                            | Project
+                        label
+                            input(type="radio", ng-model="vm.scope.config.classification[metric.id]", value="team")
+                            | Team
+                        label
+                            input(type="radio", ng-model="vm.scope.config.classification[metric.id]", value="hidden")
+                            | Hidden
+

@@ -95,6 +95,32 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-team'")
                                             span {{ user.displayName }}
 
                             
+                            div.team-section(ng-if="metricsView.data.teamMetricGroups && metricsView.data.teamMetricGroups.length > 0")
+                                h3(translate="METRICS.TEAM_METRICS_TITLE")
+                                div.team-metrics-groups
+                                    div.metric-group(ng-repeat="group in metricsView.data.teamMetricGroups")
+                                        h4.group-title {{ group.label }}
+                                        div.project-metrics-grid
+                                            div.project-metric-card(ng-repeat="metric in group.metrics track by metric.id")
+                                                div.project-metric-header
+                                                    h3.metric-name {{ metric.label }}
+                                                div.project-metric-gauge
+                                                    div.project-metric-body
+                                                        div.project-metric-chart
+                                                            tg-speedometer-chart(
+                                                                value="metric.ratio"
+                                                                raw-value="metric.ratio"
+                                                                max-value="1"
+                                                                label="{{ metric.label }}"
+                                                                metric-id="{{ metric.id }}"
+                                                                color="metric.categoryColor"
+                                                                palette="metric.categorySegments"
+                                                            )
+                                                        div.project-metric-insights
+                                                            div.metric-value-wrapper
+                                                                span.metric-value {{ metric.formattedRatio }}
+                                                            p.metric-description(ng-if="metric.description") {{ metric.description }}
+
                             div.team-section(ng-if="metricsView.data.metricsCategories && Object.keys(metricsView.data.metricsCategories).length > 0")
                                 h3(translate="METRICS.METRICS_CATEGORIES")
                                 ul.key-value-list
