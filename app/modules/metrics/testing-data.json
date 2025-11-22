@@ -1,0 +1,36 @@
+{
+  "_comentario": "CREADOR POR: POL ALCOVERRO - Datos mock para validar componentes gráficos de métricas en desarrollo.",
+  "star": {
+    "labels": ["Tasks SD", "Commits SD", "Closed Tasks", "Modified Lines"],
+    "values": [7, 19, 83, 0],
+    "description": "4-point star chart with real metrics from AMEP11ChopChop project"
+  },
+  "gauge": {
+    "label": "Strategic Indicators Average",
+    "value": 11,
+    "description": "Average of Backlog Management (28%), Info Completeness (0%), and Repository Contribution (5%)"
+  },
+  "metrics": {
+    "tasks_sd": 0.065685585,
+    "commits_sd": 0.18533926,
+    "closedtasks_avg": 0.83,
+    "modifiedlines_avg": 0.0
+  },
+  "strategic_indicators": [
+    {
+      "name": "Backlog Management",
+      "value": 0.2777778,
+      "percentage": 28
+    },
+    {
+      "name": "Information Completeness",
+      "value": 0.0,
+      "percentage": 0
+    },
+    {
+      "name": "Repository Contribution",
+      "value": 0.046360154,
+      "percentage": 5
+    }
+  ]
+}

@@ -297,6 +297,31 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
         }
     )
 
+    # Pol Alcoverro added - Metrics
+    $routeProvider.when("/project/:pslug/metrics",
+        {
+            redirectTo: (params) -> "/project/#{params.pslug}/metrics/team"
+        }
+    )
+
+    # Metrics - Team
+    $routeProvider.when("/project/:pslug/metrics/team",
+        {
+            templateUrl: "metrics/metrics-team.html",
+            loader: true,
+            section: "metrics"
+        }
+    )
+
+    # Metrics - Project
+    $routeProvider.when("/project/:pslug/metrics/project",
+        {
+            templateUrl: "metrics/metrics-project.html",
+            loader: true,
+            section: "metrics"
+        }
+    )
+
     # Issues
     $routeProvider.when("/project/:pslug/issues",
         {
@@ -1068,6 +1093,8 @@ modules = [
     "taigaIssues",
     "taigaUserStories",
     "taigaTasks",
+    # Pol Alcoverro: registramos el módulo de personalización usado por métricas
+    "taigaCustomization",
     "taigaTeam",
     "taigaWiki",
     "taigaSearch",
@@ -1078,6 +1105,8 @@ modules = [
     "taigaPlugins",
     "taigaIntegrations",
     "taigaComponents",
+    # Pol Alcoverro added - Metrics module
+    "taigaMetrics",
 
     # new modules
     "taigaProfile",
