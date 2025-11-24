@@ -12,13 +12,14 @@ class MetricsConfigController
         "$routeParams",
         "$tgHttp",
         "$tgUrls",
+        "$q",
         "tgMetricsConfiguration",
         "tgProjectService",
         "$translate",
         "tgAppMetaService"
     ]
 
-    constructor: (@scope, @params, @http, @urls, @metricsConfig, @projectService, @translate, @appMetaService) ->
+    constructor: (@scope, @params, @http, @urls, @$q, @metricsConfig, @projectService, @translate, @appMetaService) ->
         @scope.projectSlug = @params.pslug
         @scope.loading = true
         @scope.metrics = []
@@ -26,20 +27,41 @@ class MetricsConfigController
             provider: @metricsConfig.provider
             classification: {} # metricId -> 'project' | 'team' | 'hidden'
         }
-        
-        # Load saved config from localStorage if available
-        @.loadLocalConfig()
+        @scope.configLoading = false
+        @scope.savingConfig = false
+        @scope.configError = null
 
         @.loadProject()
 
-    loadLocalConfig: ->
-        try
-            saved = localStorage.getItem("taigaMetricsConfig_#{@scope.projectSlug}")
-            if saved
-                parsed = JSON.parse(saved)
-                @scope.config = _.merge(@scope.config, parsed)
-        catch e
-            console.error "Error loading local config", e
+    loadServerConfig: ->
+        unless @scope.projectSlug
+            return @$q.when(null)
+
+        @scope.configLoading = true
+        @scope.configError = null
+
+        url = @urls.resolve("metrics-config")
+        params = {project: @scope.projectSlug}
+
+        return @http.get(url, params, {withCredentials: true})
+            .then (response) =>
+                data = response?.data || {}
+                if data.provider
+                    @scope.config.provider = data.provider
+
+                if angular.isObject(data.classification)
+                    @scope.config.classification = data.classification
+                else
+                    @scope.config.classification = {}
+
+                if angular.isString(data.external_project_id) and data.external_project_id.length
+                    @scope.externalProjectId = data.external_project_id
+            .catch (error) =>
+                console.error "Metrics Config: Error loading server configuration", error
+                @scope.configError = "Unable to load the saved metrics configuration for this project."
+                return @$q.reject(error)
+            .finally =>
+                @scope.configLoading = false
 
     loadProject: ->
         # Project is preloaded by the route resolver (app.coffee)
@@ -60,7 +82,8 @@ class MetricsConfigController
         resolvedId = @metricsConfig.resolveExternalProjectId(@scope.projectSlug)
         @scope.externalProjectId = resolvedId or @scope.projectSlug
         
-        @.checkAuthAndLoad()
+        @.loadServerConfig().finally =>
+            @.checkAuthAndLoad()
 
     checkAuthAndLoad: ->
         @scope.loading = true
@@ -139,29 +162,47 @@ class MetricsConfigController
                 @scope.config.classification[metric.id] = metric.defaultType
 
     isDefaultTeamMetric: (metricId) ->
-        # Logic duplicated from main.coffee for default determination
-        lowerId = metricId.toLowerCase()
-        prefixes = [
-            "assignedtasks_"
-            "closedtasks_"
-            "completedtasks_"
-            "commits_"
-            "modifiedlines_"
-            "completedus_"
-            "totalus_"
-            "tasksratio_"
-        ]
-        return prefixes.some (prefix) -> lowerId.indexOf(prefix) is 0
+        # Use centralized configuration to determine if it's a team metric
+        return false unless metricId
+        
+        # Check if it's in the team metrics order list
+        teamOrder = @metricsConfig.teamMetricsOrder or []
+        for teamMetric in teamOrder
+            if metricId.toLowerCase().indexOf(teamMetric.toLowerCase()) is 0
+                return true
+                
+        return false
 
     saveConfig: ->
-        # Save to localStorage for "LIVE" effect on this browser
-        key = "taigaMetricsConfig_#{@scope.projectSlug}"
-        localStorage.setItem(key, JSON.stringify(@scope.config))
-        alert("Configuration saved to LocalStorage! Refresh the metrics page to see changes.")
+        payload = {
+            project: @scope.projectSlug
+            provider: @scope.config.provider
+            classification: @scope.config.classification
+            externalProjectId: @scope.externalProjectId
+        }
+
+        @scope.savingConfig = true
+        @scope.error = null
+
+        url = @urls.resolve("metrics-config")
+        @http.patch(url, payload, null, {withCredentials: true})
+            .then (response) =>
+                data = response?.data || {}
+                if angular.isObject(data.classification)
+                    @scope.config.classification = data.classification
+                if data.external_project_id? and data.external_project_id isnt undefined
+                    @scope.externalProjectId = data.external_project_id
+                alert("Configuration saved! All members will now share this metrics setup.")
+            .catch (error) =>
+                console.error "Metrics Config: Error saving configuration", error
+                @scope.error = "Error saving metrics configuration."
+            .finally =>
+                @scope.savingConfig = false
 
     exportConfig: ->
-        # Generate a JSON file for the user to download
-        dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(@scope.config, null, 2))
+        exportData = angular.copy(@scope.config) or {}
+        exportData.externalProjectId = @scope.externalProjectId
+        dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2))
         downloadAnchorNode = document.createElement('a')
         downloadAnchorNode.setAttribute("href", dataStr)
         downloadAnchorNode.setAttribute("download", "metrics_config_#{@scope.projectSlug}.json")

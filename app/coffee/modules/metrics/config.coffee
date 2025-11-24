@@ -44,13 +44,29 @@ module.factory "tgMetricsConfiguration", ["$log", ($log) ->
             "tasks_with_ee",
             "unassignedtasks"
         ]
+        metricClassifications: {
+            "learn_hours": "hidden",
+            "pattern_check": "hidden",
+            "commits_taskreference": "hidden",
+            "commits_sd": "hidden",
+        }
         projectHistoricalMetricsOrder: [
             "acceptance_criteria_check",
             "deviation_effort_estimation_simple",
-            "learn_hours",
-            "tasks_sd",
             "tasks_with_ee",
             "unassignedtasks"
+        ]
+        teamMetricsOrder: [
+            "assignedtasks",
+            "closedtasks",
+            "commits",
+            "modifiedlines"
+        ]
+        teamHistoricalMetricsOrder: [
+            "tasks",
+            "closed_tasks",
+            "modified_lines",
+            "commits"
         ]
 
     externalOverrides = window.taigaMetricsConfig or {}

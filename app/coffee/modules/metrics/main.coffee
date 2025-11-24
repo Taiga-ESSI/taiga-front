@@ -76,9 +76,10 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         else
             @metricsProvider = "external"
 
-        @localConfig = @.loadLocalConfig()
-        if @localConfig?.provider
-            @metricsProvider = @localConfig.provider
+        @legacyLocalConfig = @.loadLocalConfig()
+        @localConfig = null
+        if @legacyLocalConfig?.provider
+            @metricsProvider = @legacyLocalConfig.provider
 
         @scope.metricsAuth =
             authenticated: false
@@ -229,6 +230,106 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         catch e
             console.error "Error loading local config", e
         return null
+
+    fetchProjectConfig: ->
+        slug = @params.pslug
+        return @q.when(@legacyLocalConfig) unless slug
+
+        url = @urls.resolve("metrics-config")
+        params = {project: slug}
+
+        return @http.get(url, params, {withCredentials: true})
+            .then (response) =>
+                config = @.normalizeConfigPayload(response?.data)
+                if config
+                    console.log "Metrics: Loaded configuration from SERVER for project #{slug}", config
+                    @localConfig = config
+                    if config.provider
+                        @metricsProvider = config.provider
+                    if config.externalProjectId
+                        @scope.metricsAuth.externalProjectId = config.externalProjectId
+                else
+                    console.log "Metrics: No configuration from server, using defaults/legacy"
+                    @localConfig = null
+                return @localConfig
+            .catch (error) =>
+                console.error "Metrics: unable to load persisted config", error
+                if @legacyLocalConfig
+                    console.log "Metrics: Using LEGACY local config", @legacyLocalConfig
+                    @localConfig = @legacyLocalConfig
+                    if @localConfig.provider
+                        @metricsProvider = @localConfig.provider
+                    if @localConfig.externalProjectId and !@scope.metricsAuth.externalProjectId
+                        @scope.metricsAuth.externalProjectId = @localConfig.externalProjectId
+                else
+                    console.log "Metrics: Using DEFAULT hardcoded config"
+                return @localConfig
+
+    normalizeConfigPayload: (data) ->
+        return null unless data and angular.isObject(data)
+
+        normalized =
+            provider: null
+            classification: data.classification or {}
+            externalProjectId: data.external_project_id or data.externalProjectId or null
+            projectMetricsOrder: data.project_metrics_order or data.projectMetricsOrder or []
+            teamMetricsOrder: data.team_metrics_order or data.teamMetricsOrder or []
+
+        providerValue = data.provider or data.metrics_provider
+        if angular.isString(providerValue)
+            normalized.provider = providerValue.toLowerCase()
+
+        if angular.isString(normalized.externalProjectId)
+            normalized.externalProjectId = normalized.externalProjectId.trim()
+        else
+            normalized.externalProjectId = null
+
+        if !angular.isObject(normalized.classification)
+            normalized.classification = {}
+
+        if !angular.isArray(normalized.projectMetricsOrder)
+            normalized.projectMetricsOrder = []
+
+        if !angular.isArray(normalized.teamMetricsOrder)
+            normalized.teamMetricsOrder = []
+
+        return normalized
+
+    resolveLocalClassification: (metricId) ->
+        return null unless metricId?
+        return null unless @localConfig?.classification
+        classification = @localConfig.classification[metricId]
+        if classification?
+            return classification
+        lower = metricId.toString().toLowerCase()
+        return @localConfig.classification[lower] if lower isnt metricId and @localConfig.classification[lower]?
+        return null
+
+    resolveMetricClassificationValue: (metric) ->
+        return null unless metric?
+        classification = null
+        if metric.id?
+            classification = @.resolveLocalClassification(metric.id)
+        if !classification and metric.externalId?
+            classification = @.resolveLocalClassification(metric.externalId)
+        return classification
+
+    matchesConfiguredMetric: (configuredValue, metricId, metricExternalId, allowPrefix = true) ->
+        return false unless configuredValue?
+        normalizedConfig = configuredValue.toString().toLowerCase()
+        normalizedMetricId = if metricId? then metricId.toString().toLowerCase() else null
+        normalizedExternalId = if metricExternalId? then metricExternalId.toString().toLowerCase() else null
+
+        matchesExact = (value) ->
+            value? and value == normalizedConfig
+
+        matchesPrefix = (value) ->
+            return false unless allowPrefix and value?
+            value.indexOf("#{normalizedConfig}_") is 0
+
+        return true if matchesExact(normalizedMetricId) or matchesExact(normalizedExternalId)
+        return true if matchesPrefix(normalizedMetricId) or matchesPrefix(normalizedExternalId)
+        return false
 
     loadProject: ->
         project = @projectService.project.toJS()
@@ -837,22 +938,31 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 metricValue = detail?.value
                 metricValue ?= @.normalizeMetricValue(metric.value)
 
-                if metricId.indexOf("assignedtasks") isnt -1
-                    entry.assignedTasks = metricValue
-                    entry.totalTasks = Math.max(entry.totalTasks, metricValue)
-                else if metricId.indexOf("closedtasks") isnt -1 or metricId.indexOf("completedtasks") isnt -1
-                    entry.closedTasks = metricValue
-                    entry.completedTasks = metricValue
-                    entry.tasksPercentage = metricValue
-                else if metricId.indexOf("commits") isnt -1
-                    entry.commits = metricValue
-                else if metricId.indexOf("modifiedlines") isnt -1 or metricId.indexOf("linesmodified") isnt -1
-                    entry.modifiedLines = metricValue
-                else if metricId.indexOf("totalus") isnt -1
-                    entry.totalUS = metricValue
-                else if metricId.indexOf("completedus") isnt -1 or metricId.indexOf("closedus") isnt -1
-                    entry.completedUS = metricValue
-                    entry.usPercentage = metricValue
+                metricId = metricKey.toLowerCase()
+                metricValue = detail?.value
+                metricValue ?= @.normalizeMetricValue(metric.value)
+
+                # Dynamic mapping based on configuration
+                # We check if the metric ID contains any of the configured keys
+                for configuredKey in (@metricsConfig.teamMetricsOrder or [])
+                    if metricId.indexOf(configuredKey) isnt -1
+                        # Map known keys to internal properties
+                        if configuredKey is "assignedtasks"
+                            entry.assignedTasks = metricValue
+                            entry.totalTasks = Math.max(entry.totalTasks, metricValue)
+                        else if configuredKey is "closedtasks" or configuredKey is "completedtasks"
+                            entry.closedTasks = metricValue
+                            entry.completedTasks = metricValue
+                            entry.tasksPercentage = metricValue
+                        else if configuredKey is "commits"
+                            entry.commits = metricValue
+                        else if configuredKey is "modifiedlines" or configuredKey is "linesmodified"
+                            entry.modifiedLines = metricValue
+                        else if configuredKey is "totalus"
+                            entry.totalUS = metricValue
+                        else if configuredKey is "completedus" or configuredKey is "closedus"
+                            entry.completedUS = metricValue
+                            entry.usPercentage = metricValue
 
             # Calcular porcentajes
             if entry.totalTasks > 0 and entry.completedTasks > 0
@@ -1098,35 +1208,67 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         return [] unless angular.isArray(metricsArray)
 
         metricsById = {}
-        for metric in metricsArray when metric?.id?
-            metricsById[metric.id.toLowerCase()] = metric
+        for metric in metricsArray
+            if metric.externalId
+                metricsById[metric.externalId.toLowerCase()] = metric
+            if metric.id
+                metricsById[metric.id.toString().toLowerCase()] = metric
 
         collected = []
+        seenIds = {}
 
-        for metricId in @metricsConfig.projectMetricsOrder
-            normalizedId = metricId.toLowerCase()
-            metric = metricsById[normalizedId]
-            continue unless metric
-
+        addMetricEntry = (metric) =>
             entry = @.buildProjectMetricEntry(metric)
             if entry
                 collected.push(entry)
+                if metric.id?
+                    seenIds[metric.id.toString().toLowerCase()] = true
+                if metric.externalId?
+                    seenIds[metric.externalId.toLowerCase()] = true
 
-        # Si no hay coincidencias en el orden predefinido, usamos métricos globales evitando los de usuario/equipo.
-        if collected.length is 0
-            seen = {}
-            userMetricPrefixes = ["assignedtasks_", "closedtasks_", "totalus_", "completedus_"]
-            for metric in metricsArray when metric?.id?
-                idLower = metric.id.toString().toLowerCase()
-                # Descarta métricos per-usuario (Team) para no duplicar en Project
-                isUserMetric = userMetricPrefixes.some (prefix) -> idLower.indexOf(prefix) is 0
-                if isUserMetric or (angular.isArray(metric.qualityFactors) and metric.qualityFactors.indexOf("Team") isnt -1)
+        projectOrder = @localConfig?.projectMetricsOrder
+        unless angular.isArray(projectOrder) and projectOrder.length
+            projectOrder = @metricsConfig.projectMetricsOrder or []
+        for metricId in projectOrder
+            normalizedId = metricId.toLowerCase()
+            metric = metricsById[normalizedId]
+            unless metric
+                metric = _.find metricsArray, (candidate) =>
+                    @.matchesConfiguredMetric(metricId, candidate.id, candidate.externalId, false)
+                unless metric
                     continue
-                continue if seen[metric.id]
-                entry = @.buildProjectMetricEntry(metric)
-                if entry
-                    collected.push(entry)
-                    seen[metric.id] = true
+
+            classification = @.resolveMetricClassificationValue(metric)
+            if classification is 'hidden'
+                continue
+            if classification is 'team'
+                continue
+
+            globalHidden = false
+            if @metricsConfig.metricClassifications?[normalizedId] is 'hidden'
+                globalHidden = true
+            else if metric.externalId and @metricsConfig.metricClassifications?[metric.externalId.toLowerCase()] is 'hidden'
+                globalHidden = true
+
+            if globalHidden and classification isnt 'project'
+                continue
+
+            addMetricEntry(metric)
+
+        if @localConfig?.classification
+            for metric in metricsArray when metric?
+                classification = @.resolveMetricClassificationValue(metric)
+                continue unless classification is 'project'
+                normalizedMetricId = null
+                if metric.id?
+                    normalizedMetricId = metric.id.toString().toLowerCase()
+                else if metric.externalId?
+                    normalizedMetricId = metric.externalId.toLowerCase()
+                if normalizedMetricId and seenIds[normalizedMetricId]
+                    continue
+                addMetricEntry(metric)
+
+
 
         context =
             metrics: collected
@@ -1208,8 +1350,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         return false unless metricId?
         
         # Check local config first
-        if @localConfig?.classification?[metricId]
-            return @localConfig.classification[metricId] is 'team'
+        localClassification = @.resolveLocalClassification(metricId)
+        if localClassification?
+            return localClassification is 'team'
 
         lowerId = metricId.toString().toLowerCase()
         prefixes = [
@@ -1241,7 +1384,19 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             bucket[name].push(angular.copy(entry))
 
         for metric in rawMetrics when metric?
-            if @localConfig?.classification?[metric.id] is 'hidden'
+            classificationOverride = @.resolveMetricClassificationValue(metric)
+            normalizedMetricId = if metric.id? then metric.id.toString().toLowerCase() else null
+            normalizedExternalId = if metric.externalId? then metric.externalId.toLowerCase() else null
+            if classificationOverride is 'hidden'
+                continue
+            
+            # Check global configuration classification
+            globalHidden = false
+            if normalizedMetricId and @metricsConfig.metricClassifications?[normalizedMetricId] is 'hidden'
+                globalHidden = true
+            if normalizedExternalId and @metricsConfig.metricClassifications?[normalizedExternalId] is 'hidden'
+                globalHidden = true
+            if globalHidden and classificationOverride not in ['project', 'team']
                 continue
 
             normalizedValue = @.normalizeMetricValue(metric.value)
@@ -1265,15 +1420,62 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             entry.categoryColor = @.resolveMetricCategoryColor(categoryName, normalizedValue)
             entry.categorySegments = @.buildMetricCategorySegments(categoryName)
 
-            isUserMetric = @.isUserMetricId(metric.id)
-            targetBuckets = if isUserMetric then teamBuckets else projectBuckets
-            targetUnassigned = if isUserMetric then teamUnassigned else projectUnassigned
+            # Determine classification based on configuration
+            isProjectConfigured = false
+            isTeamConfigured = false
 
-            if angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
-                for factorName in metric.qualityFactors when factorName
-                    pushMetric(targetBuckets, factorName, entry)
-            else
-                targetUnassigned.push(angular.copy(entry))
+            # Check Project Config
+            projectOrderConfig = @localConfig?.projectMetricsOrder
+            unless angular.isArray(projectOrderConfig) and projectOrderConfig.length
+                projectOrderConfig = @metricsConfig.projectMetricsOrder
+                # console.log "Metrics: Using DEFAULT project metrics order" if metric is rawMetrics[0]
+            # else
+                # console.log "Metrics: Using SERVER/LOCAL project metrics order" if metric is rawMetrics[0]
+
+            if projectOrderConfig
+                for pMetric in projectOrderConfig
+                    if @.matchesConfiguredMetric(pMetric, metric.id, metric.externalId, false)
+                        isProjectConfigured = true
+                        break
+
+            # Check Team Config
+            teamOrderConfig = @localConfig?.teamMetricsOrder
+            unless angular.isArray(teamOrderConfig) and teamOrderConfig.length
+                teamOrderConfig = @metricsConfig.teamMetricsOrder
+            if teamOrderConfig
+                for tMetric in teamOrderConfig
+                    if @.matchesConfiguredMetric(tMetric, metric.id, metric.externalId, true)
+                        isTeamConfigured = true
+                        break
+            
+            # If configured in both, prefer the one that matches the current context or default to Project?
+            # Or add to both? The original code split them.
+            # Let's add to both if configured in both, or split based on config.
+            
+            if classificationOverride is 'project'
+                isProjectConfigured = true
+                isTeamConfigured = false
+            else if classificationOverride is 'team'
+                isTeamConfigured = true
+                isProjectConfigured = false
+            
+            if isProjectConfigured
+                if angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
+                    for factorName in metric.qualityFactors when factorName
+                        pushMetric(projectBuckets, factorName, entry)
+                else
+                    projectUnassigned.push(angular.copy(entry))
+
+            if isTeamConfigured
+                if angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
+                    for factorName in metric.qualityFactors when factorName
+                        pushMetric(teamBuckets, factorName, entry)
+                else
+                    teamUnassigned.push(angular.copy(entry))
+            
+            # If not configured in either, do we skip it?
+            # Yes, to be strictly compliant with "only show what is configured".
+            continue unless isProjectConfigured or isTeamConfigured
 
         groups.project = @.convertMetricBucketsToGroups(projectBuckets, projectUnassigned, false)
         groups.team = @.convertMetricBucketsToGroups(teamBuckets, teamUnassigned, true)
@@ -1343,6 +1545,10 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         formattedPrecise = Number(preciseValue or 0).toFixed(2)
 
         categoryName = metric.categoryName or metric.category_name or metric.category?.name or metric.category
+        # If no explicit category name, try to use the first quality factor if available
+        if !categoryName and angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
+            categoryName = metric.qualityFactors[0]
+        
         categoryColor = @.resolveMetricCategoryColor(categoryName, preciseValue or numericValue)
         categorySegments = @.buildMetricCategorySegments(categoryName)
 
@@ -1609,9 +1815,11 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
     loadInitialData: ->
         project = @.loadProject()
+        configPromise = @.fetchProjectConfig()
 
         return @q.all([
-            project
+            @q.when(project)
+            configPromise
         ])
 
     resolveErrorKey: (value, defaultKey) ->

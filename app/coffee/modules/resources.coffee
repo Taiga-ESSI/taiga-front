@@ -244,6 +244,7 @@ urls = {
     "metrics-logout": "/metrics/logout"
     "metrics-status": "/metrics/status"
     "metrics-historical": "/metrics/historical"
+    "metrics-config": "/metrics/config"
 }
 
 # Initialize api urls service
