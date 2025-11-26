@@ -1209,6 +1209,11 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         metricsById = {}
         for metric in metricsArray
+            continue unless metric
+            # Skip user-scoped metrics (they belong in Team view)
+            isUserMetric = @.isUserMetricId(metric.id) or @.isUserMetricId(metric.externalId)
+            continue if isUserMetric
+
             if metric.externalId
                 metricsById[metric.externalId.toLowerCase()] = metric
             if metric.id
@@ -1218,6 +1223,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         seenIds = {}
 
         addMetricEntry = (metric) =>
+            return if @.isUserMetricId(metric?.id) or @.isUserMetricId(metric?.externalId)
             entry = @.buildProjectMetricEntry(metric)
             if entry
                 collected.push(entry)
@@ -1348,13 +1354,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
     isUserMetricId: (metricId) ->
         return false unless metricId?
-        
-        # Check local config first
-        localClassification = @.resolveLocalClassification(metricId)
-        if localClassification?
-            return localClassification is 'team'
 
         lowerId = metricId.toString().toLowerCase()
+        classification = @.resolveLocalClassification(metricId)
         prefixes = [
             "assignedtasks_"
             "closedtasks_"
@@ -1365,7 +1367,52 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             "totalus_"
             "tasksratio_"
         ]
-        prefixes.some (prefix) -> lowerId.indexOf(prefix) is 0
+        isUserPattern = prefixes.some (prefix) -> lowerId.indexOf(prefix) is 0
+
+        # Allow explicit overrides: a metric explicitly classified as project should
+        # never be treated as a user-scoped metric. For team classification, only
+        # mark it as user-scoped when it matches one of the known user patterns.
+        if classification is 'project'
+            return false
+
+        if classification is 'team'
+            return isUserPattern
+
+        return isUserPattern
+    
+    resolveMetricUserContext: (metric) ->
+        return null unless metric?
+
+        pickValue = (obj, keys) ->
+            return null unless obj?
+            for key in keys when obj[key]?
+                value = obj[key]
+                if typeof value is "string"
+                    trimmed = value.trim()
+                    return trimmed if trimmed.length
+                else if value?
+                    return value
+            null
+
+        username = pickValue(metric, ["student", "user", "username", "owner"])
+        displayName = pickValue(metric, ["student_display", "studentDisplay", "user_display", "userDisplay", "displayName"])
+
+        username ?= pickValue(metric.metadata, ["student", "user", "username"])
+        displayName ?= pickValue(metric.metadata, ["student_display", "studentDisplay", "user_display", "userDisplay", "displayName"])
+
+        if !username and metric.id? and @.isUserMetricId(metric.id)
+            parts = metric.id.toString().split("_")
+            if parts.length > 1
+                username = parts.slice(1).join("_")
+
+        displayName ?= username
+
+        return null unless username or displayName
+
+        {
+            username: username
+            displayName: displayName
+        }
 
     buildMetricDisplayGroups: (rawMetrics) ->
         groups =
@@ -1387,6 +1434,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             classificationOverride = @.resolveMetricClassificationValue(metric)
             normalizedMetricId = if metric.id? then metric.id.toString().toLowerCase() else null
             normalizedExternalId = if metric.externalId? then metric.externalId.toLowerCase() else null
+            isUserMetric = @.isUserMetricId(normalizedMetricId) or @.isUserMetricId(normalizedExternalId)
             if classificationOverride is 'hidden'
                 continue
             
@@ -1399,27 +1447,6 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             if globalHidden and classificationOverride not in ['project', 'team']
                 continue
 
-            normalizedValue = @.normalizeMetricValue(metric.value)
-            ratioValue = Math.max(0, Math.min(normalizedValue / 100, 1))
-
-            entry =
-                id: metric.id or metric.name
-                label: metric.name or @.formatMetricLabel(metric.id)
-                ratio: ratioValue
-                formattedRatio: Number(ratioValue or 0).toFixed(2)
-                description: metric.description
-                rawValue: normalizedValue
-                raw: metric
-
-            # Pol Alcoverro added: Resolve colors for gauges
-            categoryName = metric.categoryName or metric.category_name or metric.category?.name or metric.category
-            # If no explicit category name, try to use the first quality factor if available
-            if !categoryName and angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
-                categoryName = metric.qualityFactors[0]
-
-            entry.categoryColor = @.resolveMetricCategoryColor(categoryName, normalizedValue)
-            entry.categorySegments = @.buildMetricCategorySegments(categoryName)
-
             # Determine classification based on configuration
             isProjectConfigured = false
             isTeamConfigured = false
@@ -1428,9 +1455,6 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             projectOrderConfig = @localConfig?.projectMetricsOrder
             unless angular.isArray(projectOrderConfig) and projectOrderConfig.length
                 projectOrderConfig = @metricsConfig.projectMetricsOrder
-                # console.log "Metrics: Using DEFAULT project metrics order" if metric is rawMetrics[0]
-            # else
-                # console.log "Metrics: Using SERVER/LOCAL project metrics order" if metric is rawMetrics[0]
 
             if projectOrderConfig
                 for pMetric in projectOrderConfig
@@ -1448,16 +1472,53 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                         isTeamConfigured = true
                         break
             
-            # If configured in both, prefer the one that matches the current context or default to Project?
-            # Or add to both? The original code split them.
-            # Let's add to both if configured in both, or split based on config.
-            
             if classificationOverride is 'project'
                 isProjectConfigured = true
                 isTeamConfigured = false
             else if classificationOverride is 'team'
                 isTeamConfigured = true
                 isProjectConfigured = false
+
+            # Skip metrics that are not configured for any dashboard slot
+            continue unless isProjectConfigured or isTeamConfigured
+
+            # Only keep user-scoped metrics when they are explicitly enabled for the team dashboard
+            if isUserMetric and !isTeamConfigured
+                continue
+
+            normalizedValue = @.normalizeMetricValue(metric.value)
+            ratioValue = Math.max(0, Math.min(normalizedValue / 100, 1))
+            userContext = @.resolveMetricUserContext(metric)
+
+            entry =
+                id: metric.id or metric.name
+                label: metric.name or @.formatMetricLabel(metric.id)
+                ratio: ratioValue
+                formattedRatio: Number(ratioValue or 0).toFixed(2)
+                description: metric.description
+                rawValue: normalizedValue
+                raw: metric
+                user: userContext?.username
+                userDisplayName: userContext?.displayName
+
+            if @.isUserMetricId(entry.id) and userContext?
+                displayLabel = userContext.displayName or userContext.username
+                baseLabel = metric.name or @.formatMetricLabel(metric.id)
+                normalizedBase = baseLabel?.toString().toLowerCase()
+                normalizedDisplay = displayLabel?.toString().toLowerCase()
+                if displayLabel and baseLabel and normalizedBase?.indexOf(normalizedDisplay) is -1
+                    entry.label = "#{displayLabel} · #{baseLabel}"
+                else if displayLabel
+                    entry.label = displayLabel
+
+            # Pol Alcoverro added: Resolve colors for gauges
+            categoryName = metric.categoryName or metric.category_name or metric.category?.name or metric.category
+            # If no explicit category name, try to use the first quality factor if available
+            if !categoryName and angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
+                categoryName = metric.qualityFactors[0]
+
+            entry.categoryColor = @.resolveMetricCategoryColor(categoryName, normalizedValue)
+            entry.categorySegments = @.buildMetricCategorySegments(categoryName)
             
             if isProjectConfigured
                 if angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
@@ -1472,10 +1533,6 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                         pushMetric(teamBuckets, factorName, entry)
                 else
                     teamUnassigned.push(angular.copy(entry))
-            
-            # If not configured in either, do we skip it?
-            # Yes, to be strictly compliant with "only show what is configured".
-            continue unless isProjectConfigured or isTeamConfigured
 
         groups.project = @.convertMetricBucketsToGroups(projectBuckets, projectUnassigned, false)
         groups.team = @.convertMetricBucketsToGroups(teamBuckets, teamUnassigned, true)
