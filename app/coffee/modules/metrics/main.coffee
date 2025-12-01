@@ -128,6 +128,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         @userColorPalette = @.buildUserColorPalette()
         @metricsCategoryPalettes = {}
+        @qualityFactorNamesMap = {}
         @resetUserColorAssignments()
 
         @scope.availableTabs = [
@@ -463,6 +464,12 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
                 metricsCategoriesData = data.metrics_categories or data.metricsCategories or {}
                 @metricsCategoryPalettes = @.buildMetricCategoryPalettes(metricsCategoriesData)
+
+                # Build quality factor id->name map for display purposes
+                # The main metrics array contains quality factors with their names
+                # Each quality factor has id (e.g., "modifiedlinescontribution") and name (e.g., "Modified Lines Contribution")
+                allMetricsData = data.metrics or []
+                @qualityFactorNamesMap = @.buildQualityFactorNamesMap(allMetricsData)
 
                 processedMetrics = @.processGessiMetrics(data.metrics or [])
                 displayMetricGroups = @.buildMetricDisplayGroups(data.metrics or [])
@@ -1503,15 +1510,19 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 user: userContext?.username
                 userDisplayName: userContext?.displayName
 
+            # For user metrics, prefer the metric name which typically contains the full user name
+            # Example: "Clara Yiní López Vila modified lines" instead of "claraylv4 · Clara..."
             if @.isUserMetricId(entry.id) and userContext?
-                displayLabel = userContext.displayName or userContext.username
-                baseLabel = metric.name or @.formatMetricLabel(metric.id)
-                normalizedBase = baseLabel?.toString().toLowerCase()
-                normalizedDisplay = displayLabel?.toString().toLowerCase()
-                if displayLabel and baseLabel and normalizedBase?.indexOf(normalizedDisplay) is -1
-                    entry.label = "#{displayLabel} · #{baseLabel}"
-                else if displayLabel
-                    entry.label = displayLabel
+                # If metric.name exists, use it directly as it already contains the full name
+                if metric.name and typeof metric.name is "string" and metric.name.trim().length > 0
+                    entry.label = metric.name
+                else
+                    # Fallback: use displayName if available, otherwise format the metric id
+                    displayLabel = userContext.displayName
+                    if displayLabel and typeof displayLabel is "string" and displayLabel.trim().length > 0
+                        entry.label = displayLabel
+                    else
+                        entry.label = @.formatMetricLabel(metric.id)
 
             # Pol Alcoverro added: Resolve colors for gauges
             categoryName = metric.categoryName or metric.category_name or metric.category?.name or metric.category
@@ -1521,6 +1532,12 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
             entry.categoryColor = @.resolveMetricCategoryColor(categoryName, normalizedValue)
             entry.categorySegments = @.buildMetricCategorySegments(categoryName)
+            
+            # For internal provider, if no category color was resolved, use value-based color
+            # Use ratioValue * 100 to get the percentage for color calculation
+            if @metricsProvider is "internal" and not entry.categoryColor
+                percentForColor = ratioValue * 100
+                entry.categoryColor = @.getInternalGaugeColor(percentForColor)
             
             if isProjectConfigured
                 if angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
@@ -1610,6 +1627,12 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         
         categoryColor = @.resolveMetricCategoryColor(categoryName, preciseValue or numericValue)
         categorySegments = @.buildMetricCategorySegments(categoryName)
+        
+        # For internal provider, if no category color was resolved, use value-based color
+        # Use ratioValue * 100 to get the percentage for color calculation
+        if @metricsProvider is "internal" and not categoryColor
+            percentForColor = ratioValue * 100
+            categoryColor = @.getInternalGaugeColor(percentForColor)
 
         return {
             id: metric.id
@@ -1762,8 +1785,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
     buildInternalStudentsRadar: (usersList) ->
         return null unless usersList and usersList.length > 0
 
-        tasksLabel = @translate?.instant?("METRICS.CLOSED_TASKS_LABEL") or "Closed Tasks (%)"
-        storiesLabel = @translate?.instant?("METRICS.RADAR_LABEL_COMPLETED_STORIES") or "Completed Stories (%)"
+        tasksLabel = @translate?.instant?("METRICS.CLOSED_TASKS_LABEL") or "Closed Tasks"
+        storiesLabel = @translate?.instant?("METRICS.RADAR_LABEL_COMPLETED_STORIES") or "Completed Stories"
         workloadLabel = @translate?.instant?("METRICS.RADAR_LABEL_ASSIGNED_TASKS") or "Assigned Tasks"
 
         datasets = []
@@ -1800,7 +1823,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
     buildClosedTasksComparison: (usersList) ->
         return null unless usersList and usersList.length > 0
         
-        label = @translate?.instant?("METRICS.CLOSED_TASKS_LABEL") or "Closed Tasks (%)"
+        label = @translate?.instant?("METRICS.CLOSED_TASKS_LABEL") or "Closed Tasks"
         labels = []
         values = []
         barColors = []
@@ -1896,6 +1919,11 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             percentValue = value * 100
             percentValue = Math.max(0, Math.min(100, percentValue))
             
+            # Assign color based on value for internal provider
+            categoryColor = null
+            if @metricsProvider is "internal"
+                categoryColor = @.getInternalGaugeColor(percentValue)
+            
             entry = {
                 id: factor.id
                 name: factor.name or factor.id
@@ -1908,11 +1936,22 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 type: factor.type
                 metrics: factor.metrics or []
                 missingMetrics: factor.missingMetrics or []
+                categoryColor: categoryColor
             }
             
             processed.push(entry)
         
         return processed
+    
+    # Returns color for internal gauges based on percentage value
+    # Red (0-33%), Orange (34-66%), Green (67-100%)
+    getInternalGaugeColor: (percentValue) ->
+        if percentValue < 33
+            return 'rgba(239, 68, 68, 0.9)'  # Red
+        else if percentValue < 66
+            return 'rgba(251, 191, 36, 0.9)'  # Orange
+        else
+            return 'rgba(34, 197, 94, 0.9)'   # Green
 
     loadInitialData: ->
         project = @.loadProject()
@@ -2895,15 +2934,108 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             when "commits" then "METRICS.TEAM_HISTORICAL_METRIC_COMMITS"
             else null
 
+    buildQualityFactorNamesMap: (metricsData) ->
+        ###
+        # Build a map from quality factor id to its display name
+        # This allows showing "Modified Lines Contribution" instead of "modifiedlinescontribution"
+        # 
+        # The API returns data where each item in the main array is a quality factor with:
+        # - id: "modifiedlinescontribution"
+        # - name: "Modified Lines Contribution"
+        # - metrics: [...] (nested individual metrics)
+        #
+        # Individual metrics have qualityFactors: ["modifiedlinescontribution"] (just the id)
+        ###
+        map = {}
+        return map unless angular.isArray(metricsData)
+        
+        for item in metricsData when item?.id?
+            itemId = item.id.toString().toLowerCase()
+            hasName = item.name and typeof item.name is "string" and item.name.trim().length > 0
+            
+            # An item is a quality factor (parent) if:
+            # 1. It has a 'metrics' property (array of child metrics), OR
+            # 2. It does NOT have a 'qualityFactors' property (child metrics have this)
+            hasMetricsArray = item.hasOwnProperty("metrics")
+            hasQualityFactorsArray = angular.isArray(item.qualityFactors) and item.qualityFactors.length > 0
+            isQualityFactor = hasMetricsArray or !hasQualityFactorsArray
+            
+            if hasName and isQualityFactor
+                map[itemId] = item.name.trim()
+                
+            # Also process nested metrics to find any additional quality factor references
+            if angular.isArray(item.metrics)
+                for childMetric in item.metrics when childMetric?.qualityFactors?
+                    # The qualityFactors array contains IDs, and the parent has the name
+                    for factorId in childMetric.qualityFactors when factorId
+                        normalizedFactorId = factorId.toString().toLowerCase()
+                        # If we haven't mapped this factor yet, and the current item is the parent
+                        if !map[normalizedFactorId] and itemId is normalizedFactorId and hasName
+                            map[normalizedFactorId] = item.name.trim()
+        
+        return map
+
     formatMetricCategoryLabel: (category) ->
         return "" unless category?
-        parts = category.toString().split(/[_\s]+/)
-        parts.map((part) ->
-            if part.length > 0
-                part.charAt(0).toUpperCase() + part.slice(1)
+        categoryStr = category.toString()
+        
+        # First, check if we have a known name from the quality factors map
+        normalizedCategory = categoryStr.toLowerCase()
+        
+        if @qualityFactorNamesMap? and @qualityFactorNamesMap[normalizedCategory]?
+            return @qualityFactorNamesMap[normalizedCategory]
+        
+        # Known quality factor ID to readable name mappings
+        knownQualityFactors = 
+            "commitscontribution": "Commits Contribution"
+            "commitstasksrelation": "Commits Tasks Relation"
+            "commitsmanagement": "Commits Management"
+            "fulfillmentoftasks": "Fulfillment of Tasks"
+            "taskscontribution": "Tasks Contribution"
+            "taskseffortinformation": "Tasks Effort Information"
+            "modifiedlinescontribution": "Modified Lines Contribution"
+            "userstoriesdefinitionquality": "User Stories Definition Quality"
+            "deviationmetrics": "Deviation Metrics"
+            "activitydistribution": "Activity Distribution"
+            "unassignedtasks": "Unassigned Tasks"
+            "closed_tasks": "Closed Tasks"
+            "commits": "Commits"
+            "modified_lines": "Modified Lines"
+            "tasks": "Tasks"
+        
+        if knownQualityFactors[normalizedCategory]?
+            return knownQualityFactors[normalizedCategory]
+        
+        # Fallback: Split camelCase and lowercase words, then title case
+        # "commitscontribution" -> "Commits Contribution"
+        # First try to split by common patterns
+        formatted = categoryStr
+            # Insert space before uppercase letters (for camelCase)
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            # Split by underscores
+            .replace(/_/g, ' ')
+            # Split common concatenated words
+            .replace(/contribution/gi, ' Contribution')
+            .replace(/relation/gi, ' Relation')
+            .replace(/management/gi, ' Management')
+            .replace(/information/gi, ' Information')
+            .replace(/distribution/gi, ' Distribution')
+            .replace(/fulfillment/gi, 'Fulfillment ')
+            .replace(/deviation/gi, 'Deviation ')
+            .replace(/modified/gi, 'Modified ')
+            .replace(/quality/gi, ' Quality')
+            # Clean up multiple spaces
+            .replace(/\s+/g, ' ')
+            .trim()
+        
+        # Title case each word
+        words = formatted.split(' ')
+        words.map((word) ->
+            if word.length > 0
+                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
             else
-                part
-        ).join(" ")
+                word
+        ).join(' ')
 
     composeTeamHistoricalChart: (collection, metricLabelKey, filteredEntries) ->
         return null unless collection?

@@ -36,7 +36,7 @@
     MetricsController.$inject = ["$scope", "$rootScope", "$tgRepo", "$tgResources", "$routeParams", "$q", "$location", "$tgNavUrls", "tgAppMetaService", "$tgAuth", "$translate", "tgProjectService", "tgErrorHandlingService", "$tgHttp", "$tgUrls", "$timeout", "tgMetricsConfiguration", "tgMetricsCustomization"];
 
     function MetricsController(scope, rootscope, repo, rs, params1, q1, location, navUrls, appMetaService, auth, translate, projectService, errorHandlingService, http, urls, $timeout, metricsConfiguration, metricsCustomization) {
-      var fallbackHooks, promise;
+      var fallbackHooks, promise, providerResolver, ref, ref1, ref2;
       this.scope = scope;
       this.rootscope = rootscope;
       this.repo = repo;
@@ -81,6 +81,22 @@
         }
       };
       this.metricsHooks = _.defaults(this.metricsHooks || {}, fallbackHooks);
+      providerResolver = (ref = this.metricsConfig) != null ? ref.resolveProvider : void 0;
+      if (angular.isFunction(providerResolver)) {
+        this.metricsProvider = providerResolver.call(this.metricsConfig);
+      } else {
+        this.metricsProvider = ((ref1 = this.metricsConfig) != null ? ref1.provider : void 0) || "external";
+      }
+      if (angular.isString(this.metricsProvider)) {
+        this.metricsProvider = this.metricsProvider.toLowerCase();
+      } else {
+        this.metricsProvider = "external";
+      }
+      this.legacyLocalConfig = this.loadLocalConfig();
+      this.localConfig = null;
+      if ((ref2 = this.legacyLocalConfig) != null ? ref2.provider : void 0) {
+        this.metricsProvider = this.legacyLocalConfig.provider;
+      }
       this.scope.metricsAuth = {
         authenticated: true,
         username: null,
@@ -145,6 +161,8 @@
         }
       };
       this.userColorPalette = this.buildUserColorPalette();
+      this.metricsCategoryPalettes = {};
+      this.qualityFactorNamesMap = {};
       this.resetUserColorAssignments();
       this.scope.availableTabs = [
         {
@@ -173,13 +191,13 @@
       })(this);
       this.scope.setProjectSubTab = (function(_this) {
         return function(tabId) {
-          var ref;
+          var ref3;
           if (!tabId) {
             return;
           }
           _this.scope.metricsView.projectSubTab = tabId;
           if (tabId === "historical") {
-            return _this.updateProjectHistoricalCharts((ref = _this.scope.metricsView.data) != null ? ref.historicalMetrics : void 0);
+            return _this.updateProjectHistoricalCharts((ref3 = _this.scope.metricsView.data) != null ? ref3.historicalMetrics : void 0);
           }
         };
       })(this);
@@ -303,6 +321,176 @@
       promise.then(null, this.onInitialDataError.bind(this));
     }
 
+    MetricsController.prototype.loadLocalConfig = function() {
+      var e, saved, slug;
+      try {
+        slug = this.params.pslug;
+        saved = localStorage.getItem("taigaMetricsConfig_" + slug);
+        if (saved) {
+          return JSON.parse(saved);
+        }
+      } catch (error1) {
+        e = error1;
+        console.error("Error loading local config", e);
+      }
+      return null;
+    };
+
+    MetricsController.prototype.fetchProjectConfig = function() {
+      var params, slug, url;
+      slug = this.params.pslug;
+      if (!slug) {
+        return this.q.when(this.legacyLocalConfig);
+      }
+      url = this.urls.resolve("metrics-config");
+      params = {
+        project: slug
+      };
+      return this.http.get(url, params, {
+        withCredentials: true
+      }).then((function(_this) {
+        return function(response) {
+          var config;
+          config = _this.normalizeConfigPayload(response != null ? response.data : void 0);
+          if (config) {
+            console.log("Metrics: Loaded configuration from SERVER for project " + slug, config);
+            _this.localConfig = config;
+            if (config.provider) {
+              _this.metricsProvider = config.provider;
+            }
+            if (config.externalProjectId) {
+              _this.scope.metricsAuth.externalProjectId = config.externalProjectId;
+            }
+          } else {
+            console.log("Metrics: No configuration from server, using defaults/legacy");
+            _this.localConfig = null;
+          }
+          return _this.localConfig;
+        };
+      })(this))["catch"]((function(_this) {
+        return function(error) {
+          console.error("Metrics: unable to load persisted config", error);
+          if (_this.legacyLocalConfig) {
+            console.log("Metrics: Using LEGACY local config", _this.legacyLocalConfig);
+            _this.localConfig = _this.legacyLocalConfig;
+            if (_this.localConfig.provider) {
+              _this.metricsProvider = _this.localConfig.provider;
+            }
+            if (_this.localConfig.externalProjectId && !_this.scope.metricsAuth.externalProjectId) {
+              _this.scope.metricsAuth.externalProjectId = _this.localConfig.externalProjectId;
+            }
+          } else {
+            console.log("Metrics: Using DEFAULT hardcoded config");
+          }
+          return _this.localConfig;
+        };
+      })(this));
+    };
+
+    MetricsController.prototype.normalizeConfigPayload = function(data) {
+      var defaultProjectOrder, defaultTeamOrder, normalized, providerValue, ref, ref1;
+      if (!(data && angular.isObject(data))) {
+        return null;
+      }
+      normalized = {
+        provider: null,
+        classification: data.classification || {},
+        externalProjectId: data.external_project_id || data.externalProjectId || null,
+        projectMetricsOrder: data.project_metrics_order || data.projectMetricsOrder || [],
+        teamMetricsOrder: data.team_metrics_order || data.teamMetricsOrder || []
+      };
+      providerValue = data.provider || data.metrics_provider;
+      if (angular.isString(providerValue)) {
+        normalized.provider = providerValue.toLowerCase();
+      }
+      defaultProjectOrder = angular.isArray((ref = this.metricsConfig) != null ? ref.projectMetricsOrder : void 0) ? this.metricsConfig.projectMetricsOrder.slice() : [];
+      defaultTeamOrder = angular.isArray((ref1 = this.metricsConfig) != null ? ref1.teamMetricsOrder : void 0) ? this.metricsConfig.teamMetricsOrder.slice() : [];
+      if (angular.isString(normalized.externalProjectId)) {
+        normalized.externalProjectId = normalized.externalProjectId.trim();
+      } else {
+        normalized.externalProjectId = null;
+      }
+      if (!angular.isObject(normalized.classification)) {
+        normalized.classification = {};
+      }
+      if (!angular.isArray(normalized.projectMetricsOrder)) {
+        normalized.projectMetricsOrder = [];
+      }
+      if (normalized.projectMetricsOrder.length === 0 && defaultProjectOrder.length > 0) {
+        normalized.projectMetricsOrder = defaultProjectOrder;
+      }
+      if (!angular.isArray(normalized.teamMetricsOrder)) {
+        normalized.teamMetricsOrder = [];
+      }
+      if (normalized.teamMetricsOrder.length === 0 && defaultTeamOrder.length > 0) {
+        normalized.teamMetricsOrder = defaultTeamOrder;
+      }
+      return normalized;
+    };
+
+    MetricsController.prototype.resolveLocalClassification = function(metricId) {
+      var classification, lower, ref;
+      if (metricId == null) {
+        return null;
+      }
+      if (!((ref = this.localConfig) != null ? ref.classification : void 0)) {
+        return null;
+      }
+      classification = this.localConfig.classification[metricId];
+      if (classification != null) {
+        return classification;
+      }
+      lower = metricId.toString().toLowerCase();
+      if (lower !== metricId && (this.localConfig.classification[lower] != null)) {
+        return this.localConfig.classification[lower];
+      }
+      return null;
+    };
+
+    MetricsController.prototype.resolveMetricClassificationValue = function(metric) {
+      var classification;
+      if (metric == null) {
+        return null;
+      }
+      classification = null;
+      if (metric.id != null) {
+        classification = this.resolveLocalClassification(metric.id);
+      }
+      if (!classification && (metric.externalId != null)) {
+        classification = this.resolveLocalClassification(metric.externalId);
+      }
+      return classification;
+    };
+
+    MetricsController.prototype.matchesConfiguredMetric = function(configuredValue, metricId, metricExternalId, allowPrefix) {
+      var matchesExact, matchesPrefix, normalizedConfig, normalizedExternalId, normalizedMetricId;
+      if (allowPrefix == null) {
+        allowPrefix = true;
+      }
+      if (configuredValue == null) {
+        return false;
+      }
+      normalizedConfig = configuredValue.toString().toLowerCase();
+      normalizedMetricId = metricId != null ? metricId.toString().toLowerCase() : null;
+      normalizedExternalId = metricExternalId != null ? metricExternalId.toString().toLowerCase() : null;
+      matchesExact = function(value) {
+        return (value != null) && value === normalizedConfig;
+      };
+      matchesPrefix = function(value) {
+        if (!(allowPrefix && (value != null))) {
+          return false;
+        }
+        return value.indexOf(normalizedConfig + "_") === 0;
+      };
+      if (matchesExact(normalizedMetricId) || matchesExact(normalizedExternalId)) {
+        return true;
+      }
+      if (matchesPrefix(normalizedMetricId) || matchesPrefix(normalizedExternalId)) {
+        return true;
+      }
+      return false;
+    };
+
     MetricsController.prototype.loadProject = function() {
       var defaultExternal, project;
       project = this.projectService.project.toJS();
@@ -318,11 +506,12 @@
     };
 
     MetricsController.prototype.bootstrapMetricsAccess = function() {
+      var base, ref;
       this.scope.metricsAuth.authenticated = true;
       this.scope.metricsAuth.checking = false;
-      this.scope.metricsAuth.username = this.scope.projectSlug || (this.scope.project != null ? this.scope.project.slug : void 0);
-      if (this.scope.metricsAuth.externalProjectId == null) {
-        this.scope.metricsAuth.externalProjectId = this.metricsConfig.resolveExternalProjectId(this.scope.projectSlug);
+      this.scope.metricsAuth.username = this.scope.projectSlug || ((ref = this.scope.project) != null ? ref.slug : void 0);
+      if ((base = this.scope.metricsAuth).externalProjectId == null) {
+        base.externalProjectId = this.metricsConfig.resolveExternalProjectId(this.scope.projectSlug);
       }
       return this.loadMetrics(true);
     };
@@ -340,7 +529,8 @@
       externalId = username || this.scope.metricsAuth.externalProjectId || this.metricsConfig.resolveExternalProjectId(this.scope.projectSlug);
       payload = {
         username: username,
-        project: externalId
+        project: externalId,
+        source: this.metricsProvider
       };
       this.scope.metricsAuth.loading = true;
       this.scope.metricsAuth.error = null;
@@ -370,14 +560,17 @@
     };
 
     MetricsController.prototype.logoutMetrics = function() {
-      var url;
+      var payload, url;
       if (this.scope.metricsAuth.loading) {
         return;
       }
       this.scope.metricsAuth.loading = true;
       this.scope.metricsAuth.error = null;
       url = this.urls.resolve("metrics-logout");
-      return this.http.post(url, null, null, {
+      payload = {
+        source: this.metricsProvider
+      };
+      return this.http.post(url, payload, null, {
         withCredentials: true
       }).then((function(_this) {
         return function() {
@@ -413,7 +606,8 @@
       }
       externalId = this.scope.metricsAuth.externalProjectId || this.metricsConfig.resolveExternalProjectId(projectSlug);
       params = {
-        project: projectSlug
+        project: projectSlug,
+        source: this.metricsProvider
       };
       if (externalId) {
         params.external = externalId;
@@ -428,7 +622,7 @@
         withCredentials: true
       }).then((function(_this) {
         return function(response) {
-          var allMetrics, data, githubUsername, hasHoursData, hoursChart, hoursData, i, j, len, len1, matchesGithub, matchesTaiga, metric, metricId, metricsCategoriesData, normalizedStudents, payloadContext, processedMetrics, processedQualityFactors, processedStrategicIndicators, processedUsers, processedUsersList, projectMetricsList, ref, ref1, ref2, ref3, student, studentMetrics, studentsClosedTasksBar, studentsOverallRadar, studentsRaw, taigaUsername, transformedPayload, transformedView, viewContext, viewData;
+          var allMetrics, allMetricsData, data, displayMetricGroups, githubUsername, hasHoursData, hoursChart, hoursData, i, j, len, len1, matchesGithub, matchesTaiga, metric, metricId, metricsCategoriesData, normalizedStudents, payloadContext, processedMetrics, processedQualityFactors, processedStrategicIndicators, processedUsers, processedUsersList, projectMetricsList, ref, ref1, ref2, ref3, student, studentMetrics, studentsClosedTasksBar, studentsOverallRadar, studentsRaw, taigaUsername, transformedPayload, transformedView, viewContext, viewData;
           data = (response != null ? response.data : void 0) || {};
           payloadContext = {
             data: angular.copy(data),
@@ -443,7 +637,12 @@
           }
           _this.resetUserColorAssignments();
           _this.scope.metricsAuth.externalProjectId = data.external_project_id || externalId;
+          metricsCategoriesData = data.metrics_categories || data.metricsCategories || {};
+          _this.metricsCategoryPalettes = _this.buildMetricCategoryPalettes(metricsCategoriesData);
+          allMetricsData = data.metrics || [];
+          _this.qualityFactorNamesMap = _this.buildQualityFactorNamesMap(allMetricsData);
           processedMetrics = _this.processGessiMetrics(data.metrics || []);
+          displayMetricGroups = _this.buildMetricDisplayGroups(data.metrics || []);
           projectMetricsList = _this.prepareProjectMetrics(data.metrics || []);
           studentsRaw = data.students;
           allMetrics = data.metrics || [];
@@ -478,7 +677,6 @@
           hoursData = data.hours || {};
           hasHoursData = (hoursData != null) && typeof hoursData === "object" && Object.keys(hoursData).length > 0;
           hoursChart = hasHoursData ? _this.prepareHoursPieData(hoursData) : null;
-          metricsCategoriesData = data.metrics_categories || data.metricsCategories || {};
           processedStrategicIndicators = _this.prepareStrategicIndicators(data.strategic_indicators || []);
           processedQualityFactors = _this.prepareQualityFactors(data.quality_factors || []);
           if (Object.keys(processedUsers).length === 0) {
@@ -497,6 +695,8 @@
             rawStudents: studentsRaw,
             strategicIndicators: processedStrategicIndicators,
             qualityFactors: processedQualityFactors,
+            projectMetricGroups: displayMetricGroups.project,
+            teamMetricGroups: displayMetricGroups.team,
             hours: hoursData,
             hoursChart: hoursChart,
             studentsOverallRadar: studentsOverallRadar,
@@ -559,7 +759,8 @@
       projectSlug = this.scope.projectSlug;
       externalId = this.scope.metricsAuth.externalProjectId || this.metricsConfig.resolveExternalProjectId(projectSlug);
       params = {
-        project: projectSlug
+        project: projectSlug,
+        source: this.metricsProvider
       };
       if (externalId) {
         params.external = externalId;
@@ -638,6 +839,84 @@
         return normalized;
       }
       return [];
+    };
+
+    MetricsController.prototype.normalizeCategoryKey = function(name) {
+      var key;
+      if (name == null) {
+        return null;
+      }
+      key = name.toString().trim().toLowerCase();
+      if (key.length) {
+        return key;
+      } else {
+        return null;
+      }
+    };
+
+    MetricsController.prototype.buildMetricCategoryPalettes = function(categoriesData) {
+      var _, entries, entry, grouped, i, len, nameKey, palette, upper, valid, value;
+      grouped = {};
+      if (categoriesData == null) {
+        return grouped;
+      }
+      entries = [];
+      if (angular.isArray(categoriesData)) {
+        entries = categoriesData;
+      } else if (typeof categoriesData === "object") {
+        for (_ in categoriesData) {
+          if (!hasProp.call(categoriesData, _)) continue;
+          value = categoriesData[_];
+          if (value != null) {
+            if (angular.isArray(value)) {
+              entries = entries.concat(value);
+            } else {
+              entries.push(value);
+            }
+          }
+        }
+      }
+      for (i = 0, len = entries.length; i < len; i++) {
+        entry = entries[i];
+        if (!(entry != null)) {
+          continue;
+        }
+        nameKey = this.normalizeCategoryKey(entry.name || entry.category || entry.displayName);
+        if (!nameKey) {
+          continue;
+        }
+        if (grouped[nameKey] == null) {
+          grouped[nameKey] = [];
+        }
+        upper = parseFloat(entry.upperThreshold);
+        grouped[nameKey].push({
+          color: entry.color || entry.hex || "#2563EB",
+          upperThreshold: isFinite(upper) ? Math.max(0, upper) : null,
+          type: entry.type || null,
+          raw: entry
+        });
+      }
+      for (nameKey in grouped) {
+        palette = grouped[nameKey];
+        valid = palette.filter(function(item) {
+          return (item.upperThreshold != null) && isFinite(item.upperThreshold);
+        });
+        if (valid.length > 0) {
+          valid.sort(function(a, b) {
+            if (a.upperThreshold < b.upperThreshold) {
+              return -1;
+            } else if (a.upperThreshold > b.upperThreshold) {
+              return 1;
+            } else {
+              return 0;
+            }
+          });
+          grouped[nameKey] = valid;
+        } else {
+          grouped[nameKey] = palette.slice();
+        }
+      }
+      return grouped;
     };
 
     MetricsController.prototype.normalizeMetricValue = function(rawValue) {
@@ -880,6 +1159,11 @@
             entry.metricsDetails.push(detail);
           }
           seenMetricIds[metricKey] = true;
+          metricId = metricKey.toLowerCase();
+          metricValue = detail != null ? detail.value : void 0;
+          if (metricValue == null) {
+            metricValue = this.normalizeMetricValue(metric.value);
+          }
           metricId = metricKey.toLowerCase();
           metricValue = detail != null ? detail.value : void 0;
           if (metricValue == null) {
@@ -1217,41 +1501,103 @@
     };
 
     MetricsController.prototype.prepareProjectMetrics = function(metricsArray) {
-      var collected, context, entry, finalMetrics, i, j, k, len, len1, len2, metric, metricId, metricsById, normalizedId, ref, transformed;
+      var addMetricEntry, classification, collected, context, finalMetrics, globalHidden, i, isUserMetric, j, k, len, len1, len2, metric, metricId, metricsById, normalizedId, normalizedMetricId, projectOrder, ref, ref1, ref2, ref3, seenIds, transformed;
       if (!angular.isArray(metricsArray)) {
         return [];
       }
       metricsById = {};
       for (i = 0, len = metricsArray.length; i < len; i++) {
         metric = metricsArray[i];
-        if ((metric != null ? metric.id : void 0) != null) {
-          metricsById[metric.id.toLowerCase()] = metric;
-        }
-      }
-      collected = [];
-      ref = this.metricsConfig.projectMetricsOrder;
-      for (j = 0, len1 = ref.length; j < len1; j++) {
-        metricId = ref[j];
-        normalizedId = metricId.toLowerCase();
-        metric = metricsById[normalizedId];
         if (!metric) {
           continue;
         }
-        entry = this.buildProjectMetricEntry(metric);
-        if (entry) {
-          collected.push(entry);
+        isUserMetric = this.isUserMetricId(metric.id) || this.isUserMetricId(metric.externalId);
+        if (isUserMetric) {
+          continue;
+        }
+        if (metric.externalId) {
+          metricsById[metric.externalId.toLowerCase()] = metric;
+        }
+        if (metric.id) {
+          metricsById[metric.id.toString().toLowerCase()] = metric;
         }
       }
-      if (collected.length === 0) {
-        for (k = 0, len2 = metricsArray.length; k < len2; k++) {
-          metric = metricsArray[k];
-          if (!(((metric != null ? metric.id : void 0) != null) && metric.id.indexOf("_") === -1)) {
-            continue;
+      collected = [];
+      seenIds = {};
+      addMetricEntry = (function(_this) {
+        return function(metric) {
+          var entry;
+          if (_this.isUserMetricId(metric != null ? metric.id : void 0) || _this.isUserMetricId(metric != null ? metric.externalId : void 0)) {
+            return;
           }
-          entry = this.buildProjectMetricEntry(metric);
+          entry = _this.buildProjectMetricEntry(metric);
           if (entry) {
             collected.push(entry);
+            if (metric.id != null) {
+              seenIds[metric.id.toString().toLowerCase()] = true;
+            }
+            if (metric.externalId != null) {
+              return seenIds[metric.externalId.toLowerCase()] = true;
+            }
           }
+        };
+      })(this);
+      projectOrder = (ref = this.localConfig) != null ? ref.projectMetricsOrder : void 0;
+      if (!(angular.isArray(projectOrder) && projectOrder.length)) {
+        projectOrder = this.metricsConfig.projectMetricsOrder || [];
+      }
+      for (j = 0, len1 = projectOrder.length; j < len1; j++) {
+        metricId = projectOrder[j];
+        normalizedId = metricId.toLowerCase();
+        metric = metricsById[normalizedId];
+        if (!metric) {
+          metric = _.find(metricsArray, (function(_this) {
+            return function(candidate) {
+              return _this.matchesConfiguredMetric(metricId, candidate.id, candidate.externalId, false);
+            };
+          })(this));
+          if (!metric) {
+            continue;
+          }
+        }
+        classification = this.resolveMetricClassificationValue(metric);
+        if (classification === 'hidden') {
+          continue;
+        }
+        if (classification === 'team') {
+          continue;
+        }
+        globalHidden = false;
+        if (((ref1 = this.metricsConfig.metricClassifications) != null ? ref1[normalizedId] : void 0) === 'hidden') {
+          globalHidden = true;
+        } else if (metric.externalId && ((ref2 = this.metricsConfig.metricClassifications) != null ? ref2[metric.externalId.toLowerCase()] : void 0) === 'hidden') {
+          globalHidden = true;
+        }
+        if (globalHidden && classification !== 'project') {
+          continue;
+        }
+        addMetricEntry(metric);
+      }
+      if ((ref3 = this.localConfig) != null ? ref3.classification : void 0) {
+        for (k = 0, len2 = metricsArray.length; k < len2; k++) {
+          metric = metricsArray[k];
+          if (!(metric != null)) {
+            continue;
+          }
+          classification = this.resolveMetricClassificationValue(metric);
+          if (classification !== 'project') {
+            continue;
+          }
+          normalizedMetricId = null;
+          if (metric.id != null) {
+            normalizedMetricId = metric.id.toString().toLowerCase();
+          } else if (metric.externalId != null) {
+            normalizedMetricId = metric.externalId.toLowerCase();
+          }
+          if (normalizedMetricId && seenIds[normalizedMetricId]) {
+            continue;
+          }
+          addMetricEntry(metric);
         }
       }
       context = {
@@ -1271,13 +1617,385 @@
       return this.scaleProjectMetricsByProjectMax(finalMetrics);
     };
 
+    MetricsController.prototype.resolveMetricCategoryColor = function(categoryName, percentValue) {
+      var i, item, key, len, matchedColor, palette, percent, ratio, ref, ref1, ref2;
+      if (categoryName == null) {
+        return null;
+      }
+      key = this.normalizeCategoryKey(categoryName);
+      palette = key ? (ref = this.metricsCategoryPalettes) != null ? ref[key] : void 0 : null;
+      if (!((palette != null) && palette.length)) {
+        return null;
+      }
+      percent = Number(percentValue);
+      if (!isFinite(percent)) {
+        percent = 0;
+      }
+      ratio = Math.max(0, percent) / 100;
+      matchedColor = null;
+      for (i = 0, len = palette.length; i < len; i++) {
+        item = palette[i];
+        if (((item != null ? item.upperThreshold : void 0) != null) && isFinite(item.upperThreshold)) {
+          if (ratio <= item.upperThreshold + 1e-9) {
+            matchedColor = item.color;
+            break;
+          }
+        }
+      }
+      if (matchedColor == null) {
+        matchedColor = ((ref1 = palette[palette.length - 1]) != null ? ref1.color : void 0) || ((ref2 = palette[0]) != null ? ref2.color : void 0);
+      }
+      return matchedColor || null;
+    };
+
+    MetricsController.prototype.buildMetricCategorySegments = function(categoryName) {
+      var clamped, entry, fallbackColor, i, key, lastThreshold, len, palette, ref, ref1, remainderRatio, segmentRatio, segments, upper;
+      if (categoryName == null) {
+        return null;
+      }
+      key = this.normalizeCategoryKey(categoryName);
+      palette = key ? (ref = this.metricsCategoryPalettes) != null ? ref[key] : void 0 : null;
+      if (!((palette != null) && palette.length)) {
+        return null;
+      }
+      segments = [];
+      lastThreshold = 0;
+      for (i = 0, len = palette.length; i < len; i++) {
+        entry = palette[i];
+        if (!(entry != null)) {
+          continue;
+        }
+        upper = Number(entry.upperThreshold);
+        if (!isFinite(upper)) {
+          continue;
+        }
+        clamped = Math.max(lastThreshold, Math.min(Math.max(upper, 0), 1));
+        segmentRatio = clamped - lastThreshold;
+        if (!(segmentRatio > 0)) {
+          continue;
+        }
+        segments.push({
+          color: entry.color || "#2563EB",
+          value: segmentRatio,
+          upperThreshold: clamped
+        });
+        lastThreshold = clamped;
+      }
+      if (lastThreshold < 1) {
+        remainderRatio = 1 - lastThreshold;
+        if (remainderRatio > 0) {
+          fallbackColor = ((ref1 = palette[palette.length - 1]) != null ? ref1.color : void 0) || "#CBD5F5";
+          segments.push({
+            color: fallbackColor,
+            value: remainderRatio,
+            upperThreshold: 1
+          });
+        }
+      }
+      if (segments.length) {
+        return segments;
+      } else {
+        return null;
+      }
+    };
+
+    MetricsController.prototype.isUserMetricId = function(metricId) {
+      var classification, isUserPattern, lowerId, prefixes;
+      if (metricId == null) {
+        return false;
+      }
+      lowerId = metricId.toString().toLowerCase();
+      classification = this.resolveLocalClassification(metricId);
+      prefixes = ["assignedtasks_", "closedtasks_", "completedtasks_", "commits_", "modifiedlines_", "completedus_", "totalus_", "tasksratio_"];
+      isUserPattern = prefixes.some(function(prefix) {
+        return lowerId.indexOf(prefix) === 0;
+      });
+      if (classification === 'project') {
+        return false;
+      }
+      if (classification === 'team') {
+        return isUserPattern;
+      }
+      return isUserPattern;
+    };
+
+    MetricsController.prototype.resolveMetricUserContext = function(metric) {
+      var displayName, parts, pickValue, username;
+      if (metric == null) {
+        return null;
+      }
+      pickValue = function(obj, keys) {
+        var i, key, len, trimmed, value;
+        if (obj == null) {
+          return null;
+        }
+        for (i = 0, len = keys.length; i < len; i++) {
+          key = keys[i];
+          if (!(obj[key] != null)) {
+            continue;
+          }
+          value = obj[key];
+          if (typeof value === "string") {
+            trimmed = value.trim();
+            if (trimmed.length) {
+              return trimmed;
+            }
+          } else if (value != null) {
+            return value;
+          }
+        }
+        return null;
+      };
+      username = pickValue(metric, ["student", "user", "username", "owner"]);
+      displayName = pickValue(metric, ["student_display", "studentDisplay", "user_display", "userDisplay", "displayName"]);
+      if (username == null) {
+        username = pickValue(metric.metadata, ["student", "user", "username"]);
+      }
+      if (displayName == null) {
+        displayName = pickValue(metric.metadata, ["student_display", "studentDisplay", "user_display", "userDisplay", "displayName"]);
+      }
+      if (!username && (metric.id != null) && this.isUserMetricId(metric.id)) {
+        parts = metric.id.toString().split("_");
+        if (parts.length > 1) {
+          username = parts.slice(1).join("_");
+        }
+      }
+      if (displayName == null) {
+        displayName = username;
+      }
+      if (!(username || displayName)) {
+        return null;
+      }
+      return {
+        username: username,
+        displayName: displayName
+      };
+    };
+
+    MetricsController.prototype.buildMetricDisplayGroups = function(rawMetrics) {
+      var categoryName, classificationOverride, displayLabel, entry, factorName, globalHidden, groups, i, isProjectConfigured, isTeamConfigured, isUserMetric, j, k, len, len1, len2, len3, len4, m, metric, n, normalizedExternalId, normalizedMetricId, normalizedValue, pMetric, percentForColor, projectBuckets, projectOrderConfig, projectUnassigned, pushMetric, ratioValue, ref, ref1, ref2, ref3, ref4, ref5, ref6, tMetric, teamBuckets, teamOrderConfig, teamUnassigned, userContext;
+      groups = {
+        project: [],
+        team: []
+      };
+      if (!(angular.isArray(rawMetrics) && rawMetrics.length)) {
+        return groups;
+      }
+      projectBuckets = {};
+      teamBuckets = {};
+      projectUnassigned = [];
+      teamUnassigned = [];
+      pushMetric = function(bucket, name, entry) {
+        if (bucket[name] == null) {
+          bucket[name] = [];
+        }
+        return bucket[name].push(angular.copy(entry));
+      };
+      for (i = 0, len = rawMetrics.length; i < len; i++) {
+        metric = rawMetrics[i];
+        if (!(metric != null)) {
+          continue;
+        }
+        classificationOverride = this.resolveMetricClassificationValue(metric);
+        normalizedMetricId = metric.id != null ? metric.id.toString().toLowerCase() : null;
+        normalizedExternalId = metric.externalId != null ? metric.externalId.toLowerCase() : null;
+        isUserMetric = this.isUserMetricId(normalizedMetricId) || this.isUserMetricId(normalizedExternalId);
+        if (classificationOverride === 'hidden') {
+          continue;
+        }
+        globalHidden = false;
+        if (normalizedMetricId && ((ref = this.metricsConfig.metricClassifications) != null ? ref[normalizedMetricId] : void 0) === 'hidden') {
+          globalHidden = true;
+        }
+        if (normalizedExternalId && ((ref1 = this.metricsConfig.metricClassifications) != null ? ref1[normalizedExternalId] : void 0) === 'hidden') {
+          globalHidden = true;
+        }
+        if (globalHidden && (classificationOverride !== 'project' && classificationOverride !== 'team')) {
+          continue;
+        }
+        isProjectConfigured = false;
+        isTeamConfigured = false;
+        projectOrderConfig = (ref2 = this.localConfig) != null ? ref2.projectMetricsOrder : void 0;
+        if (!(angular.isArray(projectOrderConfig) && projectOrderConfig.length)) {
+          projectOrderConfig = this.metricsConfig.projectMetricsOrder;
+        }
+        if (projectOrderConfig) {
+          for (j = 0, len1 = projectOrderConfig.length; j < len1; j++) {
+            pMetric = projectOrderConfig[j];
+            if (this.matchesConfiguredMetric(pMetric, metric.id, metric.externalId, false)) {
+              isProjectConfigured = true;
+              break;
+            }
+          }
+        }
+        teamOrderConfig = (ref3 = this.localConfig) != null ? ref3.teamMetricsOrder : void 0;
+        if (!(angular.isArray(teamOrderConfig) && teamOrderConfig.length)) {
+          teamOrderConfig = this.metricsConfig.teamMetricsOrder;
+        }
+        if (teamOrderConfig) {
+          for (k = 0, len2 = teamOrderConfig.length; k < len2; k++) {
+            tMetric = teamOrderConfig[k];
+            if (this.matchesConfiguredMetric(tMetric, metric.id, metric.externalId, true)) {
+              isTeamConfigured = true;
+              break;
+            }
+          }
+        }
+        if (classificationOverride === 'project') {
+          isProjectConfigured = true;
+          isTeamConfigured = false;
+        } else if (classificationOverride === 'team') {
+          isTeamConfigured = true;
+          isProjectConfigured = false;
+        }
+        if (!(isProjectConfigured || isTeamConfigured)) {
+          continue;
+        }
+        if (isUserMetric && !isTeamConfigured) {
+          continue;
+        }
+        normalizedValue = this.normalizeMetricValue(metric.value);
+        ratioValue = Math.max(0, Math.min(normalizedValue / 100, 1));
+        userContext = this.resolveMetricUserContext(metric);
+        entry = {
+          id: metric.id || metric.name,
+          label: metric.name || this.formatMetricLabel(metric.id),
+          ratio: ratioValue,
+          formattedRatio: Number(ratioValue || 0).toFixed(2),
+          description: metric.description,
+          rawValue: normalizedValue,
+          raw: metric,
+          user: userContext != null ? userContext.username : void 0,
+          userDisplayName: userContext != null ? userContext.displayName : void 0
+        };
+        if (this.isUserMetricId(entry.id) && (userContext != null)) {
+          if (metric.name && typeof metric.name === "string" && metric.name.trim().length > 0) {
+            entry.label = metric.name;
+          } else {
+            displayLabel = userContext.displayName;
+            if (displayLabel && typeof displayLabel === "string" && displayLabel.trim().length > 0) {
+              entry.label = displayLabel;
+            } else {
+              entry.label = this.formatMetricLabel(metric.id);
+            }
+          }
+        }
+        categoryName = metric.categoryName || metric.category_name || ((ref4 = metric.category) != null ? ref4.name : void 0) || metric.category;
+        if (!categoryName && angular.isArray(metric.qualityFactors) && metric.qualityFactors.length > 0) {
+          categoryName = metric.qualityFactors[0];
+        }
+        entry.categoryColor = this.resolveMetricCategoryColor(categoryName, normalizedValue);
+        entry.categorySegments = this.buildMetricCategorySegments(categoryName);
+        if (this.metricsProvider === "internal" && !entry.categoryColor) {
+          percentForColor = ratioValue * 100;
+          entry.categoryColor = this.getInternalGaugeColor(percentForColor);
+        }
+        if (isProjectConfigured) {
+          if (angular.isArray(metric.qualityFactors) && metric.qualityFactors.length > 0) {
+            ref5 = metric.qualityFactors;
+            for (m = 0, len3 = ref5.length; m < len3; m++) {
+              factorName = ref5[m];
+              if (factorName) {
+                pushMetric(projectBuckets, factorName, entry);
+              }
+            }
+          } else {
+            projectUnassigned.push(angular.copy(entry));
+          }
+        }
+        if (isTeamConfigured) {
+          if (angular.isArray(metric.qualityFactors) && metric.qualityFactors.length > 0) {
+            ref6 = metric.qualityFactors;
+            for (n = 0, len4 = ref6.length; n < len4; n++) {
+              factorName = ref6[n];
+              if (factorName) {
+                pushMetric(teamBuckets, factorName, entry);
+              }
+            }
+          } else {
+            teamUnassigned.push(angular.copy(entry));
+          }
+        }
+      }
+      groups.project = this.convertMetricBucketsToGroups(projectBuckets, projectUnassigned, false);
+      groups.team = this.convertMetricBucketsToGroups(teamBuckets, teamUnassigned, true);
+      return groups;
+    };
+
+    MetricsController.prototype.convertMetricBucketsToGroups = function(buckets, unassignedList, isTeam) {
+      var bucketName, label, metricsList, ref, result, sortedFallback, sortedMetrics;
+      result = [];
+      for (bucketName in buckets) {
+        if (!hasProp.call(buckets, bucketName)) continue;
+        metricsList = buckets[bucketName];
+        if (!(angular.isArray(metricsList) && metricsList.length > 0)) {
+          continue;
+        }
+        sortedMetrics = metricsList.slice().sort(function(a, b) {
+          var aLabel, bLabel;
+          aLabel = ((a != null ? a.label : void 0) || "").toString().toLowerCase();
+          bLabel = ((b != null ? b.label : void 0) || "").toString().toLowerCase();
+          if (aLabel < bLabel) {
+            return -1;
+          } else if (aLabel > bLabel) {
+            return 1;
+          } else {
+            return 0;
+          }
+        });
+        label = this.formatMetricCategoryLabel(bucketName);
+        result.push({
+          id: (isTeam ? 'team' : 'project') + "::" + bucketName,
+          name: bucketName,
+          label: label,
+          metrics: sortedMetrics
+        });
+      }
+      result.sort(function(a, b) {
+        var aLabel, bLabel;
+        aLabel = ((a != null ? a.label : void 0) || "").toString().toLowerCase();
+        bLabel = ((b != null ? b.label : void 0) || "").toString().toLowerCase();
+        if (aLabel < bLabel) {
+          return -1;
+        } else if (aLabel > bLabel) {
+          return 1;
+        } else {
+          return 0;
+        }
+      });
+      if (angular.isArray(unassignedList) && unassignedList.length > 0) {
+        sortedFallback = unassignedList.slice().sort(function(a, b) {
+          var aLabel, bLabel;
+          aLabel = ((a != null ? a.label : void 0) || "").toString().toLowerCase();
+          bLabel = ((b != null ? b.label : void 0) || "").toString().toLowerCase();
+          if (aLabel < bLabel) {
+            return -1;
+          } else if (aLabel > bLabel) {
+            return 1;
+          } else {
+            return 0;
+          }
+        });
+        label = ((ref = this.translate) != null ? ref.instant : void 0) != null ? this.translate.instant("METRICS.METRIC_GROUP_UNASSIGNED") : "Metrics not associated to any factor";
+        result.push({
+          id: (isTeam ? 'team' : 'project') + "::uncategorized",
+          name: "__uncategorized__",
+          label: label,
+          metrics: sortedFallback
+        });
+      }
+      return result;
+    };
+
     MetricsController.prototype.buildProjectMetricEntry = function(metric) {
-      var descriptionNumber, formattedPrecise, normalizedValue, numericValue, preciseValue, rawDescription, roundedValue;
+      var categoryColor, categoryName, categorySegments, descriptionNumber, formattedPrecise, normalizedValue, numericValue, percentForColor, preciseValue, ratioValue, rawDescription, ref, roundedValue;
       if (!metric) {
         return null;
       }
       normalizedValue = this.normalizeMetricValue(metric.value);
       numericValue = isNaN(normalizedValue) ? 0 : normalizedValue;
+      ratioValue = Math.max(0, numericValue / 100);
+      ratioValue = Math.min(1, ratioValue);
       preciseValue = numericValue;
       rawDescription = metric.value_description || metric.valueDescription;
       if ((preciseValue === 0 || !isFinite(preciseValue)) && typeof rawDescription === "string") {
@@ -1288,6 +2006,16 @@
       }
       roundedValue = Math.round(numericValue);
       formattedPrecise = Number(preciseValue || 0).toFixed(2);
+      categoryName = metric.categoryName || metric.category_name || ((ref = metric.category) != null ? ref.name : void 0) || metric.category;
+      if (!categoryName && angular.isArray(metric.qualityFactors) && metric.qualityFactors.length > 0) {
+        categoryName = metric.qualityFactors[0];
+      }
+      categoryColor = this.resolveMetricCategoryColor(categoryName, preciseValue || numericValue);
+      categorySegments = this.buildMetricCategorySegments(categoryName);
+      if (this.metricsProvider === "internal" && !categoryColor) {
+        percentForColor = ratioValue * 100;
+        categoryColor = this.getInternalGaugeColor(percentForColor);
+      }
       return {
         id: metric.id,
         name: metric.name || metric.id,
@@ -1298,10 +2026,16 @@
         displayValuePrecise: formattedPrecise,
         absoluteDisplayValueRounded: roundedValue,
         absoluteDisplayValuePrecise: formattedPrecise,
+        ratioValue: ratioValue,
+        ratioDisplayValueRounded: Math.round(ratioValue * 100) / 100,
+        ratioDisplayValuePrecise: Number(ratioValue || 0).toFixed(2),
         minLabel: "0%",
         maxLabel: "100%",
         qualityFactor: angular.isArray(metric.qualityFactors) && metric.qualityFactors.length > 0 ? metric.qualityFactors[0] : null,
-        raw: metric
+        raw: metric,
+        categoryName: categoryName,
+        categoryColor: categoryColor,
+        categorySegments: categorySegments
       };
     };
 
@@ -1446,9 +2180,9 @@
       if (!(usersList && usersList.length > 0)) {
         return null;
       }
-      tasksLabel = (((ref = this.translate) != null ? typeof ref.instant === "function" ? ref.instant("METRICS.CLOSED_TASKS_LABEL") : void 0 : void 0) || "Closed Tasks (%)");
-      storiesLabel = (((ref1 = this.translate) != null ? typeof ref1.instant === "function" ? ref1.instant("METRICS.RADAR_LABEL_COMPLETED_STORIES") : void 0 : void 0) || "Completed Stories (%)");
-      workloadLabel = (((ref2 = this.translate) != null ? typeof ref2.instant === "function" ? ref2.instant("METRICS.RADAR_LABEL_ASSIGNED_TASKS") : void 0 : void 0) || "Assigned Tasks");
+      tasksLabel = ((ref = this.translate) != null ? typeof ref.instant === "function" ? ref.instant("METRICS.CLOSED_TASKS_LABEL") : void 0 : void 0) || "Closed Tasks";
+      storiesLabel = ((ref1 = this.translate) != null ? typeof ref1.instant === "function" ? ref1.instant("METRICS.RADAR_LABEL_COMPLETED_STORIES") : void 0 : void 0) || "Completed Stories";
+      workloadLabel = ((ref2 = this.translate) != null ? typeof ref2.instant === "function" ? ref2.instant("METRICS.RADAR_LABEL_ASSIGNED_TASKS") : void 0 : void 0) || "Assigned Tasks";
       datasets = [];
       this.registerUserColors(usersList);
       for (i = 0, len = usersList.length; i < len; i++) {
@@ -1484,7 +2218,7 @@
       if (!(usersList && usersList.length > 0)) {
         return null;
       }
-      label = ((ref = this.translate) != null ? typeof ref.instant === "function" ? ref.instant("METRICS.CLOSED_TASKS_LABEL") : void 0 : void 0) || "Closed Tasks (%)";
+      label = ((ref = this.translate) != null ? typeof ref.instant === "function" ? ref.instant("METRICS.CLOSED_TASKS_LABEL") : void 0 : void 0) || "Closed Tasks";
       labels = [];
       values = [];
       barColors = [];
@@ -1558,7 +2292,7 @@
     };
 
     MetricsController.prototype.prepareQualityFactors = function(factors) {
-      var entry, factor, i, len, percentValue, processed, ref, value;
+      var categoryColor, entry, factor, i, len, percentValue, processed, ref, value;
       if (!angular.isArray(factors)) {
         return [];
       }
@@ -1571,6 +2305,10 @@
         value = ((ref = factor.value) != null ? ref.first : void 0) != null ? parseFloat(factor.value.first) : typeof factor.value === 'number' ? parseFloat(factor.value) : 0;
         percentValue = value * 100;
         percentValue = Math.max(0, Math.min(100, percentValue));
+        categoryColor = null;
+        if (this.metricsProvider === "internal") {
+          categoryColor = this.getInternalGaugeColor(percentValue);
+        }
         entry = {
           id: factor.id,
           name: factor.name || factor.id,
@@ -1582,17 +2320,29 @@
           date: factor.date,
           type: factor.type,
           metrics: factor.metrics || [],
-          missingMetrics: factor.missingMetrics || []
+          missingMetrics: factor.missingMetrics || [],
+          categoryColor: categoryColor
         };
         processed.push(entry);
       }
       return processed;
     };
 
+    MetricsController.prototype.getInternalGaugeColor = function(percentValue) {
+      if (percentValue < 33) {
+        return 'rgba(239, 68, 68, 0.9)';
+      } else if (percentValue < 66) {
+        return 'rgba(251, 191, 36, 0.9)';
+      } else {
+        return 'rgba(34, 197, 94, 0.9)';
+      }
+    };
+
     MetricsController.prototype.loadInitialData = function() {
-      var project;
+      var configPromise, project;
       project = this.loadProject();
-      return this.q.all([project]);
+      configPromise = this.fetchProjectConfig();
+      return this.q.all([this.q.when(project), configPromise]);
     };
 
     MetricsController.prototype.resolveErrorKey = function(value, defaultKey) {
@@ -1731,8 +2481,8 @@
      * Description: Renders the semicircle gauge that paints the acceptance criteria indicator as a half moon.
      */
 
-MetricsController.prototype.renderSemicircleWithChartJS = function(canvas) {
-  var color, config, ctx, gaugeContext, ref, resolvedValue, value;
+    MetricsController.prototype.renderSemicircleWithChartJS = function(canvas) {
+      var color, config, ctx, gaugeContext, ref, resolvedValue, value;
       ctx = canvas.getContext("2d");
       if (!ctx) {
         return;
@@ -1754,8 +2504,8 @@ MetricsController.prototype.renderSemicircleWithChartJS = function(canvas) {
       } else {
         value = 0;
       }
-  value = Math.max(0, Math.min(100, value || 0));
-  color = value < 33 ? "#f44336" : value < 66 ? "#ff9800" : "#4caf50";
+      value = Math.max(0, Math.min(100, value || 0));
+      color = value < 33 ? "#f44336" : value < 66 ? "#ff9800" : "#4caf50";
       config = {
         type: 'doughnut',
         data: {
@@ -2349,7 +3099,7 @@ MetricsController.prototype.renderSemicircleWithChartJS = function(canvas) {
     };
 
     MetricsController.prototype.registerUserColors = function(users) {
-      var aliasFromAttr, aliasList, attr, base, candidate, candidates, i, identifier, j, key, len, len1, name, ref, results, seen, user, value;
+      var aliasFromAttr, aliasList, attr, base, candidate, candidates, i, identifier, j, key, len, len1, name1, ref, results, seen, user, value;
       if (users == null) {
         return;
       }
@@ -2425,8 +3175,8 @@ MetricsController.prototype.renderSemicircleWithChartJS = function(canvas) {
           if (this.userColorAliasIndex == null) {
             this.userColorAliasIndex = {};
           }
-          if ((base = this.userColorAliasIndex)[name = candidate.key] == null) {
-            base[name] = candidate.key;
+          if ((base = this.userColorAliasIndex)[name1 = candidate.key] == null) {
+            base[name1] = candidate.key;
           }
         }
         results.push(this.registerAliasKeys(candidate.aliases, candidate.key));
@@ -2477,7 +3227,7 @@ MetricsController.prototype.renderSemicircleWithChartJS = function(canvas) {
 
     MetricsController.prototype.buildUserColorPalette = function() {
       var baseHex;
-      baseHex = ["#3B82F6", "#F97316", "#22C55E", "#6366F1", "#EC4899", "#0EA5E9", "#A855F7", "#EAB308", "#14B8A6", "#F43F5E", "#10B981", "#8B5CF6", "#F59E0B", "#2DD4BF", "#EF4444", "#1D4ED8", "#D946EF", "#34D399", "#2563EB", "#FB7185"];
+      baseHex = ["#DC2626", "#2563EB", "#059669", "#F59E0B", "#9333EA", "#0891B2", "#7C3AED", "#65A30D", "#6366F1", "#F97316", "#14B8A6", "#A855F7", "#EF4444", "#0EA5E9", "#22C55E", "#D946EF", "#F43F5E", "#3B82F6", "#10B981", "#E53E3E"];
       return baseHex.map((function(_this) {
         return function(hex) {
           return _this.prepareColorFromHex(hex);
@@ -2773,19 +3523,99 @@ MetricsController.prototype.renderSemicircleWithChartJS = function(canvas) {
       }
     };
 
+    MetricsController.prototype.buildQualityFactorNamesMap = function(metricsData) {
+
+      /*
+       * Build a map from quality factor id to its display name
+       * This allows showing "Modified Lines Contribution" instead of "modifiedlinescontribution"
+       * 
+       * The API returns data where each item in the main array is a quality factor with:
+       * - id: "modifiedlinescontribution"
+       * - name: "Modified Lines Contribution"
+       * - metrics: [...] (nested individual metrics)
+       *
+       * Individual metrics have qualityFactors: ["modifiedlinescontribution"] (just the id)
+       */
+      var childMetric, factorId, hasMetricsArray, hasName, hasQualityFactorsArray, i, isQualityFactor, item, itemId, j, k, len, len1, len2, map, normalizedFactorId, ref, ref1;
+      map = {};
+      if (!angular.isArray(metricsData)) {
+        return map;
+      }
+      for (i = 0, len = metricsData.length; i < len; i++) {
+        item = metricsData[i];
+        if (!((item != null ? item.id : void 0) != null)) {
+          continue;
+        }
+        itemId = item.id.toString().toLowerCase();
+        hasName = item.name && typeof item.name === "string" && item.name.trim().length > 0;
+        hasMetricsArray = item.hasOwnProperty("metrics");
+        hasQualityFactorsArray = angular.isArray(item.qualityFactors) && item.qualityFactors.length > 0;
+        isQualityFactor = hasMetricsArray || !hasQualityFactorsArray;
+        if (hasName && isQualityFactor) {
+          map[itemId] = item.name.trim();
+        }
+        if (angular.isArray(item.metrics)) {
+          ref = item.metrics;
+          for (j = 0, len1 = ref.length; j < len1; j++) {
+            childMetric = ref[j];
+            if ((childMetric != null ? childMetric.qualityFactors : void 0) != null) {
+              ref1 = childMetric.qualityFactors;
+              for (k = 0, len2 = ref1.length; k < len2; k++) {
+                factorId = ref1[k];
+                if (!(factorId)) {
+                  continue;
+                }
+                normalizedFactorId = factorId.toString().toLowerCase();
+                if (!map[normalizedFactorId] && itemId === normalizedFactorId && hasName) {
+                  map[normalizedFactorId] = item.name.trim();
+                }
+              }
+            }
+          }
+        }
+      }
+      return map;
+    };
+
     MetricsController.prototype.formatMetricCategoryLabel = function(category) {
-      var parts;
+      var categoryStr, formatted, knownQualityFactors, normalizedCategory, words;
       if (category == null) {
         return "";
       }
-      parts = category.toString().split(/[_\s]+/);
-      return parts.map(function(part) {
-        if (part.length > 0) {
-          return part.charAt(0).toUpperCase() + part.slice(1);
+      categoryStr = category.toString();
+      normalizedCategory = categoryStr.toLowerCase();
+      if ((this.qualityFactorNamesMap != null) && (this.qualityFactorNamesMap[normalizedCategory] != null)) {
+        return this.qualityFactorNamesMap[normalizedCategory];
+      }
+      knownQualityFactors = {
+        "commitscontribution": "Commits Contribution",
+        "commitstasksrelation": "Commits Tasks Relation",
+        "commitsmanagement": "Commits Management",
+        "fulfillmentoftasks": "Fulfillment of Tasks",
+        "taskscontribution": "Tasks Contribution",
+        "taskseffortinformation": "Tasks Effort Information",
+        "modifiedlinescontribution": "Modified Lines Contribution",
+        "userstoriesdefinitionquality": "User Stories Definition Quality",
+        "deviationmetrics": "Deviation Metrics",
+        "activitydistribution": "Activity Distribution",
+        "unassignedtasks": "Unassigned Tasks",
+        "closed_tasks": "Closed Tasks",
+        "commits": "Commits",
+        "modified_lines": "Modified Lines",
+        "tasks": "Tasks"
+      };
+      if (knownQualityFactors[normalizedCategory] != null) {
+        return knownQualityFactors[normalizedCategory];
+      }
+      formatted = categoryStr.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').replace(/contribution/gi, ' Contribution').replace(/relation/gi, ' Relation').replace(/management/gi, ' Management').replace(/information/gi, ' Information').replace(/distribution/gi, ' Distribution').replace(/fulfillment/gi, 'Fulfillment ').replace(/deviation/gi, 'Deviation ').replace(/modified/gi, 'Modified ').replace(/quality/gi, ' Quality').replace(/\s+/g, ' ').trim();
+      words = formatted.split(' ');
+      return words.map(function(word) {
+        if (word.length > 0) {
+          return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
         } else {
-          return part;
+          return word;
         }
-      }).join(" ");
+      }).join(' ');
     };
 
     MetricsController.prototype.composeTeamHistoricalChart = function(collection, metricLabelKey, filteredEntries) {

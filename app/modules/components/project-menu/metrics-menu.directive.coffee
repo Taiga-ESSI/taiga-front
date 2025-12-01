@@ -30,6 +30,66 @@ angular.module("taigaComponents").directive "tgMetricsMenu", [
                 project: $translate.instant("METRICS.PROJECT_METRICS_TITLE")
             }
 
+            # Inyecta los iconos SVG personalizados en el DOM si no existen
+            injectCustomIcons = ->
+                # Buscar si ya existe un sprite SVG en el documento
+                existingSvg = document.querySelector('svg[style*="display: none"], svg.svg-sprite, svg#svg-sprite')
+                
+                # Si no hay sprite, buscar cualquier SVG oculto que contenga symbols
+                if !existingSvg
+                    allSvgs = document.querySelectorAll('svg')
+                    for svg in allSvgs
+                        if svg.querySelector('symbol')
+                            existingSvg = svg
+                            console.log("[MetricsMenu] Sprite encontrado con symbols:", svg)
+                            break
+                
+                # Definir los nuevos símbolos
+                teamMetricsSymbol = '<symbol id="icon-team-metrics" viewBox="0 0 400 400"><path class="path1" d="M120 55a45 45 0 1 0 0 90 45 45 0 0 0 0-90zm0 100c-50 0-90 35-90 80v45h180v-45c0-45-40-80-90-80z"/><path class="path1" d="M280 65a35 35 0 1 0 0 70 35 35 0 0 0 0-70zm0 80c-35 0-65 25-75 55h150v-20c0-35-35-35-75-35z"/><path class="path1" d="M300 280h30v100h-30zm40 40h30v60h-30zm-80 60h30v40h-30z"/></symbol>'
+                
+                projectMetricsSymbol = '<symbol id="icon-project-metrics" viewBox="0 0 400 400"><path class="path1" d="M40 80h100l40 40h180c15 0 25 10 25 25v200c0 15-10 25-25 25H40c-15 0-25-10-25-25V105c0-15 10-25 25-25zm60 120h40v120h-40zm80-40h40v160h-40zm80 60h40v100h-40z"/></symbol>'
+                
+                if existingSvg
+                    # Añadir los símbolos al sprite existente
+                    if !document.getElementById('icon-team-metrics')
+                        console.log("[MetricsMenu] Inyectando icon-team-metrics en sprite existente")
+                        tempDiv = document.createElement('div')
+                        tempDiv.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg">' + teamMetricsSymbol + '</svg>'
+                        symbolElement = tempDiv.querySelector('symbol')
+                        if symbolElement
+                            existingSvg.appendChild(symbolElement)
+                            console.log("[MetricsMenu] icon-team-metrics añadido:", document.getElementById('icon-team-metrics'))
+                    
+                    if !document.getElementById('icon-project-metrics')
+                        console.log("[MetricsMenu] Inyectando icon-project-metrics en sprite existente")
+                        tempDiv = document.createElement('div')
+                        tempDiv.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg">' + projectMetricsSymbol + '</svg>'
+                        symbolElement = tempDiv.querySelector('symbol')
+                        if symbolElement
+                            existingSvg.appendChild(symbolElement)
+                            console.log("[MetricsMenu] icon-project-metrics añadido:", document.getElementById('icon-project-metrics'))
+                else
+                    # Crear un nuevo sprite SVG oculto
+                    console.log("[MetricsMenu] Creando nuevo sprite SVG para iconos personalizados")
+                    newSprite = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+                    newSprite.setAttribute('style', 'display: none; position: absolute; width: 0; height: 0;')
+                    newSprite.setAttribute('id', 'metrics-icons-sprite')
+                    newSprite.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+                    
+                    # Crear los symbols usando DOM API
+                    tempDiv = document.createElement('div')
+                    tempDiv.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg">' + teamMetricsSymbol + projectMetricsSymbol + '</svg>'
+                    symbols = tempDiv.querySelectorAll('symbol')
+                    for symbol in symbols
+                        newSprite.appendChild(symbol)
+                    
+                    document.body.insertBefore(newSprite, document.body.firstChild)
+                    console.log("[MetricsMenu] Nuevo sprite creado:", newSprite)
+                
+                # Verificar que los iconos existen
+                console.log("[MetricsMenu] Verificación - icon-team-metrics existe:", !!document.getElementById('icon-team-metrics'))
+                console.log("[MetricsMenu] Verificación - icon-project-metrics existe:", !!document.getElementById('icon-project-metrics'))
+
             # Extrae la URL base del enlace original
             extractBaseHref = (originalHref) ->
                 if !originalHref
@@ -73,6 +133,9 @@ angular.module("taigaComponents").directive "tgMetricsMenu", [
                 return unless originalMetricsItem
                 return if teamMetricsItem || projectMetricsItem # Ya creados
 
+                # Inyectar iconos personalizados antes de usarlos
+                injectCustomIcons()
+
                 # Obtener el href original
                 originalLink = originalMetricsItem.querySelector("a")
                 console.log("[MetricsMenu] Link original:", originalLink)
@@ -101,6 +164,13 @@ angular.module("taigaComponents").directive "tgMetricsMenu", [
                     teamText = teamLink.querySelector(".menu-option-text")
                     if teamText
                         teamText.textContent = translations.team
+                    # Reemplazar el SVG con icono inline para Team Metrics
+                    teamSvg = teamLink.querySelector("svg")
+                    if teamSvg
+                        # Crear SVG inline con el icono de team metrics
+                        teamSvg.innerHTML = '<path d="M120 55a45 45 0 1 0 0 90 45 45 0 0 0 0-90zm0 100c-50 0-90 35-90 80v45h180v-45c0-45-40-80-90-80z M280 65a35 35 0 1 0 0 70 35 35 0 0 0 0-70zm0 80c-35 0-65 25-75 55h150v-20c0-35-35-35-75-35z M300 280h30v100h-30zm40 40h30v60h-30zm-80 60h30v40h-30z"/>'
+                        teamSvg.setAttribute("viewBox", "0 0 400 400")
+                        console.log("[MetricsMenu] Team SVG convertido a inline")
                 
                 # Actualizar el enlace y texto del item de Project
                 projectLink = projectMetricsItem.querySelector("a")
@@ -112,6 +182,13 @@ angular.module("taigaComponents").directive "tgMetricsMenu", [
                     projectText = projectLink.querySelector(".menu-option-text")
                     if projectText
                         projectText.textContent = translations.project
+                    # Reemplazar el SVG con icono inline para Project Metrics
+                    projectSvg = projectLink.querySelector("svg")
+                    if projectSvg
+                        # Crear SVG inline con el icono de project metrics
+                        projectSvg.innerHTML = '<path d="M40 80h100l40 40h180c15 0 25 10 25 25v200c0 15-10 25-25 25H40c-15 0-25-10-25-25V105c0-15 10-25 25-25zm60 120h40v120h-40zm80-40h40v160h-40zm80 60h40v100h-40z"/>'
+                        projectSvg.setAttribute("viewBox", "0 0 400 400")
+                        console.log("[MetricsMenu] Project SVG convertido a inline")
                 
                 # Agregar clases identificadoras
                 teamMetricsItem.classList.add("metrics-team-item")
