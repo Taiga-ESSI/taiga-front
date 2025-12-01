@@ -82,11 +82,11 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             @metricsProvider = @legacyLocalConfig.provider
 
         @scope.metricsAuth =
-            authenticated: false
+            authenticated: true
             username: null
             externalProjectId: null
             loading: false
-            checking: true
+            checking: false
             error: null
             form:
                 username: ""
@@ -218,7 +218,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 projectDescription: @scope.project.description
             })
             @appMetaService.setAll(title, description)
-            @.loadAuthStatus()
+            @.bootstrapMetricsAccess()
 
         promise.then null, @.onInitialDataError.bind(@)
 
@@ -279,6 +279,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         if angular.isString(providerValue)
             normalized.provider = providerValue.toLowerCase()
 
+        defaultProjectOrder = if angular.isArray(@metricsConfig?.projectMetricsOrder) then @metricsConfig.projectMetricsOrder.slice() else []
+        defaultTeamOrder = if angular.isArray(@metricsConfig?.teamMetricsOrder) then @metricsConfig.teamMetricsOrder.slice() else []
+
         if angular.isString(normalized.externalProjectId)
             normalized.externalProjectId = normalized.externalProjectId.trim()
         else
@@ -289,9 +292,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         if !angular.isArray(normalized.projectMetricsOrder)
             normalized.projectMetricsOrder = []
+        if normalized.projectMetricsOrder.length is 0 and defaultProjectOrder.length > 0
+            normalized.projectMetricsOrder = defaultProjectOrder
 
         if !angular.isArray(normalized.teamMetricsOrder)
             normalized.teamMetricsOrder = []
+        if normalized.teamMetricsOrder.length is 0 and defaultTeamOrder.length > 0
+            normalized.teamMetricsOrder = defaultTeamOrder
 
         return normalized
 
@@ -345,29 +352,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         return project
 
-    loadAuthStatus: ->
-        @scope.metricsAuth.checking = true
-        @scope.metricsAuth.error = null
-
-        url = @urls.resolve("metrics-status")
-        params =
-            source: @metricsProvider
-
-        @http.get(url, params, {withCredentials: true})
-            .then (response) =>
-                data = response?.data || {}
-                if data.authenticated
-                    @scope.metricsAuth.authenticated = true
-                    @scope.metricsAuth.username = data.username
-                    @scope.metricsAuth.externalProjectId = data.external_project_id or @metricsConfig.resolveExternalProjectId(@scope.projectSlug)
-                    @scope.metricsAuth.form.username = data.username or @scope.metricsAuth.form.username
-            .catch (error) =>
-                console.error "Error checking metrics auth status:", error
-                @scope.metricsAuth.error = "METRICS.STATUS_ERROR"
-            .finally =>
-                @scope.metricsAuth.checking = false
-                if @scope.metricsAuth.authenticated
-                    @.loadMetrics()
+    bootstrapMetricsAccess: ->
+        # No auth flow required: use project config to resolve IDs/provider
+        @scope.metricsAuth.authenticated = true
+        @scope.metricsAuth.checking = false
+        @scope.metricsAuth.username = @scope.projectSlug or @scope.project?.slug
+        @scope.metricsAuth.externalProjectId ?= @metricsConfig.resolveExternalProjectId(@scope.projectSlug)
+        @.loadMetrics(true)
 
     loginMetrics: ->
         return if @scope.metricsAuth.loading
@@ -426,8 +417,6 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 @scope.metricsAuth.error = @.resolveErrorKey(error?.data?.error, "METRICS.LOGOUT_ERROR")
 
     loadMetrics: (force = false) ->
-        # Don't load metrics if not authenticated in metrics system
-        return unless @scope.metricsAuth.authenticated
         return if @scope.metricsView.loading and !force
 
         projectSlug = @scope.projectSlug
@@ -942,27 +931,40 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 metricValue = detail?.value
                 metricValue ?= @.normalizeMetricValue(metric.value)
 
-                # Dynamic mapping based on configuration
-                # We check if the metric ID contains any of the configured keys
-                for configuredKey in (@metricsConfig.teamMetricsOrder or [])
-                    if metricId.indexOf(configuredKey) isnt -1
-                        # Map known keys to internal properties
-                        if configuredKey is "assignedtasks"
-                            entry.assignedTasks = metricValue
-                            entry.totalTasks = Math.max(entry.totalTasks, metricValue)
-                        else if configuredKey is "closedtasks" or configuredKey is "completedtasks"
-                            entry.closedTasks = metricValue
-                            entry.completedTasks = metricValue
-                            entry.tasksPercentage = metricValue
-                        else if configuredKey is "commits"
-                            entry.commits = metricValue
-                        else if configuredKey is "modifiedlines" or configuredKey is "linesmodified"
-                            entry.modifiedLines = metricValue
-                        else if configuredKey is "totalus"
-                            entry.totalUS = metricValue
-                        else if configuredKey is "completedus" or configuredKey is "closedus"
-                            entry.completedUS = metricValue
-                            entry.usPercentage = metricValue
+                configuredKeys = @metricsConfig.teamMetricsOrder or []
+                if !angular.isArray(configuredKeys) or configuredKeys.length is 0
+                    configuredKeys = [
+                        "assignedtasks"
+                        "closedtasks"
+                        "completedtasks"
+                        "commits"
+                        "modifiedlines"
+                        "linesmodified"
+                        "totalus"
+                        "completedus"
+                        "closedus"
+                    ]
+
+                for rawKey in configuredKeys when rawKey?
+                    configuredKey = rawKey.toString().toLowerCase()
+                    continue unless metricId.indexOf(configuredKey) isnt -1
+
+                    if configuredKey is "assignedtasks"
+                        entry.assignedTasks = metricValue
+                        entry.totalTasks = Math.max(entry.totalTasks, metricValue)
+                    else if configuredKey is "closedtasks" or configuredKey is "completedtasks"
+                        entry.closedTasks = metricValue
+                        entry.completedTasks = metricValue
+                        entry.tasksPercentage = metricValue
+                    else if configuredKey is "commits"
+                        entry.commits = metricValue
+                    else if configuredKey is "modifiedlines" or configuredKey is "linesmodified"
+                        entry.modifiedLines = metricValue
+                    else if configuredKey is "totalus"
+                        entry.totalUS = metricValue
+                    else if configuredKey is "completedus" or configuredKey is "closedus"
+                        entry.completedUS = metricValue
+                        entry.usPercentage = metricValue
 
             # Calcular porcentajes
             if entry.totalTasks > 0 and entry.completedTasks > 0
@@ -1715,6 +1717,10 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
     buildStudentsOverallRadar: (usersList) ->
         return null unless usersList and usersList.length > 0
+
+        # Para el proveedor interno usamos métricas que realmente existen (tareas/US)
+        if @metricsProvider is "internal"
+            return @.buildInternalStudentsRadar(usersList)
         
         assignedLabel = @translate?.instant?("METRICS.RADAR_LABEL_ASSIGNED_TASKS") or "Assigned Tasks"
         commitsLabel = @translate?.instant?("METRICS.RADAR_LABEL_COMMITS") or "Commits"
@@ -1750,6 +1756,44 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         
         return {
             labels: [assignedLabel, commitsLabel, modifiedLabel]
+            datasets: datasets
+        }
+
+    buildInternalStudentsRadar: (usersList) ->
+        return null unless usersList and usersList.length > 0
+
+        tasksLabel = @translate?.instant?("METRICS.CLOSED_TASKS_LABEL") or "Closed Tasks (%)"
+        storiesLabel = @translate?.instant?("METRICS.RADAR_LABEL_COMPLETED_STORIES") or "Completed Stories (%)"
+        workloadLabel = @translate?.instant?("METRICS.RADAR_LABEL_ASSIGNED_TASKS") or "Assigned Tasks"
+
+        datasets = []
+        @.registerUserColors(usersList)
+
+        for user in usersList
+            colorPalette = @.resolveUserColor(user)
+            borderColor = colorPalette?.border or '#3B82F6'
+            areaColor = colorPalette?.fill or 'rgba(59, 130, 246, 0.26)'
+
+            tasksPercent = Math.max(0, Math.min(100, parseFloat(user.tasksPercentage) or parseFloat(user.closedTasks) or 0))
+            storiesPercent = Math.max(0, Math.min(100, parseFloat(user.usPercentage) or parseFloat(user.completedUS) or 0))
+            workloadCount = Math.max(0, Math.min(100, parseFloat(user.assignedTasks) or 0))
+
+            datasets.push({
+                label: "#{user.displayName or user.username}"
+                data: [tasksPercent, storiesPercent, workloadCount]
+                backgroundColor: areaColor
+                borderColor: borderColor
+                borderWidth: 2
+                pointBackgroundColor: borderColor
+                pointBorderColor: '#fff'
+                pointHoverBackgroundColor: '#fff'
+                pointHoverBorderColor: borderColor
+                pointRadius: 4
+                pointHoverRadius: 6
+            })
+
+        {
+            labels: [tasksLabel, storiesLabel, workloadLabel]
             datasets: datasets
         }
 

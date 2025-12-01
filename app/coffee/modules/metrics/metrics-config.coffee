@@ -63,6 +63,12 @@ class MetricsConfigController
             .finally =>
                 @scope.configLoading = false
 
+    resetMetricsState: ->
+        @scope.metrics = []
+        @scope.error = null
+        @scope.authRequired = false
+        @scope.loading = false
+
     loadProject: ->
         # Project is preloaded by the route resolver (app.coffee)
         if @projectService.project
@@ -87,6 +93,8 @@ class MetricsConfigController
 
     checkAuthAndLoad: ->
         @scope.loading = true
+        @scope.metrics = []
+        @scope.error = null
         @scope.authRequired = false
         
         url = @urls.resolve("metrics-status")
@@ -109,6 +117,7 @@ class MetricsConfigController
     loadMetrics: ->
         @scope.loading = true
         @scope.error = null
+        @scope.metrics = []
         
         # Use the ID from the input field
         externalId = @scope.externalProjectId
@@ -116,6 +125,9 @@ class MetricsConfigController
         params =
             project: @scope.projectSlug
             source: @scope.config.provider
+
+        if @scope.config.provider is 'internal'
+            params.refresh = true
 
         if externalId
             params.external = externalId
@@ -133,28 +145,45 @@ class MetricsConfigController
             .catch (error) =>
                 console.error "Metrics Config: Error loading metrics", error
                 @scope.loading = false
+                @scope.metrics = []
                 @scope.error = "Error loading metrics. Server returned: " + (error.data?.error or error.statusText)
 
     processMetricsList: (rawMetrics) ->
+        unless angular.isArray(rawMetrics)
+            @scope.metrics = []
+            return []
+
+        normalizeId = (value) ->
+            return null unless value?
+            value.toString().trim()
+
+        guessDefaultType = (metric) =>
+            idsToCheck = []
+            idsToCheck.push(normalizeId(metric.id)) if metric?.id?
+            idsToCheck.push(normalizeId(metric.externalId)) if metric?.externalId?
+
+            for candidate in idsToCheck when candidate?
+                lower = candidate.toLowerCase()
+                return 'team' if @.isDefaultTeamMetric(lower)
+                return 'team' if @.isUserMetricId(lower)
+            'project'
+
         uniqueMetrics = {}
-        
-        for metric in rawMetrics
-            continue unless metric and metric.id
-            id = metric.id
-            
-            unless uniqueMetrics[id]
-                uniqueMetrics[id] = {
-                    id: id
-                    name: metric.name or id
-                    description: metric.description
-                    # Determine current default classification
-                    defaultType: if @.isDefaultTeamMetric(id) then 'team' else 'project'
-                }
+
+        for metric in rawMetrics when metric?
+            id = normalizeId(metric.id) or normalizeId(metric.externalId)
+            continue unless id
+
+            uniqueMetrics[id] =
+                id: id
+                name: metric?.name or id
+                description: metric?.description
+                defaultType: guessDefaultType(metric)
 
         @scope.metrics = _.values(uniqueMetrics).sort (a, b) ->
-            a.id.localeCompare(b.id)
-        
-        console.log "Metrics Config: Processed metrics", @scope.metrics.length
+            a.name.toString().localeCompare(b.name.toString())
+
+        console.log "Metrics Config: Processed metrics (full list)", @scope.metrics.length
 
         # Initialize config for new metrics
         for metric in @scope.metrics
@@ -164,14 +193,31 @@ class MetricsConfigController
     isDefaultTeamMetric: (metricId) ->
         # Use centralized configuration to determine if it's a team metric
         return false unless metricId
-        
+
         # Check if it's in the team metrics order list
         teamOrder = @metricsConfig.teamMetricsOrder or []
         for teamMetric in teamOrder
-            if metricId.toLowerCase().indexOf(teamMetric.toLowerCase()) is 0
+            lowerTeam = teamMetric.toLowerCase()
+            lowerId = metricId.toLowerCase()
+            if lowerId is lowerTeam or lowerId.indexOf("#{lowerTeam}_") is 0 or lowerId.indexOf("#{lowerTeam}-") is 0
                 return true
                 
         return false
+
+    isUserMetricId: (metricId) ->
+        return false unless metricId?
+        lowerId = metricId.toString().toLowerCase()
+        prefixes = [
+            "assignedtasks_"
+            "closedtasks_"
+            "completedtasks_"
+            "commits_"
+            "modifiedlines_"
+            "completedus_"
+            "totalus_"
+            "tasksratio_"
+        ]
+        prefixes.some (prefix) -> lowerId.indexOf(prefix) is 0
 
     saveConfig: ->
         payload = {
@@ -212,6 +258,7 @@ class MetricsConfigController
 
     toggleProvider: ->
         @scope.config.provider = if @scope.config.provider is 'internal' then 'external' else 'internal'
+        @.resetMetricsState()
         @.checkAuthAndLoad() # Re-check auth and load metrics from new provider
 
 module.controller("MetricsConfigController", MetricsConfigController)

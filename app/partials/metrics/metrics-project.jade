@@ -13,41 +13,8 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-project
 
         section.metrics-content
 
-            //- Authentication status check
-            div.metrics-auth-status(ng-if="metricsAuth.checking")
-                div.loading-container
-                    div.spinner
-                    p(translate="METRICS.AUTH_LOADING")
-
-            //- Login form
-            div.metrics-login(ng-if="!metricsAuth.authenticated && !metricsAuth.checking")
-                form.metrics-login-form(ng-submit="loginMetrics()", novalidate)
-                    h2(translate="METRICS.LOGIN_TITLE")
-                    p.description(translate="METRICS.LOGIN_DESCRIPTION")
-
-                    label(for="metrics-username", translate="METRICS.LOGIN_USERNAME")
-                    input#metrics-username(type="text", ng-model="metricsAuth.form.username", required, autocomplete="username")
-
-                    div.error-message(ng-if="metricsAuth.error")
-                        div.alert.alert-error
-                            i.icon.icon-error
-                            span(translate="{{ metricsAuth.error }}")
-
-                    button.button(type="submit", ng-disabled="metricsAuth.loading")
-                        span(ng-if="!metricsAuth.loading", translate="METRICS.LOGIN_SUBMIT")
-                        span(ng-if="metricsAuth.loading", translate="METRICS.LOGIN_LOADING")
-
             //- Metrics dashboard - Project
-            div.metrics-dashboard(ng-if="metricsAuth.authenticated && !metricsAuth.checking")
-                div.metrics-auth-bar
-                    div.status
-                        span(translate="METRICS.AUTH_STATUS")
-                        strong {{ metricsAuth.username }}
-                        span.separator •
-                        span(translate="METRICS.AUTH_PROJECT", translate-values="{project: metricsAuth.externalProjectId}")
-                    div.controls
-                        button.button.secondary(ng-click="logoutMetrics()", ng-disabled="metricsAuth.loading")
-                            span(translate="METRICS.LOGOUT")
+            div.metrics-dashboard
 
                 div.loading-container(ng-if="metricsView.loading")
                     div.spinner

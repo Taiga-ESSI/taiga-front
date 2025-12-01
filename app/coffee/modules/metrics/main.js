@@ -82,11 +82,11 @@
       };
       this.metricsHooks = _.defaults(this.metricsHooks || {}, fallbackHooks);
       this.scope.metricsAuth = {
-        authenticated: false,
+        authenticated: true,
         username: null,
         externalProjectId: null,
         loading: false,
-        checking: true,
+        checking: false,
         error: null,
         form: {
           username: ""
@@ -297,7 +297,7 @@
             projectDescription: _this.scope.project.description
           });
           _this.appMetaService.setAll(title, description);
-          return _this.loadAuthStatus();
+          return _this.bootstrapMetricsAccess();
         };
       })(this));
       promise.then(null, this.onInitialDataError.bind(this));
@@ -317,37 +317,14 @@
       return project;
     };
 
-    MetricsController.prototype.loadAuthStatus = function() {
-      var url;
-      this.scope.metricsAuth.checking = true;
-      this.scope.metricsAuth.error = null;
-      url = this.urls.resolve("metrics-status");
-      return this.http.get(url, null, {
-        withCredentials: true
-      }).then((function(_this) {
-        return function(response) {
-          var data;
-          data = (response != null ? response.data : void 0) || {};
-          if (data.authenticated) {
-            _this.scope.metricsAuth.authenticated = true;
-            _this.scope.metricsAuth.username = data.username;
-            _this.scope.metricsAuth.externalProjectId = data.external_project_id || _this.metricsConfig.resolveExternalProjectId(_this.scope.projectSlug);
-            return _this.scope.metricsAuth.form.username = data.username || _this.scope.metricsAuth.form.username;
-          }
-        };
-      })(this))["catch"]((function(_this) {
-        return function(error) {
-          console.error("Error checking metrics auth status:", error);
-          return _this.scope.metricsAuth.error = "METRICS.STATUS_ERROR";
-        };
-      })(this))["finally"]((function(_this) {
-        return function() {
-          _this.scope.metricsAuth.checking = false;
-          if (_this.scope.metricsAuth.authenticated) {
-            return _this.loadMetrics();
-          }
-        };
-      })(this));
+    MetricsController.prototype.bootstrapMetricsAccess = function() {
+      this.scope.metricsAuth.authenticated = true;
+      this.scope.metricsAuth.checking = false;
+      this.scope.metricsAuth.username = this.scope.projectSlug || (this.scope.project != null ? this.scope.project.slug : void 0);
+      if (this.scope.metricsAuth.externalProjectId == null) {
+        this.scope.metricsAuth.externalProjectId = this.metricsConfig.resolveExternalProjectId(this.scope.projectSlug);
+      }
+      return this.loadMetrics(true);
     };
 
     MetricsController.prototype.loginMetrics = function() {
@@ -424,9 +401,6 @@
       var externalId, params, projectSlug, url;
       if (force == null) {
         force = false;
-      }
-      if (!this.scope.metricsAuth.authenticated) {
-        return;
       }
       if (this.scope.metricsView.loading && !force) {
         return;
@@ -846,7 +820,7 @@
     };
 
     MetricsController.prototype.processStudentsMetrics = function(studentsRaw) {
-      var detail, entry, i, j, len, len1, metric, metricId, metricKey, metricValue, metricsList, metricsObject, normalizedName, processed, ratio, ratioUS, ref, ref1, ref2, ref3, seenMetricIds, student, students, username;
+      var configuredKey, configuredKeys, detail, entry, i, j, k, len, len1, len2, metric, metricId, metricKey, metricValue, metricsList, metricsObject, normalizedName, processed, ratio, ratioUS, rawKey, ref, ref1, ref2, ref3, seenMetricIds, student, students, username;
       processed = {};
       students = this.normalizeStudentsCollection(studentsRaw);
       if (!(students != null ? students.length : void 0)) {
@@ -911,22 +885,36 @@
           if (metricValue == null) {
             metricValue = this.normalizeMetricValue(metric.value);
           }
-          if (metricId.indexOf("assignedtasks") !== -1) {
-            entry.assignedTasks = metricValue;
-            entry.totalTasks = Math.max(entry.totalTasks, metricValue);
-          } else if (metricId.indexOf("closedtasks") !== -1 || metricId.indexOf("completedtasks") !== -1) {
-            entry.closedTasks = metricValue;
-            entry.completedTasks = metricValue;
-            entry.tasksPercentage = metricValue;
-          } else if (metricId.indexOf("commits") !== -1) {
-            entry.commits = metricValue;
-          } else if (metricId.indexOf("modifiedlines") !== -1 || metricId.indexOf("linesmodified") !== -1) {
-            entry.modifiedLines = metricValue;
-          } else if (metricId.indexOf("totalus") !== -1) {
-            entry.totalUS = metricValue;
-          } else if (metricId.indexOf("completedus") !== -1 || metricId.indexOf("closedus") !== -1) {
-            entry.completedUS = metricValue;
-            entry.usPercentage = metricValue;
+          configuredKeys = this.metricsConfig.teamMetricsOrder || [];
+          if (!angular.isArray(configuredKeys) || configuredKeys.length === 0) {
+            configuredKeys = ["assignedtasks", "closedtasks", "completedtasks", "commits", "modifiedlines", "linesmodified", "totalus", "completedus", "closedus"];
+          }
+          for (k = 0, len2 = configuredKeys.length; k < len2; k++) {
+            rawKey = configuredKeys[k];
+            if (!(rawKey != null)) {
+              continue;
+            }
+            configuredKey = rawKey.toString().toLowerCase();
+            if (metricId.indexOf(configuredKey) === -1) {
+              continue;
+            }
+            if (configuredKey === "assignedtasks") {
+              entry.assignedTasks = metricValue;
+              entry.totalTasks = Math.max(entry.totalTasks, metricValue);
+            } else if (configuredKey === "closedtasks" || configuredKey === "completedtasks") {
+              entry.closedTasks = metricValue;
+              entry.completedTasks = metricValue;
+              entry.tasksPercentage = metricValue;
+            } else if (configuredKey === "commits") {
+              entry.commits = metricValue;
+            } else if (configuredKey === "modifiedlines" || configuredKey === "linesmodified") {
+              entry.modifiedLines = metricValue;
+            } else if (configuredKey === "totalus") {
+              entry.totalUS = metricValue;
+            } else if (configuredKey === "completedus" || configuredKey === "closedus") {
+              entry.completedUS = metricValue;
+              entry.usPercentage = metricValue;
+            }
           }
         }
         if (entry.totalTasks > 0 && entry.completedTasks > 0) {
@@ -1416,6 +1404,9 @@
       if (!(usersList && usersList.length > 0)) {
         return null;
       }
+      if (this.metricsProvider === "internal") {
+        return this.buildInternalStudentsRadar(usersList);
+      }
       assignedLabel = ((ref = this.translate) != null ? typeof ref.instant === "function" ? ref.instant("METRICS.RADAR_LABEL_ASSIGNED_TASKS") : void 0 : void 0) || "Assigned Tasks";
       commitsLabel = ((ref1 = this.translate) != null ? typeof ref1.instant === "function" ? ref1.instant("METRICS.RADAR_LABEL_COMMITS") : void 0 : void 0) || "Commits";
       modifiedLabel = ((ref2 = this.translate) != null ? typeof ref2.instant === "function" ? ref2.instant("METRICS.RADAR_LABEL_MODIFIED_LINES") : void 0 : void 0) || "Modified Lines";
@@ -1446,6 +1437,44 @@
       }
       return {
         labels: [assignedLabel, commitsLabel, modifiedLabel],
+        datasets: datasets
+      };
+    };
+
+    MetricsController.prototype.buildInternalStudentsRadar = function(usersList) {
+      var areaColor, borderColor, colorPalette, datasets, i, len, ref, ref1, ref2, storiesLabel, storiesPercent, tasksLabel, tasksPercent, user, workloadCount, workloadLabel;
+      if (!(usersList && usersList.length > 0)) {
+        return null;
+      }
+      tasksLabel = (((ref = this.translate) != null ? typeof ref.instant === "function" ? ref.instant("METRICS.CLOSED_TASKS_LABEL") : void 0 : void 0) || "Closed Tasks (%)");
+      storiesLabel = (((ref1 = this.translate) != null ? typeof ref1.instant === "function" ? ref1.instant("METRICS.RADAR_LABEL_COMPLETED_STORIES") : void 0 : void 0) || "Completed Stories (%)");
+      workloadLabel = (((ref2 = this.translate) != null ? typeof ref2.instant === "function" ? ref2.instant("METRICS.RADAR_LABEL_ASSIGNED_TASKS") : void 0 : void 0) || "Assigned Tasks");
+      datasets = [];
+      this.registerUserColors(usersList);
+      for (i = 0, len = usersList.length; i < len; i++) {
+        user = usersList[i];
+        colorPalette = this.resolveUserColor(user);
+        borderColor = (colorPalette != null ? colorPalette.border : void 0) || '#3B82F6';
+        areaColor = (colorPalette != null ? colorPalette.fill : void 0) || 'rgba(59, 130, 246, 0.26)';
+        tasksPercent = Math.max(0, Math.min(100, parseFloat(user.tasksPercentage) || parseFloat(user.closedTasks) || 0));
+        storiesPercent = Math.max(0, Math.min(100, parseFloat(user.usPercentage) || parseFloat(user.completedUS) || 0));
+        workloadCount = Math.max(0, Math.min(100, parseFloat(user.assignedTasks) || 0));
+        datasets.push({
+          label: "" + (user.displayName || user.username),
+          data: [tasksPercent, storiesPercent, workloadCount],
+          backgroundColor: areaColor,
+          borderColor: borderColor,
+          borderWidth: 2,
+          pointBackgroundColor: borderColor,
+          pointBorderColor: '#fff',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: borderColor,
+          pointRadius: 4,
+          pointHoverRadius: 6
+        });
+      }
+      return {
+        labels: [tasksLabel, storiesLabel, workloadLabel],
         datasets: datasets
       };
     };

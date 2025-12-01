@@ -2,68 +2,141 @@
 //- Descripción: Vista para el panel de configuración de métricas.
 
 div.metrics-config-page
-    header
-        h1 Metrics Configuration (LIVE)
-        p.help-text Creado por Pol Alcoverro - Panel de clasificación de métricas
+    header.metrics-config-header
+        div.titles
+            p.overline Metrics · Configuration
+            h1 Metrics routing for {{ (vm.scope.project && vm.scope.project.name) || vm.scope.projectSlug }}
+            p.help-text Clasifica las métricas recibidas desde el proveedor EXTERNAL en los apartados de equipo y proyecto.
+        div.header-actions
+            button.button.button-secondary(type="button", ng-click="vm.loadMetrics()", ng-disabled="vm.scope.configLoading")
+                i.icon.icon-refresh
+                span Reload from API
+            button.button(type="button", ng-click="vm.exportConfig()")
+                i.icon.icon-download
+                span Export JSON
+            button.button.button-primary(type="button", ng-click="vm.saveConfig()", ng-disabled="vm.scope.savingConfig")
+                i.icon.icon-check
+                span {{ vm.scope.savingConfig ? 'Saving…' : 'Save & Share' }}
 
-    div.config-controls
-        div.provider-switch
-            label Provider Source: 
-            button.button(ng-click="vm.toggleProvider()", ng-class="{'button-success': vm.scope.config.provider == 'internal', 'button-secondary': vm.scope.config.provider == 'external'}")
-                | {{ vm.scope.config.provider | uppercase }}
-        
-        div.actions
-            button.button.button-primary(ng-click="vm.saveConfig()", ng-disabled="vm.scope.savingConfig") Save configuration (project-wide)
-            span.save-status(ng-if="vm.scope.savingConfig") Saving...
-            button.button.button-secondary(ng-click="vm.exportConfig()") Export JSON
+    div.config-panels
+        section.config-card.status-card
+            div.card-head
+                p.kicker Connection
+                h3 Provider status
+            div.status-grid
+                div.status-item
+                    span.label Provider
+                    span.value {{ vm.scope.config.provider | uppercase }}
+                div.status-item
+                    span.label Auth
+                    span.value(ng-class="{'text-success': !vm.scope.authRequired && !vm.scope.loading, 'text-warn': vm.scope.authRequired}") {{ vm.scope.authRequired ? 'Login required' : 'OK' }}
+                div.status-item
+                    span.label Metrics loaded
+                    span.value {{ vm.scope.metrics.length || 0 }}
+                div.status-item
+                    span.label Team defaults
+                    span.value {{ (vm.scope.metrics | filter:{defaultType:'team'}).length }}
+                div.status-item
+                    span.label Project defaults
+                    span.value {{ (vm.scope.metrics | filter:{defaultType:'project'}).length }}
+                div.status-item
+                    span.label External ID
+                    span.value {{ vm.scope.externalProjectId || vm.scope.projectSlug }}
+            div.helper-text Data comes directly from the external API call for this project.
 
-    div.config-inputs
-        label External Project ID / Slug:
-        div.input-group
-            input(type="text", ng-model="vm.scope.externalProjectId", placeholder="Enter external project ID")
-            button.button(ng-click="vm.loadMetrics()", ng-disabled="vm.scope.configLoading") Reload Metrics
+        section.config-card.mapping-card
+            div.card-head
+                p.kicker Project mapping
+                h3 External project id
+                p.description Define qué ID se usa en el proveedor externo antes de cargar métricas.
+            label.label-inline(for="externalProjectId") External Project ID / Slug
+            div.input-group
+                input#externalProjectId(type="text", ng-model="vm.scope.externalProjectId", placeholder="Enter external project ID", ng-disabled="vm.scope.configLoading")
+                button.button.button-secondary(type="button", ng-click="vm.loadMetrics()", ng-disabled="vm.scope.configLoading || vm.scope.loading")
+                    span {{ vm.scope.configLoading || vm.scope.loading ? 'Loading…' : 'Reload metrics' }}
 
-    div.loading(ng-if="vm.scope.loading || vm.scope.configLoading")
-        span.spinner
-        span Loading metrics...
+        section.config-card.provider-card
+            div.card-head
+                p.kicker Source
+                h3 Provider selection
+                p.description Cambia el origen de datos. Se volverá a consultar la API seleccionada.
+            div.toggle-row
+                span.label Provider
+                button.button(ng-click="vm.toggleProvider()", ng-class="{'button-success': vm.scope.config.provider == 'internal', 'button-secondary': vm.scope.config.provider == 'external'}")
+                    | {{ vm.scope.config.provider | uppercase }}
 
-    div.error-message(ng-if="vm.scope.error")
-        | {{ vm.scope.error }}
+    div.feedback-area
+        div.loading(ng-if="vm.scope.loading || vm.scope.configLoading")
+            span.spinner
+            span Loading metrics...
 
-    div.error-message(ng-if="vm.scope.configError")
-        | {{ vm.scope.configError }}
+        div.error-message(ng-if="vm.scope.error")
+            | {{ vm.scope.error }}
 
-    div.warning-message(ng-if="vm.scope.authRequired")
-        h3 Authentication Required
-        p You are not logged in to the {{ vm.scope.config.provider | uppercase }} metrics provider.
-        p Please go to the 
-            a(href="/project/{{vm.scope.projectSlug}}/metrics/team") Team Metrics
-            |  tab and login, then return here to configure.
+        div.error-message(ng-if="vm.scope.configError")
+            | {{ vm.scope.configError }}
 
-    div.empty-message(ng-if="!vm.scope.loading && !vm.scope.authRequired && !vm.scope.error && vm.scope.metrics.length == 0")
-        p No metrics found for this project.
-        p Ensure the project ID is correct and metrics are available in the provider.
+        div.warning-message(ng-if="vm.scope.authRequired")
+            h3 Authentication Required
+            p You are not logged in to the {{ vm.scope.config.provider | uppercase }} metrics provider.
+            p Please go to the 
+                a(href="/project/{{vm.scope.projectSlug}}/metrics/team") Team Metrics
+                |  tab and login, then return here to configure.
 
-    table.table-list(ng-if="!vm.scope.loading && vm.scope.metrics.length > 0")
-        thead
-            tr
-                th Metric ID
-                th Name
-                th Default Type
-                th Classification
-        tbody
-            tr(ng-repeat="metric in vm.scope.metrics")
-                td {{ metric.id }}
-                td {{ metric.name }}
-                td {{ metric.defaultType | uppercase }}
-                td
-                    div.classification-switch
-                        label
-                            input(type="radio", ng-model="vm.scope.config.classification[metric.id]", value="project")
-                            | Project
-                        label
-                            input(type="radio", ng-model="vm.scope.config.classification[metric.id]", value="team")
-                            | Team
-                        label
-                            input(type="radio", ng-model="vm.scope.config.classification[metric.id]", value="hidden")
-                            | Hidden
+        div.empty-message(ng-if="!vm.scope.loading && !vm.scope.authRequired && !vm.scope.error && vm.scope.metrics.length == 0")
+            p No metrics found for this project.
+            p Ensure the project ID is correct and metrics are available in the provider.
+
+    div.classification-board(ng-if="!vm.scope.loading && vm.scope.metrics.length > 0")
+        div.board-head
+            div
+                p.kicker Classification
+                h3 Route metrics to Team / Project / Hidden
+            div.filter-row
+                input(type="text", ng-model="vm.metricsFilter", placeholder="Search metrics…")
+                span.hint All data shown is retrieved from the EXTERNAL API response.
+
+        div.config-metric-groups
+            div.config-metric-group
+                div.group-head
+                    h4 Project metrics
+                    span.count {{ (vm.scope.metrics | filter:vm.metricsFilter | filter:{defaultType:'project'}).length }}
+                div.config-metric-grid
+                    div.config-metric-card(ng-repeat="metric in vm.scope.metrics | filter:vm.metricsFilter | filter:{defaultType:'project'}")
+                        div.metric-header
+                            span.metric-id {{ metric.id }}
+                            span.badge Default: Project
+                        h5.metric-name {{ metric.name }}
+                        p.metric-description(ng-if="metric.description") {{ metric.description }}
+                        div.classification-switch
+                            label
+                                input(type="radio", ng-model="vm.scope.config.classification[metric.id]", value="project")
+                                | Project
+                            label
+                                input(type="radio", ng-model="vm.scope.config.classification[metric.id]", value="team")
+                                | Team
+                            label
+                                input(type="radio", ng-model="vm.scope.config.classification[metric.id]", value="hidden")
+                                | Hidden
+
+            div.config-metric-group
+                div.group-head
+                    h4 Team metrics
+                    span.count {{ (vm.scope.metrics | filter:vm.metricsFilter | filter:{defaultType:'team'}).length }}
+                div.config-metric-grid
+                    div.config-metric-card(ng-repeat="metric in vm.scope.metrics | filter:vm.metricsFilter | filter:{defaultType:'team'}")
+                        div.metric-header
+                            span.metric-id {{ metric.id }}
+                            span.badge Default: Team
+                        h5.metric-name {{ metric.name }}
+                        p.metric-description(ng-if="metric.description") {{ metric.description }}
+                        div.classification-switch
+                            label
+                                input(type="radio", ng-model="vm.scope.config.classification[metric.id]", value="project")
+                                | Project
+                            label
+                                input(type="radio", ng-model="vm.scope.config.classification[metric.id]", value="team")
+                                | Team
+                            label
+                                input(type="radio", ng-model="vm.scope.config.classification[metric.id]", value="hidden")
+                                | Hidden
