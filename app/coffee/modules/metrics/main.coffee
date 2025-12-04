@@ -109,6 +109,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 user: "all"
                 dateFrom: null
                 dateTo: null
+                preset: null
             teamHistoricalMetricOptions: [
                 {id: "all", label: "METRICS.TEAM_HISTORICAL_METRIC_ALL"}
                 {id: "tasks", label: "METRICS.TEAM_HISTORICAL_METRIC_TASKS"}
@@ -125,6 +126,20 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             projectHistoricalFilters:
                 dateFrom: null
                 dateTo: null
+                preset: null
+            # Date presets for quick filtering
+            datePresetOptions: [
+                {id: null, label: "METRICS.DATE_PRESET_CUSTOM", translate: true}
+                {id: "last_7_days", label: "METRICS.DATE_PRESET_LAST_7_DAYS", translate: true}
+                {id: "last_14_days", label: "METRICS.DATE_PRESET_LAST_14_DAYS", translate: true}
+                {id: "last_30_days", label: "METRICS.DATE_PRESET_LAST_30_DAYS", translate: true}
+                {id: "last_90_days", label: "METRICS.DATE_PRESET_LAST_90_DAYS", translate: true}
+                {id: "current_month", label: "METRICS.DATE_PRESET_CURRENT_MONTH", translate: true}
+                {id: "current_semester", label: "METRICS.DATE_PRESET_CURRENT_SEMESTER", translate: true}
+                {id: "last_semester", label: "METRICS.DATE_PRESET_LAST_SEMESTER", translate: true}
+                {id: "last_year", label: "METRICS.DATE_PRESET_LAST_YEAR", translate: true}
+                {id: "all_time", label: "METRICS.DATE_PRESET_ALL_TIME", translate: true}
+            ]
 
         @userColorPalette = @.buildUserColorPalette()
         @metricsCategoryPalettes = {}
@@ -181,12 +196,21 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             return unless filters?
             filters.dateFrom = null
             filters.dateTo = null
+            filters.preset = null
 
         @scope.clearProjectHistoricalDates = =>
             filters = @scope.metricsView.projectHistoricalFilters
             return unless filters?
             filters.dateFrom = null
             filters.dateTo = null
+            filters.preset = null
+
+        # Apply date preset and calculate actual dates
+        @scope.applyTeamDatePreset = (presetId) =>
+            @.applyDatePreset(@scope.metricsView.teamHistoricalFilters, presetId)
+        
+        @scope.applyProjectDatePreset = (presetId) =>
+            @.applyDatePreset(@scope.metricsView.projectHistoricalFilters, presetId)
 
         @scope.toggleTeamOverviewUser = (username) =>
             @.toggleTeamOverviewUser(username)
@@ -1747,7 +1771,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         
         assignedLabel = @translate?.instant?("METRICS.RADAR_LABEL_ASSIGNED_TASKS") or "Assigned Tasks"
         commitsLabel = @translate?.instant?("METRICS.RADAR_LABEL_COMMITS") or "Commits"
-        modifiedLabel = @translate?.instant?("METRICS.RADAR_LABEL_MODIFIED_LINES") or "Modified Lines"
+        closedLabel = @translate?.instant?("METRICS.CLOSED_TASKS_LABEL") or "Closed Tasks"
         
         datasets = []
         @.registerUserColors(usersList)
@@ -1759,11 +1783,11 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             
             assignedTasks = Math.max(0, Math.min(100, parseFloat(user.assignedTasks) or 0))
             commits = Math.max(0, Math.min(100, parseFloat(user.commits) or 0))
-            modifiedLines = Math.max(0, Math.min(100, parseFloat(user.modifiedLines) or 0))
+            closedTasks = Math.max(0, Math.min(100, parseFloat(user.closedTasks) or 0))
             
             dataset = {
                 label: "#{user.displayName or user.username}"
-                data: [assignedTasks, commits, modifiedLines]
+                data: [assignedTasks, commits, closedTasks]
                 backgroundColor: areaColor
                 borderColor: borderColor
                 borderWidth: 2
@@ -1778,7 +1802,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             datasets.push(dataset)
         
         return {
-            labels: [assignedLabel, commitsLabel, modifiedLabel]
+            labels: [assignedLabel, commitsLabel, closedLabel]
             datasets: datasets
         }
 
@@ -3201,6 +3225,85 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             title: title
             chartData: chartData
         }
+
+    ###
+    # Apply a date preset to the given filters object.
+    # Calculates actual from/to dates based on the preset.
+    # @param filters {Object} The filters object to modify
+    # @param presetId {String} The preset identifier
+    ###
+    applyDatePreset: (filters, presetId) ->
+        return unless filters?
+        
+        today = new Date()
+        toDate = @.formatDateForInput(today)
+        fromDate = null
+        
+        switch presetId
+            when "last_7_days"
+                fromDate = @.formatDateForInput(new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000))
+            when "last_14_days"
+                fromDate = @.formatDateForInput(new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000))
+            when "last_30_days"
+                fromDate = @.formatDateForInput(new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000))
+            when "last_90_days"
+                fromDate = @.formatDateForInput(new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000))
+            when "last_semester"
+                fromDate = @.formatDateForInput(new Date(today.getTime() - 180 * 24 * 60 * 60 * 1000))
+            when "last_year"
+                fromDate = @.formatDateForInput(new Date(today.getTime() - 365 * 24 * 60 * 60 * 1000))
+            when "current_month"
+                firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+                fromDate = @.formatDateForInput(firstOfMonth)
+            when "current_semester"
+                # Academic semester: Sep-Jan or Feb-Jul
+                month = today.getMonth() + 1  # JS months are 0-indexed
+                if month >= 9  # Fall semester (Sep-Jan)
+                    fromDate = @.formatDateForInput(new Date(today.getFullYear(), 8, 1))
+                else if month >= 2  # Spring semester (Feb-Jul)
+                    fromDate = @.formatDateForInput(new Date(today.getFullYear(), 1, 1))
+                else  # January (fall semester of previous year)
+                    fromDate = @.formatDateForInput(new Date(today.getFullYear() - 1, 8, 1))
+            when "all_time"
+                fromDate = "2020-01-01"
+            else
+                # Custom or null - clear preset but keep existing dates
+                filters.preset = null
+                return
+        
+        filters.preset = presetId
+        filters.dateFrom = fromDate
+        filters.dateTo = toDate
+
+    ###
+    # Format a Date object to YYYY-MM-DD string for date input
+    ###
+    formatDateForInput: (date) ->
+        return null unless date?
+        year = date.getFullYear()
+        month = String(date.getMonth() + 1).padStart(2, '0')
+        day = String(date.getDate()).padStart(2, '0')
+        "#{year}-#{month}-#{day}"
+
+    ###
+    # Get human-readable label for the current date range
+    ###
+    getDateRangeLabel: (filters) ->
+        return "" unless filters?
+        
+        if filters.preset
+            presetOption = @scope.metricsView.datePresetOptions?.find (opt) -> opt.id is filters.preset
+            if presetOption?.label and @translate?.instant?
+                return @translate.instant(presetOption.label)
+        
+        if filters.dateFrom and filters.dateTo
+            return "#{filters.dateFrom} - #{filters.dateTo}"
+        else if filters.dateFrom
+            return "From #{filters.dateFrom}"
+        else if filters.dateTo
+            return "Until #{filters.dateTo}"
+        
+        return ""
 
     applyTeamHistoricalFilters: ->
         filters = @scope.metricsView.teamHistoricalFilters or {}

@@ -125,7 +125,8 @@
           metric: "all",
           user: "all",
           dateFrom: null,
-          dateTo: null
+          dateTo: null,
+          preset: null
         },
         teamHistoricalMetricOptions: [
           {
@@ -157,8 +158,52 @@
         projectHistoricalCharts: [],
         projectHistoricalFilters: {
           dateFrom: null,
-          dateTo: null
-        }
+          dateTo: null,
+          preset: null
+        },
+        datePresetOptions: [
+          {
+            id: null,
+            label: "METRICS.DATE_PRESET_CUSTOM",
+            translate: true
+          }, {
+            id: "last_7_days",
+            label: "METRICS.DATE_PRESET_LAST_7_DAYS",
+            translate: true
+          }, {
+            id: "last_14_days",
+            label: "METRICS.DATE_PRESET_LAST_14_DAYS",
+            translate: true
+          }, {
+            id: "last_30_days",
+            label: "METRICS.DATE_PRESET_LAST_30_DAYS",
+            translate: true
+          }, {
+            id: "last_90_days",
+            label: "METRICS.DATE_PRESET_LAST_90_DAYS",
+            translate: true
+          }, {
+            id: "current_month",
+            label: "METRICS.DATE_PRESET_CURRENT_MONTH",
+            translate: true
+          }, {
+            id: "current_semester",
+            label: "METRICS.DATE_PRESET_CURRENT_SEMESTER",
+            translate: true
+          }, {
+            id: "last_semester",
+            label: "METRICS.DATE_PRESET_LAST_SEMESTER",
+            translate: true
+          }, {
+            id: "last_year",
+            label: "METRICS.DATE_PRESET_LAST_YEAR",
+            translate: true
+          }, {
+            id: "all_time",
+            label: "METRICS.DATE_PRESET_ALL_TIME",
+            translate: true
+          }
+        ]
       };
       this.userColorPalette = this.buildUserColorPalette();
       this.metricsCategoryPalettes = {};
@@ -249,7 +294,8 @@
             return;
           }
           filters.dateFrom = null;
-          return filters.dateTo = null;
+          filters.dateTo = null;
+          return filters.preset = null;
         };
       })(this);
       this.scope.clearProjectHistoricalDates = (function(_this) {
@@ -260,7 +306,18 @@
             return;
           }
           filters.dateFrom = null;
-          return filters.dateTo = null;
+          filters.dateTo = null;
+          return filters.preset = null;
+        };
+      })(this);
+      this.scope.applyTeamDatePreset = (function(_this) {
+        return function(presetId) {
+          return _this.applyDatePreset(_this.scope.metricsView.teamHistoricalFilters, presetId);
+        };
+      })(this);
+      this.scope.applyProjectDatePreset = (function(_this) {
+        return function(presetId) {
+          return _this.applyDatePreset(_this.scope.metricsView.projectHistoricalFilters, presetId);
         };
       })(this);
       this.scope.toggleTeamOverviewUser = (function(_this) {
@@ -2134,7 +2191,7 @@
     };
 
     MetricsController.prototype.buildStudentsOverallRadar = function(usersList) {
-      var areaColor, assignedLabel, assignedTasks, borderColor, colorPalette, commits, commitsLabel, dataset, datasets, i, len, modifiedLabel, modifiedLines, ref, ref1, ref2, user;
+      var areaColor, assignedLabel, assignedTasks, borderColor, colorPalette, commits, commitsLabel, closedLabel, closedTasks, dataset, datasets, i, len, ref, ref1, ref2, user;
       if (!(usersList && usersList.length > 0)) {
         return null;
       }
@@ -2143,7 +2200,7 @@
       }
       assignedLabel = ((ref = this.translate) != null ? typeof ref.instant === "function" ? ref.instant("METRICS.RADAR_LABEL_ASSIGNED_TASKS") : void 0 : void 0) || "Assigned Tasks";
       commitsLabel = ((ref1 = this.translate) != null ? typeof ref1.instant === "function" ? ref1.instant("METRICS.RADAR_LABEL_COMMITS") : void 0 : void 0) || "Commits";
-      modifiedLabel = ((ref2 = this.translate) != null ? typeof ref2.instant === "function" ? ref2.instant("METRICS.RADAR_LABEL_MODIFIED_LINES") : void 0 : void 0) || "Modified Lines";
+      closedLabel = ((ref2 = this.translate) != null ? typeof ref2.instant === "function" ? ref2.instant("METRICS.CLOSED_TASKS_LABEL") : void 0 : void 0) || "Closed Tasks";
       datasets = [];
       this.registerUserColors(usersList);
       for (i = 0, len = usersList.length; i < len; i++) {
@@ -2153,10 +2210,10 @@
         areaColor = (colorPalette != null ? colorPalette.fill : void 0) || 'rgba(59, 130, 246, 0.26)';
         assignedTasks = Math.max(0, Math.min(100, parseFloat(user.assignedTasks) || 0));
         commits = Math.max(0, Math.min(100, parseFloat(user.commits) || 0));
-        modifiedLines = Math.max(0, Math.min(100, parseFloat(user.modifiedLines) || 0));
+        closedTasks = Math.max(0, Math.min(100, parseFloat(user.closedTasks) || 0));
         dataset = {
           label: "" + (user.displayName || user.username),
-          data: [assignedTasks, commits, modifiedLines],
+          data: [assignedTasks, commits, closedTasks],
           backgroundColor: areaColor,
           borderColor: borderColor,
           borderWidth: 2,
@@ -2170,7 +2227,7 @@
         datasets.push(dataset);
       }
       return {
-        labels: [assignedLabel, commitsLabel, modifiedLabel],
+        labels: [assignedLabel, commitsLabel, closedLabel],
         datasets: datasets
       };
     };
@@ -3809,6 +3866,111 @@
         title: title,
         chartData: chartData
       };
+    };
+
+
+    /*
+     * Apply a date preset to the given filters object.
+     * Calculates actual from/to dates based on the preset.
+     * @param filters {Object} The filters object to modify
+     * @param presetId {String} The preset identifier
+     */
+
+    MetricsController.prototype.applyDatePreset = function(filters, presetId) {
+      var firstOfMonth, fromDate, month, toDate, today;
+      if (filters == null) {
+        return;
+      }
+      today = new Date();
+      toDate = this.formatDateForInput(today);
+      fromDate = null;
+      switch (presetId) {
+        case "last_7_days":
+          fromDate = this.formatDateForInput(new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000));
+          break;
+        case "last_14_days":
+          fromDate = this.formatDateForInput(new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000));
+          break;
+        case "last_30_days":
+          fromDate = this.formatDateForInput(new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000));
+          break;
+        case "last_90_days":
+          fromDate = this.formatDateForInput(new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000));
+          break;
+        case "last_semester":
+          fromDate = this.formatDateForInput(new Date(today.getTime() - 180 * 24 * 60 * 60 * 1000));
+          break;
+        case "last_year":
+          fromDate = this.formatDateForInput(new Date(today.getTime() - 365 * 24 * 60 * 60 * 1000));
+          break;
+        case "current_month":
+          firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+          fromDate = this.formatDateForInput(firstOfMonth);
+          break;
+        case "current_semester":
+          month = today.getMonth() + 1;
+          if (month >= 9) {
+            fromDate = this.formatDateForInput(new Date(today.getFullYear(), 8, 1));
+          } else if (month >= 2) {
+            fromDate = this.formatDateForInput(new Date(today.getFullYear(), 1, 1));
+          } else {
+            fromDate = this.formatDateForInput(new Date(today.getFullYear() - 1, 8, 1));
+          }
+          break;
+        case "all_time":
+          fromDate = "2020-01-01";
+          break;
+        default:
+          filters.preset = null;
+          return;
+      }
+      filters.preset = presetId;
+      filters.dateFrom = fromDate;
+      return filters.dateTo = toDate;
+    };
+
+
+    /*
+     * Format a Date object to YYYY-MM-DD string for date input
+     */
+
+    MetricsController.prototype.formatDateForInput = function(date) {
+      var day, month, year;
+      if (date == null) {
+        return null;
+      }
+      year = date.getFullYear();
+      month = String(date.getMonth() + 1).padStart(2, '0');
+      day = String(date.getDate()).padStart(2, '0');
+      return year + "-" + month + "-" + day;
+    };
+
+
+    /*
+     * Get human-readable label for the current date range
+     */
+
+    MetricsController.prototype.getDateRangeLabel = function(filters) {
+      var presetOption, ref, ref1;
+      if (filters == null) {
+        return "";
+      }
+      if (filters.preset) {
+        presetOption = (ref = this.scope.metricsView.datePresetOptions) != null ? ref.find(function(opt) {
+          return opt.id === filters.preset;
+        }) : void 0;
+        if ((presetOption != null ? presetOption.label : void 0) && (((ref1 = this.translate) != null ? ref1.instant : void 0) != null)) {
+          return this.translate.instant(presetOption.label);
+        }
+      }
+      if (filters.dateFrom && filters.dateTo) {
+        return filters.dateFrom + " - " + filters.dateTo;
+      } else if (filters.dateFrom) {
+        return "From " + filters.dateFrom;
+      } else if (filters.dateTo) {
+        return "Until " + filters.dateTo;
+      }
+      return "";
     };
 
     MetricsController.prototype.applyTeamHistoricalFilters = function() {

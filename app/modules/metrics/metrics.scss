@@ -1351,7 +1351,7 @@ $metrics-color-slate-600: rgb(71, 85, 105);
     align-items: end;
     display: grid;
     gap: 1.5rem;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     margin-bottom: 2.5rem;
 }
 
@@ -1359,6 +1359,14 @@ $metrics-color-slate-600: rgb(71, 85, 105);
     display: flex;
     flex-direction: column;
     gap: .5rem;
+
+    &.preset-group {
+        min-width: 200px;
+    }
+
+    &.date-group {
+        min-width: 150px;
+    }
 }
 
 .team-historical-filters input[type='date'] {

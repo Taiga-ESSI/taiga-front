@@ -117,12 +117,29 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-team'")
                                 p.description(translate="METRICS.TEAM_HISTORICAL_DESCRIPTION")
 
                             div.team-historical-filters
+                                //- Date preset selector
+                                div.filter-group.preset-group
+                                    label.filter-label(for="teamHistoricalPreset", translate="METRICS.DATE_PRESET_LABEL")
+                                    select#teamHistoricalPreset(
+                                        ng-model="metricsView.teamHistoricalFilters.preset"
+                                        ng-change="applyTeamDatePreset(metricsView.teamHistoricalFilters.preset)"
+                                        ng-options="preset.id as (preset.translate ? (preset.label | translate) : preset.label) for preset in metricsView.datePresetOptions track by preset.id"
+                                    )
+                                //- Custom date range
                                 div.filter-group.date-group
                                     label.filter-label(for="teamHistoricalDateFrom", translate="METRICS.TEAM_HISTORICAL_DATE_FROM")
-                                    input#teamHistoricalDateFrom(type="date", ng-model="metricsView.teamHistoricalFilters.dateFrom")
+                                    input#teamHistoricalDateFrom(
+                                        type="date"
+                                        ng-model="metricsView.teamHistoricalFilters.dateFrom"
+                                        ng-change="metricsView.teamHistoricalFilters.preset = null"
+                                    )
                                 div.filter-group.date-group
                                     label.filter-label(for="teamHistoricalDateTo", translate="METRICS.TEAM_HISTORICAL_DATE_TO")
-                                    input#teamHistoricalDateTo(type="date", ng-model="metricsView.teamHistoricalFilters.dateTo")
+                                    input#teamHistoricalDateTo(
+                                        type="date"
+                                        ng-model="metricsView.teamHistoricalFilters.dateTo"
+                                        ng-change="metricsView.teamHistoricalFilters.preset = null"
+                                    )
                                 div.filter-group.user-filter
                                     label.filter-label(for="teamHistoricalUser", translate="METRICS.TEAM_HISTORICAL_USER_FILTER")
                                     select#teamHistoricalUser(
@@ -138,7 +155,12 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-team'")
                                         ng-options="metric.id as (metric.label | translate) for metric in metricsView.teamHistoricalMetricOptions track by metric.id"
                                     )
                                 div.filter-group.filter-actions
-                                    button.filter-action(type="button", ng-click="clearTeamHistoricalDates()", ng-disabled="!metricsView.teamHistoricalFilters.dateFrom && !metricsView.teamHistoricalFilters.dateTo", translate="METRICS.TEAM_HISTORICAL_CLEAR_DATES")
+                                    button.filter-action(
+                                        type="button"
+                                        ng-click="clearTeamHistoricalDates()"
+                                        ng-disabled="!metricsView.teamHistoricalFilters.dateFrom && !metricsView.teamHistoricalFilters.dateTo && !metricsView.teamHistoricalFilters.preset"
+                                        translate="METRICS.TEAM_HISTORICAL_CLEAR_DATES"
+                                    )
 
                             div.team-historical-grid(ng-if="metricsView.teamHistoricalCharts.length > 0")
                                 div.team-historical-card(ng-repeat="historicalChart in metricsView.teamHistoricalCharts track by historicalChart.id")
