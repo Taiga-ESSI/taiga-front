@@ -1,4 +1,6 @@
-*
-!docker/default.conf
-!docker/conf.json.template
-!docker/config_env_subst.sh
+node_modules
+.git
+.gitignore
+.dockerignore
+Dockerfile
+Dockerfile.dev

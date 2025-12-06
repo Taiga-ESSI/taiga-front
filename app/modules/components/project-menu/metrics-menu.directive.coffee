@@ -45,9 +45,9 @@ angular.module("taigaComponents").directive "tgMetricsMenu", [
                             break
                 
                 # Definir los nuevos símbolos
-                teamMetricsSymbol = '<symbol id="icon-team-metrics" viewBox="0 0 400 400"><path class="path1" d="M120 55a45 45 0 1 0 0 90 45 45 0 0 0 0-90zm0 100c-50 0-90 35-90 80v45h180v-45c0-45-40-80-90-80z"/><path class="path1" d="M280 65a35 35 0 1 0 0 70 35 35 0 0 0 0-70zm0 80c-35 0-65 25-75 55h150v-20c0-35-35-35-75-35z"/><path class="path1" d="M300 280h30v100h-30zm40 40h30v60h-30zm-80 60h30v40h-30z"/></symbol>'
+                teamMetricsSymbol = '<symbol id="icon-team-metrics" viewBox="0 0 400 400"><path class="path1" d="M140 180c33.1 0 60-26.9 60-60s-26.9-60-60-60-60 26.9-60 60 26.9 60 60 60zm0 20c-44.2 0-80 35.8-80 80v20c0 11 9 20 20 20h120c11 0 20-9 20-20v-20c0-44.2-35.8-80-80-80zm140-60c22.1 0 40-17.9 40-40s-17.9-40-40-40-40 17.9-40 40 17.9 40 40 40zm0 20c-25.8 0-48.4 14.9-59.6 36.5 6.6 5.6 12.5 12 17.3 19.1 10.7-5.6 23-9.6 36.3-9.6 33.1 0 60 26.9 60 60v14h26c11 0 20-9 20-20v-14c0-44.2-35.8-80-80-80z"/></symbol>'
                 
-                projectMetricsSymbol = '<symbol id="icon-project-metrics" viewBox="0 0 400 400"><path class="path1" d="M40 80h100l40 40h180c15 0 25 10 25 25v200c0 15-10 25-25 25H40c-15 0-25-10-25-25V105c0-15 10-25 25-25zm60 120h40v120h-40zm80-40h40v160h-40zm80 60h40v100h-40z"/></symbol>'
+                projectMetricsSymbol = '<symbol id="icon-project-metrics" viewBox="0 0 400 400"><path class="path1" d="M200 40C111.6 40 40 111.6 40 200c0 44.1 17.9 84.1 46.9 113.1l28.3-28.3C94.5 264.2 80 233.9 80 200c0-66.3 53.7-120 120-120s120 53.7 120 120c0 33.9-14.5 64.2-35.2 84.8l28.3 28.3C342.1 284.1 360 244.1 360 200C360 111.6 288.4 40 200 40z M200 160c-22.1 0-40 17.9-40 40s17.9 40 40 40 40-17.9 40-40S222.1 160 200 160z M228.3 171.7l64-64-28.3-28.3-64 64L228.3 171.7z"/></symbol>'
                 
                 if existingSvg
                     # Añadir los símbolos al sprite existente
@@ -168,7 +168,7 @@ angular.module("taigaComponents").directive "tgMetricsMenu", [
                     teamSvg = teamLink.querySelector("svg")
                     if teamSvg
                         # Crear SVG inline con el icono de team metrics
-                        teamSvg.innerHTML = '<path d="M120 55a45 45 0 1 0 0 90 45 45 0 0 0 0-90zm0 100c-50 0-90 35-90 80v45h180v-45c0-45-40-80-90-80z M280 65a35 35 0 1 0 0 70 35 35 0 0 0 0-70zm0 80c-35 0-65 25-75 55h150v-20c0-35-35-35-75-35z M300 280h30v100h-30zm40 40h30v60h-30zm-80 60h30v40h-30z"/>'
+                        teamSvg.innerHTML = '<path d="M140 180c33.1 0 60-26.9 60-60s-26.9-60-60-60-60 26.9-60 60 26.9 60 60 60zm0 20c-44.2 0-80 35.8-80 80v20c0 11 9 20 20 20h120c11 0 20-9 20-20v-20c0-44.2-35.8-80-80-80zm140-60c22.1 0 40-17.9 40-40s-17.9-40-40-40-40 17.9-40 40 17.9 40 40 40zm0 20c-25.8 0-48.4 14.9-59.6 36.5 6.6 5.6 12.5 12 17.3 19.1 10.7-5.6 23-9.6 36.3-9.6 33.1 0 60 26.9 60 60v14h26c11 0 20-9 20-20v-14c0-44.2-35.8-80-80-80z"/>'
                         teamSvg.setAttribute("viewBox", "0 0 400 400")
                         console.log("[MetricsMenu] Team SVG convertido a inline")
                 
@@ -186,7 +186,7 @@ angular.module("taigaComponents").directive "tgMetricsMenu", [
                     projectSvg = projectLink.querySelector("svg")
                     if projectSvg
                         # Crear SVG inline con el icono de project metrics
-                        projectSvg.innerHTML = '<path d="M40 80h100l40 40h180c15 0 25 10 25 25v200c0 15-10 25-25 25H40c-15 0-25-10-25-25V105c0-15 10-25 25-25zm60 120h40v120h-40zm80-40h40v160h-40zm80 60h40v100h-40z"/>'
+                        projectSvg.innerHTML = '<path d="M200 40C111.6 40 40 111.6 40 200c0 44.1 17.9 84.1 46.9 113.1l28.3-28.3C94.5 264.2 80 233.9 80 200c0-66.3 53.7-120 120-120s120 53.7 120 120c0 33.9-14.5 64.2-35.2 84.8l28.3 28.3C342.1 284.1 360 244.1 360 200C360 111.6 288.4 40 200 40z M200 160c-22.1 0-40 17.9-40 40s17.9 40 40 40 40-17.9 40-40S222.1 160 200 160z M228.3 171.7l64-64-28.3-28.3-64 64L228.3 171.7z"/>'
                         projectSvg.setAttribute("viewBox", "0 0 400 400")
                         console.log("[MetricsMenu] Project SVG convertido a inline")
                 

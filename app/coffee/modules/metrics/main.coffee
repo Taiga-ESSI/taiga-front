@@ -364,6 +364,17 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         return false
 
     loadProject: ->
+        # Ensure projectService has the project loaded
+        unless @projectService.project
+            console.warn "Metrics: Project not loaded in service, attempting fallback load"
+            return @projectService.setProjectBySlug(@params.pslug).then =>
+                @.loadProject()
+            .catch (err) =>
+                console.error "Metrics: Failed to load project", err
+                @scope.metricsView.error = "METRICS.LOAD_ERROR"
+                @scope.metricsView.loading = false
+                return @q.reject(err)
+
         project = @projectService.project.toJS()
 
         @scope.projectId = project.id
@@ -1978,13 +1989,17 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             return 'rgba(34, 197, 94, 0.9)'   # Green
 
     loadInitialData: ->
-        project = @.loadProject()
-        configPromise = @.fetchProjectConfig()
-
-        return @q.all([
-            @q.when(project)
-            configPromise
-        ])
+        @scope.metricsView.loading = true
+        
+        # Wrap in a promise to handle both synchronous and asynchronous project loading
+        return @q.when(@.loadProject())
+            .then (project) =>
+                return @.fetchProjectConfig()
+            .catch (error) =>
+                console.error "Metrics: Error in initial data load", error
+                @scope.metricsView.loading = false
+                @scope.metricsView.error = "METRICS.LOAD_ERROR"
+                return @q.reject(error)
 
     resolveErrorKey: (value, defaultKey) ->
         return defaultKey unless value

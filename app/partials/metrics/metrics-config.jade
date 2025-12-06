@@ -5,18 +5,18 @@ div.metrics-config-page
     header.metrics-config-header
         div.titles
             p.overline Metrics · Configuration
-            h1 Metrics routing for {{ (vm.scope.project && vm.scope.project.name) || vm.scope.projectSlug }}
-            p.help-text Clasifica las métricas recibidas desde el proveedor EXTERNAL en los apartados de equipo y proyecto.
+            h1 {{ (vm.scope.project && vm.scope.project.name) || vm.scope.projectSlug }}
+            p.help-text Configure how metrics are displayed and where they come from.
         div.header-actions
-            button.button.button-secondary(type="button", ng-click="vm.loadMetrics()", ng-disabled="vm.scope.configLoading")
+            button.button.button-secondary(type="button", ng-click="vm.loadMetrics()", ng-disabled="vm.scope.configLoading || vm.scope.loading")
                 i.icon.icon-refresh
-                span Reload from API
+                span Reload
             button.button(type="button", ng-click="vm.exportConfig()")
                 i.icon.icon-download
-                span Export JSON
+                span Export
             button.button.button-primary(type="button", ng-click="vm.saveConfig()", ng-disabled="vm.scope.savingConfig")
                 i.icon.icon-check
-                span {{ vm.scope.savingConfig ? 'Saving…' : 'Save & Share' }}
+                span {{ vm.scope.savingConfig ? 'Saving…' : 'Save Changes' }}
 
     div.config-panels
         section.config-card.status-card
@@ -28,21 +28,29 @@ div.metrics-config-page
                     span.label Provider
                     span.value {{ vm.scope.config.provider | uppercase }}
                 div.status-item
-                    span.label Auth
-                    span.value(ng-class="{'text-success': !vm.scope.authRequired && !vm.scope.loading, 'text-warn': vm.scope.authRequired}") {{ vm.scope.authRequired ? 'Login required' : 'OK' }}
+                    span.label Auth Status
+                    span.value(ng-class="{'text-success': !vm.scope.authRequired && !vm.scope.loading, 'text-warn': vm.scope.authRequired}") {{ vm.scope.authRequired ? 'Login required' : 'Connected' }}
                 div.status-item
-                    span.label Metrics loaded
+                    span.label Metrics Loaded
                     span.value {{ vm.scope.metrics.length || 0 }}
-                div.status-item
-                    span.label Team defaults
-                    span.value {{ (vm.scope.metrics | filter:{defaultType:'team'}).length }}
-                div.status-item
-                    span.label Project defaults
-                    span.value {{ (vm.scope.metrics | filter:{defaultType:'project'}).length }}
-                div.status-item
+                
+                //- Sprint info for Internal Provider
+                div.status-item(ng-if="vm.scope.config.provider == 'internal'")
+                    span.label Current Sprint
+                    span.value(ng-if="vm.scope.currentSprint") {{ vm.scope.currentSprint.name }}
+                    span.value.text-warn(ng-if="!vm.scope.currentSprint") No active sprint
+                div.status-item(ng-if="vm.scope.config.provider == 'internal' && vm.scope.currentSprint")
+                    span.label Sprint Dates
+                    span.value {{ vm.scope.currentSprint.estimated_start | date:'mediumDate' }} - {{ vm.scope.currentSprint.estimated_finish | date:'mediumDate' }}
+
+                div.status-item(ng-if="vm.scope.config.provider == 'external'")
                     span.label External ID
                     span.value {{ vm.scope.externalProjectId || vm.scope.projectSlug }}
-            div.helper-text Data comes directly from the external API call for this project.
+            
+            div.helper-text(ng-if="vm.scope.config.provider == 'internal'") 
+                | Internal metrics are calculated based on the <strong>current active sprint</strong>.
+            div.helper-text(ng-if="vm.scope.config.provider == 'external'") 
+                | Data comes directly from the external API call for this project.
 
         section.config-card.mapping-card
             div.card-head

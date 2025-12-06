@@ -8,11 +8,11 @@
  * Copyright (c) 2021-present Kaleidos
  */
 
-(function() {
+(function () {
   angular.module("taigaComponents").directive("tgMetricsMenu", [
-    "$timeout", "$translate", "$rootScope", "$location", function($timeout, $translate, $rootScope, $location) {
+    "$timeout", "$translate", "$rootScope", "$location", function ($timeout, $translate, $rootScope, $location) {
       var link;
-      link = function(scope, element) {
+      link = function (scope, element) {
         var createSeparateMenuItems, deregisterLocationListener, extractBaseHref, injectCustomIcons, locateAttempts, locateMetricsItem, maxLocateAttempts, maxSetupAttempts, mutationObserver, navElement, originalMetricsItem, projectMetricsItem, setup, setupAttempts, teamMetricsItem, translations, updateActiveState;
         navElement = null;
         originalMetricsItem = null;
@@ -28,7 +28,7 @@
           team: $translate.instant("METRICS.TEAM_METRICS_TITLE"),
           project: $translate.instant("METRICS.PROJECT_METRICS_TITLE")
         };
-        injectCustomIcons = function() {
+        injectCustomIcons = function () {
           var allSvgs, existingSvg, i, j, len, len1, newSprite, projectMetricsSymbol, svg, symbol, symbolElement, symbols, teamMetricsSymbol, tempDiv;
           existingSvg = document.querySelector('svg[style*="display: none"], svg.svg-sprite, svg#svg-sprite');
           if (!existingSvg) {
@@ -43,7 +43,7 @@
             }
           }
           teamMetricsSymbol = '<symbol id="icon-team-metrics" viewBox="0 0 400 400"><path class="path1" d="M120 55a45 45 0 1 0 0 90 45 45 0 0 0 0-90zm0 100c-50 0-90 35-90 80v45h180v-45c0-45-40-80-90-80z"/><path class="path1" d="M280 65a35 35 0 1 0 0 70 35 35 0 0 0 0-70zm0 80c-35 0-65 25-75 55h150v-20c0-35-35-35-75-35z"/><path class="path1" d="M300 280h30v100h-30zm40 40h30v60h-30zm-80 60h30v40h-30z"/></symbol>';
-          projectMetricsSymbol = '<symbol id="icon-project-metrics" viewBox="0 0 400 400"><path class="path1" d="M40 80h100l40 40h180c15 0 25 10 25 25v200c0 15-10 25-25 25H40c-15 0-25-10-25-25V105c0-15 10-25 25-25zm60 120h40v120h-40zm80-40h40v160h-40zm80 60h40v100h-40z"/></symbol>';
+          projectMetricsSymbol = '<symbol id="icon-project-metrics" viewBox="0 0 400 400"><path class="path1" d="M200 40C111.6 40 40 111.6 40 200c0 44.1 17.9 84.1 46.9 113.1l28.3-28.3C94.5 264.2 80 233.9 80 200c0-66.3 53.7-120 120-120s120 53.7 120 120c0 33.9-14.5 64.2-35.2 84.8l28.3 28.3C342.1 284.1 360 244.1 360 200C360 111.6 288.4 40 200 40z M200 160c-22.1 0-40 17.9-40 40s17.9 40 40 40 40-17.9 40-40S222.1 160 200 160z M228.3 171.7l64-64-28.3-28.3-64 64L228.3 171.7z"/></symbol>';
           if (existingSvg) {
             if (!document.getElementById('icon-team-metrics')) {
               console.log("[MetricsMenu] Inyectando icon-team-metrics en sprite existente");
@@ -84,7 +84,7 @@
           console.log("[MetricsMenu] Verificación - icon-team-metrics existe:", !!document.getElementById('icon-team-metrics'));
           return console.log("[MetricsMenu] Verificación - icon-project-metrics existe:", !!document.getElementById('icon-project-metrics'));
         };
-        extractBaseHref = function(originalHref) {
+        extractBaseHref = function (originalHref) {
           var baseHref;
           if (!originalHref) {
             return "";
@@ -92,7 +92,7 @@
           baseHref = originalHref.replace(/\/(team|project)(\/)?$/, "");
           return baseHref;
         };
-        updateActiveState = function() {
+        updateActiveState = function () {
           var currentPath, isProjectActive, isTeamActive, ref, ref1, ref2, ref3;
           if (!(teamMetricsItem && projectMetricsItem)) {
             return;
@@ -125,7 +125,7 @@
           }
           return console.log("[MetricsMenu] Estado actualizado - Team active:", isTeamActive, "Project active:", isProjectActive);
         };
-        createSeparateMenuItems = function() {
+        createSeparateMenuItems = function () {
           var baseHref, originalHref, originalLink, parentList, projectLink, projectSvg, projectText, teamLink, teamSvg, teamText;
           console.log("[MetricsMenu] createSeparateMenuItems llamado");
           if (!originalMetricsItem) {
@@ -177,7 +177,7 @@
             }
             projectSvg = projectLink.querySelector("svg");
             if (projectSvg) {
-              projectSvg.innerHTML = '<path d="M40 80h100l40 40h180c15 0 25 10 25 25v200c0 15-10 25-25 25H40c-15 0-25-10-25-25V105c0-15 10-25 25-25zm60 120h40v120h-40zm80-40h40v160h-40zm80 60h40v100h-40z"/>';
+              projectSvg.innerHTML = '<path d="M200 40C111.6 40 40 111.6 40 200c0 44.1 17.9 84.1 46.9 113.1l28.3-28.3C94.5 264.2 80 233.9 80 200c0-66.3 53.7-120 120-120s120 53.7 120 120c0 33.9-14.5 64.2-35.2 84.8l28.3 28.3C342.1 284.1 360 244.1 360 200C360 111.6 288.4 40 200 40z M200 160c-22.1 0-40 17.9-40 40s17.9 40 40 40 40-17.9 40-40S222.1 160 200 160z M228.3 171.7l64-64-28.3-28.3-64 64L228.3 171.7z"/>';
               projectSvg.setAttribute("viewBox", "0 0 400 400");
               console.log("[MetricsMenu] Project SVG convertido a inline");
             }
@@ -196,22 +196,22 @@
           console.log("[MetricsMenu] Item original eliminado. Proceso completado!");
           updateActiveState();
           if (teamLink != null) {
-            teamLink.addEventListener("click", function() {
+            teamLink.addEventListener("click", function () {
               return $timeout(updateActiveState, 100);
             });
           }
           if (projectLink != null) {
-            projectLink.addEventListener("click", function() {
+            projectLink.addEventListener("click", function () {
               return $timeout(updateActiveState, 100);
             });
           }
-          deregisterLocationListener = $rootScope.$on("$locationChangeSuccess", function() {
+          deregisterLocationListener = $rootScope.$on("$locationChangeSuccess", function () {
             return $timeout(updateActiveState, 0);
           });
           window.addEventListener("popstate", updateActiveState);
           return window.addEventListener("hashchange", updateActiveState);
         };
-        locateMetricsItem = function() {
+        locateMetricsItem = function () {
           var icon, iconSelector;
           locateAttempts++;
           console.log("[MetricsMenu] Buscando elemento de métricas... (intento " + locateAttempts + ")");
@@ -230,7 +230,7 @@
             return console.error("[MetricsMenu] No se pudo encontrar el elemento de métricas después de " + maxLocateAttempts + " intentos");
           }
         };
-        setup = function() {
+        setup = function () {
           var loader;
           setupAttempts++;
           console.log("[MetricsMenu] Iniciando setup... (intento " + setupAttempts + ")");
@@ -271,7 +271,7 @@
           return $timeout(locateMetricsItem, 300);
         };
         setup();
-        return scope.$on("$destroy", function() {
+        return scope.$on("$destroy", function () {
           if (mutationObserver != null) {
             mutationObserver.disconnect();
           }

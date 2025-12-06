@@ -15,11 +15,12 @@ class MetricsConfigController
         "$q",
         "tgMetricsConfiguration",
         "tgProjectService",
+        "$tgResources",
         "$translate",
         "tgAppMetaService"
     ]
 
-    constructor: (@scope, @params, @http, @urls, @$q, @metricsConfig, @projectService, @translate, @appMetaService) ->
+    constructor: (@scope, @params, @http, @urls, @$q, @metricsConfig, @projectService, @rs, @translate, @appMetaService) ->
         @scope.projectSlug = @params.pslug
         @scope.loading = true
         @scope.metrics = []
@@ -90,6 +91,7 @@ class MetricsConfigController
         
         @.loadServerConfig().finally =>
             @.checkAuthAndLoad()
+            @.loadSprints()
 
     checkAuthAndLoad: ->
         @scope.loading = true
@@ -260,5 +262,21 @@ class MetricsConfigController
         @scope.config.provider = if @scope.config.provider is 'internal' then 'external' else 'internal'
         @.resetMetricsState()
         @.checkAuthAndLoad() # Re-check auth and load metrics from new provider
+
+    loadSprints: ->
+        params = {closed: false}
+        @rs.sprints.list(@scope.projectId, params).then (result) =>
+            sprints = result.milestones
+            @scope.sprints = sprints
+            @scope.currentSprint = @.findCurrentSprint(sprints)
+
+    findCurrentSprint: (sprints) ->
+        return null unless sprints and sprints.length
+        currentDate = new Date().getTime()
+
+        return _.find sprints, (sprint) ->
+            start = moment(sprint.estimated_start, 'YYYY-MM-DD').format('x')
+            end = moment(sprint.estimated_finish, 'YYYY-MM-DD').format('x')
+            return currentDate >= start && currentDate <= end
 
 module.controller("MetricsConfigController", MetricsConfigController)
