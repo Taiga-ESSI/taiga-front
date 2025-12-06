@@ -93,6 +93,7 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-team'")
                                         button.team-user-chip(type="button", ng-repeat="user in metricsView.teamOverview.uiUsers track by user.username", ng-click="toggleTeamOverviewUser(user.username)", ng-class="{'inactive': !metricsView.teamOverview.activeUsers[user.username]}")
                                             span.user-color(style="background-color: {{ user.color }}; border-color: {{ user.borderColor }};")
                                             span {{ user.displayName }}
+
                             
                             div.team-section(ng-if="metricsView.data.metricsCategories && Object.keys(metricsView.data.metricsCategories).length > 0")
                                 h3(translate="METRICS.METRICS_CATEGORIES")
@@ -131,14 +132,18 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-team'")
                                     input#teamHistoricalDateTo(type="date", ng-model="metricsView.teamHistoricalFilters.dateTo")
                                 div.filter-group.user-filter
                                     label.filter-label(for="teamHistoricalUser", translate="METRICS.TEAM_HISTORICAL_USER_FILTER")
-                                    select#teamHistoricalUser(ng-model="metricsView.teamHistoricalFilters.selectedUser", ng-change="applyTeamHistoricalFilters()")
-                                        option(value="", translate="METRICS.ALL_USERS")
-                                        option(ng-repeat="user in metricsView.teamHistoricalFilters.availableUsers track by user", value="{{ user }}") {{ user }}
+                                    select#teamHistoricalUser(
+                                        ng-model="metricsView.teamHistoricalFilters.user"
+                                        ng-change="applyTeamHistoricalFilters()"
+                                        ng-options="option.id as (option.translate ? (option.label | translate) : option.label) for option in metricsView.teamHistoricalUserOptions track by option.id"
+                                    )
                                 div.filter-group.metric-filter
                                     label.filter-label(for="teamHistoricalMetric", translate="METRICS.TEAM_HISTORICAL_METRIC_FILTER")
-                                    select#teamHistoricalMetric(ng-model="metricsView.teamHistoricalFilters.selectedMetric", ng-change="applyTeamHistoricalFilters()")
-                                        option(value="", translate="METRICS.ALL_METRICS")
-                                        option(ng-repeat="metric in metricsView.teamHistoricalFilters.availableMetrics track by metric.id", value="{{ metric.id }}") {{ metric.label }}
+                                    select#teamHistoricalMetric(
+                                        ng-model="metricsView.teamHistoricalFilters.metric"
+                                        ng-change="applyTeamHistoricalFilters()"
+                                        ng-options="metric.id as (metric.label | translate) for metric in metricsView.teamHistoricalMetricOptions track by metric.id"
+                                    )
                                 div.filter-group.filter-actions
                                     button.filter-action(type="button", ng-click="clearTeamHistoricalDates()", ng-disabled="!metricsView.teamHistoricalFilters.dateFrom && !metricsView.teamHistoricalFilters.dateTo", translate="METRICS.TEAM_HISTORICAL_CLEAR_DATES")
 

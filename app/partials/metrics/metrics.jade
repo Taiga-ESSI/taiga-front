@@ -127,30 +127,30 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics'")
 
                             div.project-tab-panels(ng-switch="metricsView.projectSubTab")
                                 div.project-overview-panel(ng-switch-when="overview")
-                                    div.project-metrics-grid(ng-if="metricsView.data.projectMetrics && metricsView.data.projectMetrics.length > 0")
-                                        div.project-metric-card(ng-repeat="metric in metricsView.data.projectMetrics track by metric.id")
-                                            div.project-metric-header
-                                                h3.metric-name {{ metric.name }}
-                                            div.project-metric-gauge
-                                                div.project-metric-body
-                                                    div.project-metric-chart
-                                                        tg-speedometer-chart(
-                                                            value="metric.relativePercent || metric.value"
-                                                            raw-value="metric.absoluteValue"
-                                                            max-value="metric.maxReferenceValue"
-                                                            label="{{ metric.name }}"
-                                                            metric-id="{{ metric.id }}"
-                                                            color="metric.categoryColor"
-                                                        )
-                                                    div.project-metric-insights
-                                                        div.metric-value-wrapper
-                                                            span.metric-value {{ metric.displayValuePrecise || metric.displayValueRounded }}
-                                                            span.metric-unit %
-                                                        p.metric-description(ng-if="metric.description") {{ metric.description }}
+                            div.project-metrics-grid(ng-if="metricsView.data.projectMetrics && metricsView.data.projectMetrics.length > 0")
+                                div.project-metric-card(ng-repeat="metric in metricsView.data.projectMetrics track by metric.id")
+                                    div.project-metric-header
+                                        h3.metric-name {{ metric.name }}
+                                    div.project-metric-gauge
+                                        div.project-metric-body
+                                            div.project-metric-chart
+                                                tg-speedometer-chart(
+                                                    value="metric.ratioValue || (metric.absoluteValue / 100)"
+                                                    raw-value="metric.ratioValue || (metric.absoluteValue / 100)"
+                                                    max-value="1"
+                                                    label="{{ metric.name }}"
+                                                    metric-id="{{ metric.id }}"
+                                                    color="metric.categoryColor"
+                                                    palette="metric.categorySegments"
+                                                )
+                                            div.project-metric-insights
+                                                div.metric-value-wrapper
+                                                    span.metric-value {{ metric.ratioDisplayValuePrecise || metric.ratioValue }}
+                                                p.metric-description(ng-if="metric.description") {{ metric.description }}
 
-                                    div.no-data(ng-if="!metricsView.data.projectMetrics || metricsView.data.projectMetrics.length === 0")
-                                        div.empty-state
-                                            i.icon.icon-info
+                            div.no-data(ng-if="!metricsView.data.projectMetrics || metricsView.data.projectMetrics.length === 0")
+                                div.empty-state
+                                    i.icon.icon-info
                                             p(translate="METRICS.NO_DATA")
 
                                 div.project-historical-panel(ng-switch-when="historical")
@@ -212,7 +212,7 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics'")
                                             div.team-chart-container(ng-if="metricsView.teamOverview.filteredClosedTasks && metricsView.teamOverview.filteredClosedTasks.labels && metricsView.teamOverview.filteredClosedTasks.labels.length > 0")
                                                 h4.chart-title(translate="METRICS.CLOSED_TASKS_COMPARISON_TITLE")
                                                 tg-bar-chart(data="metricsView.teamOverview.filteredClosedTasks")
-                                    
+
                                     div.team-section(ng-if="metricsView.data.metricsCategories && Object.keys(metricsView.data.metricsCategories).length > 0")
                                         h3(translate="METRICS.METRICS_CATEGORIES")
                                         ul.key-value-list

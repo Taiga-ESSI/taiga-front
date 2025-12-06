@@ -65,6 +65,17 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         @metricsHooks = _.defaults(@metricsHooks or {}, fallbackHooks)
 
+        providerResolver = @metricsConfig?.resolveProvider
+        if angular.isFunction(providerResolver)
+            @metricsProvider = providerResolver.call(@metricsConfig)
+        else
+            @metricsProvider = @metricsConfig?.provider or "external"
+
+        if angular.isString(@metricsProvider)
+            @metricsProvider = @metricsProvider.toLowerCase()
+        else
+            @metricsProvider = "external"
+
         @scope.metricsAuth =
             authenticated: false
             username: null
@@ -225,7 +236,10 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         @scope.metricsAuth.error = null
 
         url = @urls.resolve("metrics-status")
-        @http.get(url, null, {withCredentials: true})
+        params =
+            source: @metricsProvider
+
+        @http.get(url, params, {withCredentials: true})
             .then (response) =>
                 data = response?.data || {}
                 if data.authenticated
@@ -254,6 +268,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         payload = {
             username: username
             project: externalId
+            source: @metricsProvider
         }
 
         @scope.metricsAuth.loading = true
@@ -282,7 +297,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         @scope.metricsAuth.error = null
 
         url = @urls.resolve("metrics-logout")
-        @http.post(url, null, null, {withCredentials: true})
+        payload =
+            source: @metricsProvider
+        @http.post(url, payload, null, {withCredentials: true})
             .then =>
                 @scope.metricsAuth.loading = false
                 @scope.metricsAuth.authenticated = false
@@ -310,6 +327,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         params =
             project: projectSlug
+            source: @metricsProvider
 
         if externalId
             params.external = externalId
@@ -344,6 +362,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 @metricsCategoryPalettes = @.buildMetricCategoryPalettes(metricsCategoriesData)
 
                 processedMetrics = @.processGessiMetrics(data.metrics or [])
+                displayMetricGroups = @.buildMetricDisplayGroups(data.metrics or [])
                 projectMetricsList = @.prepareProjectMetrics(data.metrics or [])
                 studentsRaw = data.students
                 
@@ -407,6 +426,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                     rawStudents: studentsRaw,
                     strategicIndicators: processedStrategicIndicators,
                     qualityFactors: processedQualityFactors,
+                    projectMetricGroups: displayMetricGroups.project,
+                    teamMetricGroups: displayMetricGroups.team,
                     hours: hoursData,
                     hoursChart: hoursChart,
                     studentsOverallRadar: studentsOverallRadar,
@@ -470,6 +491,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         params =
             project: projectSlug
+            source: @metricsProvider
 
         if externalId
             params.external = externalId
@@ -1077,10 +1099,21 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             if entry
                 collected.push(entry)
 
+        # Si no hay coincidencias en el orden predefinido, usamos métricos globales evitando los de usuario/equipo.
         if collected.length is 0
-            for metric in metricsArray when metric?.id? and metric.id.indexOf("_") is -1
+            seen = {}
+            userMetricPrefixes = ["assignedtasks_", "closedtasks_", "totalus_", "completedus_"]
+            for metric in metricsArray when metric?.id?
+                idLower = metric.id.toString().toLowerCase()
+                # Descarta métricos per-usuario (Team) para no duplicar en Project
+                isUserMetric = userMetricPrefixes.some (prefix) -> idLower.indexOf(prefix) is 0
+                if isUserMetric or (angular.isArray(metric.qualityFactors) and metric.qualityFactors.indexOf("Team") isnt -1)
+                    continue
+                continue if seen[metric.id]
                 entry = @.buildProjectMetricEntry(metric)
-                collected.push(entry) if entry
+                if entry
+                    collected.push(entry)
+                    seen[metric.id] = true
 
         context =
             metrics: collected
@@ -1121,11 +1154,152 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         matchedColor or null
 
+    buildMetricCategorySegments: (categoryName) ->
+        return null unless categoryName?
+        key = @.normalizeCategoryKey(categoryName)
+        palette = if key then @metricsCategoryPalettes?[key] else null
+        return null unless palette? and palette.length
+
+        segments = []
+        lastThreshold = 0
+
+        for entry in palette when entry?
+            upper = Number(entry.upperThreshold)
+            continue unless isFinite(upper)
+
+            clamped = Math.max(lastThreshold, Math.min(Math.max(upper, 0), 1))
+            segmentRatio = clamped - lastThreshold
+            continue unless segmentRatio > 0
+
+            segments.push({
+                color: entry.color or "#2563EB"
+                value: segmentRatio
+                upperThreshold: clamped
+            })
+
+            lastThreshold = clamped
+
+        if lastThreshold < 1
+            remainderRatio = 1 - lastThreshold
+            if remainderRatio > 0
+                fallbackColor = palette[palette.length - 1]?.color or "#CBD5F5"
+                segments.push({
+                    color: fallbackColor
+                    value: remainderRatio
+                    upperThreshold: 1
+                })
+
+        if segments.length then segments else null
+
+    isUserMetricId: (metricId) ->
+        return false unless metricId?
+        lowerId = metricId.toString().toLowerCase()
+        prefixes = [
+            "assignedtasks_"
+            "closedtasks_"
+            "completedtasks_"
+            "commits_"
+            "modifiedlines_"
+            "completedus_"
+            "totalus_"
+            "tasksratio_"
+        ]
+        prefixes.some (prefix) -> lowerId.indexOf(prefix) is 0
+
+    buildMetricDisplayGroups: (rawMetrics) ->
+        groups =
+            project: []
+            team: []
+
+        return groups unless angular.isArray(rawMetrics) and rawMetrics.length
+
+        projectBuckets = {}
+        teamBuckets = {}
+        projectUnassigned = []
+        teamUnassigned = []
+
+        pushMetric = (bucket, name, entry) ->
+            bucket[name] ?= []
+            bucket[name].push(angular.copy(entry))
+
+        for metric in rawMetrics when metric?
+            normalizedValue = @.normalizeMetricValue(metric.value)
+            ratioValue = Math.max(0, Math.min(normalizedValue / 100, 1))
+
+            entry =
+                id: metric.id or metric.name
+                label: metric.name or @.formatMetricLabel(metric.id)
+                ratio: ratioValue
+                formattedRatio: Number(ratioValue or 0).toFixed(2)
+                description: metric.description
+                rawValue: normalizedValue
+                raw: metric
+
+            isUserMetric = @.isUserMetricId(metric.id)
+            targetBuckets = if isUserMetric then teamBuckets else projectBuckets
+            targetUnassigned = if isUserMetric then teamUnassigned else projectUnassigned
+
+            if angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
+                for factorName in metric.qualityFactors when factorName
+                    pushMetric(targetBuckets, factorName, entry)
+            else
+                targetUnassigned.push(angular.copy(entry))
+
+        groups.project = @.convertMetricBucketsToGroups(projectBuckets, projectUnassigned, false)
+        groups.team = @.convertMetricBucketsToGroups(teamBuckets, teamUnassigned, true)
+
+        groups
+
+    convertMetricBucketsToGroups: (buckets, unassignedList, isTeam) ->
+        result = []
+
+        for own bucketName, metricsList of buckets
+            continue unless angular.isArray(metricsList) and metricsList.length > 0
+            sortedMetrics = metricsList.slice().sort (a, b) ->
+                aLabel = (a?.label or "").toString().toLowerCase()
+                bLabel = (b?.label or "").toString().toLowerCase()
+                if aLabel < bLabel then -1 else if aLabel > bLabel then 1 else 0
+
+            label = @.formatMetricCategoryLabel(bucketName)
+            result.push({
+                id: "#{if isTeam then 'team' else 'project'}::#{bucketName}"
+                name: bucketName
+                label: label
+                metrics: sortedMetrics
+            })
+
+        result.sort (a, b) ->
+            aLabel = (a?.label or "").toString().toLowerCase()
+            bLabel = (b?.label or "").toString().toLowerCase()
+            if aLabel < bLabel then -1 else if aLabel > bLabel then 1 else 0
+
+        if angular.isArray(unassignedList) and unassignedList.length > 0
+            sortedFallback = unassignedList.slice().sort (a, b) ->
+                aLabel = (a?.label or "").toString().toLowerCase()
+                bLabel = (b?.label or "").toString().toLowerCase()
+                if aLabel < bLabel then -1 else if aLabel > bLabel then 1 else 0
+
+            label = if @translate?.instant?
+                @translate.instant("METRICS.METRIC_GROUP_UNASSIGNED")
+            else
+                "Metrics not associated to any factor"
+
+            result.push({
+                id: "#{if isTeam then 'team' else 'project'}::uncategorized"
+                name: "__uncategorized__"
+                label: label
+                metrics: sortedFallback
+            })
+
+        result
+
     buildProjectMetricEntry: (metric) ->
         return null unless metric
 
         normalizedValue = @.normalizeMetricValue(metric.value)
         numericValue = if isNaN(normalizedValue) then 0 else normalizedValue
+        ratioValue = Math.max(0, numericValue / 100)
+        ratioValue = Math.min(1, ratioValue)
 
         # Use value_description if provided to avoid rounding issues, but keep normalized fallback
         preciseValue = numericValue
@@ -1140,6 +1314,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         categoryName = metric.categoryName or metric.category_name or metric.category?.name or metric.category
         categoryColor = @.resolveMetricCategoryColor(categoryName, preciseValue or numericValue)
+        categorySegments = @.buildMetricCategorySegments(categoryName)
 
         return {
             id: metric.id
@@ -1151,12 +1326,16 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             displayValuePrecise: formattedPrecise
             absoluteDisplayValueRounded: roundedValue
             absoluteDisplayValuePrecise: formattedPrecise
+            ratioValue: ratioValue
+            ratioDisplayValueRounded: Math.round(ratioValue * 100) / 100
+            ratioDisplayValuePrecise: Number(ratioValue or 0).toFixed(2)
             minLabel: "0%"
             maxLabel: "100%"
             qualityFactor: if angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0 then metric.qualityFactors[0] else null
             raw: metric
             categoryName: categoryName
             categoryColor: categoryColor
+            categorySegments: categorySegments
         }
     
     scaleProjectMetricsByProjectMax: (metricsArray) ->
