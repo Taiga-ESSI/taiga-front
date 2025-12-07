@@ -297,16 +297,7 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
         }
     )
 
-    # Pol Alcoverro added - Metrics
-    $routeProvider.when("/project/:pslug/metrics/config",
-        {
-            templateUrl: "metrics/metrics-config.html",
-            loader: true,
-            section: "metrics",
-            controller: "MetricsConfigController",
-            controllerAs: "vm"
-        }
-    )
+
 
     $routeProvider.when("/project/:pslug/metrics",
         {
