@@ -97,7 +97,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             isNewProject: false
             data: null
             errors: {}
-            activeTab: "team"
+            activeTab: if @location.path().indexOf('/metrics/project') != -1 then 'project' else 'team'
             showHistorical: false
             showTesting: false
             historicalExpanded: {}  # Control de acordeón para secciones históricas

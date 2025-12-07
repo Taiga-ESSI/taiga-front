@@ -141,6 +141,8 @@ attachGoogleLogin = (options={}) ->
 
 class LoginPage
     @.$inject = [
+        '$scope',
+        '$translate',
         'tgCurrentUserService',
         '$location',
         '$tgNavUrls',
@@ -148,7 +150,11 @@ class LoginPage
         '$tgAuth'
     ]
 
-    constructor: (currentUserService, $location, $navUrls, $routeParams, $auth) ->
+    constructor: ($scope, $translate, currentUserService, $location, $navUrls, $routeParams, $auth) ->
+        $scope.getAccessProblemsUrl = ->
+            lang = $translate.use()
+            return "https://identitatdigital.upc.edu/gcredencials/?lang=#{lang}"
+
         if currentUserService.isAuthenticated()
             if not $routeParams['force_login']
                 url = $navUrls.resolve("home")
@@ -387,7 +393,7 @@ PublicRegisterMessageDirective = ($config, $navUrls, $routeParams, templates) ->
         if not publicRegisterEnabled
             return ""
 
-        url = $navUrls.resolve("register")
+        url = $navUrls.resolve("login")
 
         if $routeParams['force_next']
             nextUrl = encodeURIComponent($routeParams['force_next'])
@@ -480,6 +486,9 @@ LoginDirective = ($auth, $confirm, $location, $config, $routeParams, $navUrls, $
         ###
 
         window.prerenderReady = true
+
+        $scope.changeLanguage = (lang) ->
+            $translate.use(lang)
 
         $scope.$on "$destroy", ->
             $el.off()

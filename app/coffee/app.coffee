@@ -311,6 +311,7 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
             templateUrl: "metrics/metrics-team.html",
             loader: true,
             section: "metrics"
+            controller: "MetricsController"
         }
     )
 
@@ -320,6 +321,7 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
             templateUrl: "metrics/metrics-project.html",
             loader: true,
             section: "metrics"
+            controller: "MetricsController"
         }
     )
 

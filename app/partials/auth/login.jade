@@ -11,8 +11,19 @@ div.wrapper
     div.auth
         div.auth-container
             div.logo-svg
-                include ../../svg/logo-color.svg
-            h1.logo Taiga
-            h2.tagline(translate="COMMON.TAG_LINE_2")
+                img(src="#{v}/images/upc-logos/EssiLogo.png", alt="UPC ESSI Logo", style="height: 100px; width: auto")
+
+            h1.login-title TAIGA - ESSI
+
 
             include ../includes/modules/login-form
+            
+            div.auth-footer(style="text-align: center; margin-top: 2rem; color: #333;")
+                a(ng-href="{{getAccessProblemsUrl()}}", target="_blank", style="color: #333; text-decoration: none; margin: 0 10px;", translate="LOGIN.ACCESS_PROBLEMS")
+            
+            div.language-selector(style="text-align: center; margin-top: 1rem;")
+                a(href="", ng-click="changeLanguage('es')", style="color: #333; margin: 0 5px; text-decoration: none; font-size: 0.8rem;") Español
+                span(style="color: #333;") |
+                a(href="", ng-click="changeLanguage('ca')", style="color: #333; margin: 0 5px; text-decoration: none; font-size: 0.8rem;") Català
+                span(style="color: #333;") |
+                a(href="", ng-click="changeLanguage('en')", style="color: #333; margin: 0 5px; text-decoration: none; font-size: 0.8rem;") English

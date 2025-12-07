@@ -325,6 +325,7 @@
     },
     "LOGIN": {
         "PAGE_TITLE": "Login - Taiga",
+        "ACCESS_PROBLEMS": "Problemes d'Accés",
         "PAGE_DESCRIPTION": "Entreu a Taiga, una plataforma de gestió de projectes per a empreses emergents i desenvolupadors i dissenyadors de metodologia àgil que necessiten una eina senzilla i elegant que els permeti gaudir del seu treball."
     },
     "AUTH": {
@@ -345,6 +346,9 @@
     },
     "LOGIN_FORM": {
         "ERROR_AUTH_INCORRECT": "Segons la Taiga, el vostre nom d'usuari/correu electrònic o contrasenya són incorrectes.",
+        "ERROR_GOOGLE_INIT": "L'accés amb Google no està disponible temporalment. Torneu-ho a provar més tard.",
+        "GOOGLE_LOADING": "Connectant amb Google...",
+        "GOOGLE_DOMAIN_HINT": "Només s'accepten comptes @upc.edu o @estudiantat.upc.edu.",
         "SUCCESS": "Benvinguts a Taiga."
     },
     "REGISTER": {
