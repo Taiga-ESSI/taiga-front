@@ -70,14 +70,6 @@ div.wrapper
                                 p.description(translate="METRICS.PROJECT_HISTORICAL_DESCRIPTION")
 
                             div.project-historical-filters.team-historical-filters
-                                //- Date preset selector
-                                div.filter-group.preset-group
-                                    label.filter-label(for="projectHistoricalPreset", translate="METRICS.DATE_PRESET_LABEL")
-                                    select#projectHistoricalPreset(
-                                        ng-model="metricsView.projectHistoricalFilters.preset"
-                                        ng-change="applyProjectDatePreset(metricsView.projectHistoricalFilters.preset)"
-                                        ng-options="preset.id as (preset.translate ? (preset.label | translate) : preset.label) for preset in metricsView.datePresetOptions track by preset.id"
-                                    )
                                 //- Custom date range
                                 div.filter-group.date-group
                                     label.filter-label(for="projectHistoricalDateFrom", translate="METRICS.PROJECT_HISTORICAL_DATE_FROM")
