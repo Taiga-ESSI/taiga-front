@@ -1,0 +1,42 @@
+.welcome-message {
+    @include centered;
+    background: $white;
+    padding: 3rem 1rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+
+    .welcome-inner {
+        max-width: 800px;
+        margin: 0 auto;
+        text-align: center;
+    }
+
+    h2 {
+        color: #0073CF; // UPC Blue
+        @include font-size(xxlarge);
+        margin-bottom: 1rem;
+    }
+
+    p {
+        @include font-size(medium);
+        color: $gray;
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+
+    .button-cta {
+        display: inline-block;
+        margin-top: 1.5rem;
+        padding: 0.75rem 2rem;
+        background-color: #0073CF; // UPC Blue
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        font-weight: bold;
+
+        &:hover {
+            background-color: darken(#9cd2ff, 10%);
+        }
+    }
+}
