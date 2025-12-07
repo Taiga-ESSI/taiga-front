@@ -3076,7 +3076,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 word
         ).join(' ')
 
-    composeTeamHistoricalChart: (collection, metricLabelKey, filteredEntries) ->
+    composeTeamHistoricalChart: (collection, metricLabelKey, filteredEntries, showUserInTitle = true) ->
         return null unless collection?
         chartData = @.buildChartDatasetFromEntries(collection.student, collection.category, filteredEntries)
         return null unless chartData
@@ -3090,10 +3090,18 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         metricLabel = translatedLabel or baseLabel
 
         titleKey = "METRICS.TEAM_HISTORICAL_CARD_TITLE"
-        title = if @translate?.instant?
-            @translate.instant(titleKey, {metric: metricLabel, user: collection.student})
+        
+        if showUserInTitle
+            title = if @translate?.instant?
+                @translate.instant(titleKey, {metric: metricLabel, user: collection.student})
+            else
+                "#{metricLabel} · #{collection.student}"
         else
-            "#{metricLabel} · #{collection.student}"
+            title = metricLabel
+
+        # Update the chart data title as well, since that's what tg-area-chart uses
+        if chartData
+            chartData.title = title
 
         {
             id: "#{collection.category}::#{collection.student}"
@@ -3354,11 +3362,14 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         metricLabelKey = if metric is "all" then null else @.metricCategoryLabelKey(metric)
         charts = []
+        
+        # If we are filtering by a specific user, we don't need to show the user name in the title
+        showUserInTitle = user is "all"
 
         processCollection = (collection) =>
             filteredEntries = @.filterHistoricalEntries(collection.entries, dateFrom, dateTo)
             return unless filteredEntries?.length
-            chart = @.composeTeamHistoricalChart(collection, metricLabelKey, filteredEntries)
+            chart = @.composeTeamHistoricalChart(collection, metricLabelKey, filteredEntries, showUserInTitle)
             charts.push(chart) if chart
 
         if user is "all"
