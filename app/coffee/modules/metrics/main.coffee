@@ -153,6 +153,11 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         @scope.setActiveTab = (tabId) =>
             @scope.metricsView.activeTab = tabId
+            projectSlug = @scope.project.slug
+            if tabId == 'project'
+                @location.path("/project/#{projectSlug}/metrics/project")
+            else
+                @location.path("/project/#{projectSlug}/metrics/team")
 
         @scope.setTeamSubTab = (tabId) =>
             return unless tabId
@@ -344,6 +349,11 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             classification = @.resolveLocalClassification(metric.id)
         if !classification and metric.externalId?
             classification = @.resolveLocalClassification(metric.externalId)
+        
+        # New fallback: check metric object itself
+        if !classification and metric.classification
+            classification = metric.classification
+
         return classification
 
     matchesConfiguredMetric: (configuredValue, metricId, metricExternalId, allowPrefix = true) ->

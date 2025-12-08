@@ -31,11 +31,10 @@ $metrics-color-slate-600: rgb(71, 85, 105);
         }
     }
 
-    background:
-        radial-gradient(circle at 20% 50%, rgba(103, 128, 159, .1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(72, 52, 212, .08) 0%, transparent 50%),
-        radial-gradient(circle at 40% 20%, rgba(139, 92, 246, .06) 0%, transparent 50%),
-        linear-gradient(135deg, $metrics-color-background-start 0%, $metrics-color-background-end 100%);
+    background: radial-gradient(circle at 20% 50%, rgba(103, 128, 159, .1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(72, 52, 212, .08) 0%, transparent 50%),
+    radial-gradient(circle at 40% 20%, rgba(139, 92, 246, .06) 0%, transparent 50%),
+    linear-gradient(135deg, $metrics-color-background-start 0%, $metrics-color-background-end 100%);
     background-attachment: fixed;
     min-height: calc(100vh - 60px);
     padding: 2rem;
@@ -94,7 +93,9 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 @keyframes fadeIn {
@@ -102,6 +103,7 @@ $metrics-color-slate-600: rgb(71, 85, 105);
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -113,6 +115,7 @@ $metrics-color-slate-600: rgb(71, 85, 105);
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -181,6 +184,7 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 }
 
 @supports (background-clip: text) {
+
     .metrics-header h1,
     .metrics-data .metrics-section .section-title {
         background: linear-gradient(135deg, $metrics-color-primary-500 0%, $metrics-color-primary-400 100%);
@@ -221,11 +225,9 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 
 .metrics-cards-grid .metric-card::before {
     background:
-        radial-gradient(
-            circle at top right,
+        radial-gradient(circle at top right,
             rgba(139, 92, 246, .06),
-            transparent 70%
-        );
+            transparent 70%);
     content: '';
     inset: 0;
     pointer-events: none;
@@ -236,11 +238,9 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 .metric-card .card-header {
     align-items: center;
     background:
-        linear-gradient(
-            135deg,
+        linear-gradient(135deg,
             rgba(72, 52, 212, .95) 0%,
-            rgba(139, 92, 246, .92) 100%
-        );
+            rgba(139, 92, 246, .92) 100%);
     display: flex;
     gap: 1.25rem;
     padding: 2rem 2rem 1.75rem;
@@ -250,11 +250,9 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 
 .metric-card .card-header::after {
     background:
-        linear-gradient(
-            135deg,
+        linear-gradient(135deg,
             rgba(255, 255, 255, .12),
-            rgba(255, 255, 255, .04)
-        );
+            rgba(255, 255, 255, .04));
     content: '';
     inset: 0;
     mix-blend-mode: overlay;
@@ -369,11 +367,9 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 .summary-item-enhanced .summary-icon {
     align-items: center;
     background:
-        linear-gradient(
-            135deg,
+        linear-gradient(135deg,
             rgba(139, 92, 246, .12),
-            rgba(72, 52, 212, .08)
-        );
+            rgba(72, 52, 212, .08));
     border-radius: 10px;
     display: flex;
     flex-shrink: 0;
@@ -880,11 +876,11 @@ $metrics-color-slate-600: rgb(71, 85, 105);
     width: 18px;
 }
 
-.toggle-switch input:checked + .slider {
+.toggle-switch input:checked+.slider {
     background-color: $color-link-green;
 }
 
-.toggle-switch input:checked + .slider::before {
+.toggle-switch input:checked+.slider::before {
     transform: translateX(20px);
 }
 
@@ -1197,11 +1193,9 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 
     &::before {
         background:
-            radial-gradient(
-                circle at center,
+            radial-gradient(circle at center,
                 rgba(139, 92, 246, .06),
-                transparent 70%
-            );
+                transparent 70%);
         content: '';
         inset: 0;
         pointer-events: none;
@@ -1550,6 +1544,7 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 }
 
 @media (min-width: 1024px) {
+
     .user-historical-grid,
     .team-historical-grid,
     .project-historical-grid {
@@ -1698,11 +1693,9 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 
     &::before {
         background:
-            radial-gradient(
-                circle at top right,
+            radial-gradient(circle at top right,
                 rgba(72, 52, 212, .08),
-                transparent 60%
-            );
+                transparent 60%);
         content: '';
         inset: 0;
         pointer-events: none;
@@ -1720,11 +1713,9 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 
 .project-metric-header {
     background:
-        linear-gradient(
-            135deg,
+        linear-gradient(135deg,
             rgba(72, 52, 212, .08) 0%,
-            rgba(139, 92, 246, .05) 100%
-        );
+            rgba(139, 92, 246, .05) 100%);
     border-bottom: 1px solid rgba(72, 52, 212, .12);
     padding: 1.25rem 1.5rem 1rem;
     position: relative;
@@ -1755,24 +1746,22 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 }
 
 .project-metric-body {
-    align-items: stretch;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.5rem;
+    display: block;
 }
 
 .project-metric-chart {
-    align-items: center;
     background: rgba(255, 255, 255, .85);
     border: 1px solid rgba(255, 255, 255, .7);
     border-radius: 18px;
     box-shadow: 0 12px 28px rgba(71, 85, 105, .12);
-    display: flex;
-    flex: 1 1 240px;
-    justify-content: center;
+    display: block;
+    margin-bottom: 1.5rem;
     min-height: 200px;
     padding: 1.25rem;
     position: relative;
+    text-align: center;
+    min-width: 0;
+    overflow: hidden;
 
     &::after {
         background: radial-gradient(circle at 30% 30%, rgba(72, 52, 212, .08), transparent 60%);
@@ -1788,52 +1777,52 @@ $metrics-color-slate-600: rgb(71, 85, 105);
         display: block;
         margin: 0 auto;
         max-width: 100%;
+        min-height: 140px;
+        /* Prevent total collapse */
         position: relative;
-        width: 100%;
+        width: 100% !important;
+        /* Force width */
         z-index: 1;
     }
 }
 
 .project-metric-insights {
     color: $metrics-color-slate-800;
-    display: flex;
-    flex: 1 1 180px;
-    flex-direction: column;
-    gap: .75rem;
-    justify-content: center;
-    min-width: 0;
-}
+    display: block;
+    width: 100%;
 
-.metric-value-wrapper {
-    align-items: flex-end;
-    display: flex;
-    gap: .3rem;
-    justify-content: center;
-}
+    .metric-value-wrapper {
+        align-items: flex-end;
+        display: flex;
+        gap: .3rem;
+        justify-content: center;
+        margin-bottom: 0.5rem;
+    }
 
-.metric-value {
-    color: $metrics-color-slate-900;
-    font-size: 2.8rem;
-    font-weight: 800;
-    letter-spacing: -.03em;
-    line-height: 1;
-    text-align: center;
-}
+    .metric-value {
+        color: $metrics-color-slate-900;
+        font-size: 2.8rem;
+        font-weight: 800;
+        letter-spacing: -.03em;
+        line-height: 1;
+        text-align: center;
+    }
 
-.metric-unit {
-    color: rgba($metrics-color-slate-600, .85);
-    font-size: 1rem;
-    font-weight: 700;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-}
+    .metric-unit {
+        color: rgba($metrics-color-slate-600, .85);
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+    }
 
-.project-metric-insights p.metric-description {
-    color: $metrics-color-slate-600;
-    font-size: .95rem;
-    line-height: 1.6;
-    margin: 0;
-    text-align: left;
+    p.metric-description {
+        color: $metrics-color-slate-600;
+        font-size: .95rem;
+        line-height: 1.6;
+        margin: 0;
+        text-align: center;
+    }
 }
 
 @media (max-width: 768px) {
@@ -1888,11 +1877,9 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 
     &::before {
         background:
-            radial-gradient(
-                circle at top left,
+            radial-gradient(circle at top left,
                 rgba(139, 92, 246, .08),
-                transparent 60%
-            );
+                transparent 60%);
         content: '';
         inset: 0;
         pointer-events: none;
@@ -1910,11 +1897,9 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 
 .strategic-indicator-header {
     background:
-        linear-gradient(
-            135deg,
+        linear-gradient(135deg,
             rgba(139, 92, 246, .08) 0%,
-            rgba(72, 52, 212, .05) 100%
-        );
+            rgba(72, 52, 212, .05) 100%);
     border-bottom: 1px solid rgba(139, 92, 246, .12);
     padding: 1.75rem 1.75rem 1.5rem;
     position: relative;
@@ -2046,11 +2031,9 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 
     &::before {
         background:
-            radial-gradient(
-                circle at bottom right,
+            radial-gradient(circle at bottom right,
                 rgba(72, 52, 212, .08),
-                transparent 60%
-            );
+                transparent 60%);
         content: '';
         inset: 0;
         pointer-events: none;
@@ -2068,11 +2051,9 @@ $metrics-color-slate-600: rgb(71, 85, 105);
 
 .quality-factor-header {
     background:
-        linear-gradient(
-            135deg,
+        linear-gradient(135deg,
             rgba(72, 52, 212, .08) 0%,
-            rgba(139, 92, 246, .05) 100%
-        );
+            rgba(139, 92, 246, .05) 100%);
     border-bottom: 1px solid rgba(72, 52, 212, .12);
     padding: 1.75rem 1.75rem 1.5rem;
     position: relative;
