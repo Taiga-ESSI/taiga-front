@@ -92,7 +92,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 username: ""
 
         @scope.metricsView =
-            loading: false
+            loading: true
             error: null
             isNewProject: false
             data: null
@@ -1995,6 +1995,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         return @q.when(@.loadProject())
             .then (project) =>
                 return @.fetchProjectConfig()
+            .then (config) =>
+                @.bootstrapMetricsAccess()
+                return config
             .catch (error) =>
                 console.error "Metrics: Error in initial data load", error
                 @scope.metricsView.loading = false
