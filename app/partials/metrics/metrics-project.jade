@@ -70,6 +70,14 @@ div.wrapper
                                 p.description(translate="METRICS.PROJECT_HISTORICAL_DESCRIPTION")
 
                             div.project-historical-filters.team-historical-filters
+                                //- Sprint filter
+                                div.filter-group.sprint-filter
+                                    label.filter-label(for="projectHistoricalSprint", translate="METRICS.SPRINT_FILTER_LABEL")
+                                    select#projectHistoricalSprint(
+                                        ng-model="metricsView.projectHistoricalFilters.sprint"
+                                        ng-change="applySprintFilter(metricsView.projectHistoricalFilters)"
+                                        ng-options="option.id as (option.translate ? (option.name | translate) : option.name) for option in metricsView.sprintOptions track by option.id"
+                                    )
                                 //- Custom date range
                                 div.filter-group.date-group
                                     label.filter-label(for="projectHistoricalDateFrom", translate="METRICS.PROJECT_HISTORICAL_DATE_FROM")

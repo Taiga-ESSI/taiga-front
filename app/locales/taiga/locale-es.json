@@ -1720,6 +1720,8 @@
         "PAGE_TITLE": "Métricas - {{projectName}}",
         "PAGE_DESCRIPTION": "Métricas del Learning Dashboard para el proyecto {{projectName}}: {{projectDescription}}",
         "SECTION_NAME": "Métricas",
+        "SPRINT_FILTER_LABEL": "Sprint",
+        "SPRINT_GLOBAL": "Global",
         "LOADING": "Cargando métricas...",
         "NO_DATA": "No hay datos de métricas disponibles",
         "USER_METRICS_TITLE": "Métricas de usuario",

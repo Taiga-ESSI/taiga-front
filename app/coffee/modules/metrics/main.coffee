@@ -109,7 +109,12 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 user: "all"
                 dateFrom: null
                 dateTo: null
+                metric: "all"
+                user: "all"
+                dateFrom: null
+                dateTo: null
                 preset: null
+                sprint: null
             teamHistoricalMetricOptions: [
                 {id: "all", label: "METRICS.TEAM_HISTORICAL_METRIC_ALL"}
                 {id: "tasks", label: "METRICS.TEAM_HISTORICAL_METRIC_TASKS"}
@@ -123,10 +128,18 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             teamHistoricalCharts: []
             teamHistoricalSource: null
             projectHistoricalCharts: []
+            teamHistoricalCharts: []
+            teamHistoricalSource: null
+            projectHistoricalCharts: []
             projectHistoricalFilters:
                 dateFrom: null
                 dateTo: null
                 preset: null
+                sprint: null
+            # Sprint options
+            sprintOptions: [
+                {id: null, name: "METRICS.SPRINT_GLOBAL", translate: true}
+            ]
             # Date presets for quick filtering
             datePresetOptions: [
                 {id: null, label: "METRICS.DATE_PRESET_CUSTOM", translate: true}
@@ -217,6 +230,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         @scope.applyProjectDatePreset = (presetId) =>
             @.applyDatePreset(@scope.metricsView.projectHistoricalFilters, presetId)
 
+        @scope.applySprintFilter = (targetFilters) =>
+            @.applySprintFilter(targetFilters)
+
         @scope.toggleTeamOverviewUser = (username) =>
             @.toggleTeamOverviewUser(username)
 
@@ -249,6 +265,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             })
             @appMetaService.setAll(title, description)
             @.bootstrapMetricsAccess()
+            @.loadMilestones()
 
         promise.then null, @.onInitialDataError.bind(@)
 
@@ -405,6 +422,48 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         @scope.metricsAuth.username = @scope.projectSlug or @scope.project?.slug
         @scope.metricsAuth.externalProjectId ?= @metricsConfig.resolveExternalProjectId(@scope.projectSlug)
         @.loadMetrics(true)
+
+    loadMilestones: ->
+        return unless @scope.projectId
+        @rs.sprints.list(@scope.projectId)
+            .then (data) =>
+                milestones = data.milestones
+                sorted = _.sortBy(milestones, "estimated_start")
+                options = [
+                    {id: null, name: "METRICS.SPRINT_GLOBAL", translate: true}
+                ]
+                
+                for sprint in sorted
+                    options.push({
+                        id: sprint.id
+                        name: sprint.name
+                        dateFrom: sprint.estimated_start
+                        dateTo: sprint.estimated_finish
+                    })
+                
+                @scope.metricsView.sprintOptions = options
+            .catch (error) =>
+                console.warn "Metrics: Unable to load milestones", error
+
+    applySprintFilter: (filters) ->
+        return unless filters
+        
+        sprintId = filters.sprint
+        
+        # Find selected sprint
+        selectedSprint = _.find(@scope.metricsView.sprintOptions, {id: sprintId})
+        
+        if selectedSprint and selectedSprint.dateFrom and selectedSprint.dateTo
+            filters.dateFrom = new Date(selectedSprint.dateFrom)
+            filters.dateTo = new Date(selectedSprint.dateTo)
+            # Reset preset if sprint is selected
+            filters.preset = null
+        else
+            # Global or custom: reset dates if switching back to global
+            if sprintId == null
+                filters.dateFrom = null
+                filters.dateTo = null
+                filters.preset = null
 
     loginMetrics: ->
         return if @scope.metricsAuth.loading
@@ -2277,6 +2336,10 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         
         for metricKey, dataPoints of metricsData
             continue unless angular.isArray(dataPoints) and dataPoints.length > 0
+
+            # Filter out user metrics from project category
+            if category is 'project' and @.isUserMetricId(metricKey)
+                continue
             
             labels = []
             values = []

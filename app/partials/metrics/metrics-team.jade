@@ -117,6 +117,14 @@ div.wrapper
                                 p.description(translate="METRICS.TEAM_HISTORICAL_DESCRIPTION")
 
                             div.team-historical-filters
+                                //- Sprint filter
+                                div.filter-group.sprint-filter
+                                    label.filter-label(for="teamHistoricalSprint", translate="METRICS.SPRINT_FILTER_LABEL")
+                                    select#teamHistoricalSprint(
+                                        ng-model="metricsView.teamHistoricalFilters.sprint"
+                                        ng-change="applySprintFilter(metricsView.teamHistoricalFilters)"
+                                        ng-options="option.id as (option.translate ? (option.name | translate) : option.name) for option in metricsView.sprintOptions track by option.id"
+                                    )
                                 //- Custom date range
                                 div.filter-group.date-group
                                     label.filter-label(for="teamHistoricalDateFrom", translate="METRICS.TEAM_HISTORICAL_DATE_FROM")

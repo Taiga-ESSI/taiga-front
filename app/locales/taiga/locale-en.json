@@ -1715,6 +1715,8 @@
         "PAGE_TITLE": "Metrics - {{projectName}}",
         "PAGE_DESCRIPTION": "Learning Dashboard metrics for the project {{projectName}}: {{projectDescription}}",
         "SECTION_NAME": "Metrics",
+        "SPRINT_FILTER_LABEL": "Sprint",
+        "SPRINT_GLOBAL": "Global",
         "LOADING": "Loading metrics...",
         "NO_DATA": "No metrics data available",
         "USER_METRICS_TITLE": "User Metrics",
