@@ -38,6 +38,7 @@ div.wrapper
 
                     div.team-tab-panels(ng-switch="metricsView.teamSubTab")
                         div.team-overview-panel(ng-switch-when="overview")
+                            p.section-description(translate="METRICS.TEAM_OVERVIEW_DESCRIPTION", style="text-align: center;")
                             
                             //- Students Overall Radar Chart and Closed Tasks comparison
                             div.team-section(ng-if="metricsView.data.studentsOverallRadar || metricsView.data.studentsClosedTasksBar")

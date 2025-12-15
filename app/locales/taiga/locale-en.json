@@ -1715,6 +1715,8 @@
         "PAGE_TITLE": "Metrics - {{projectName}}",
         "PAGE_DESCRIPTION": "Learning Dashboard metrics for the project {{projectName}}: {{projectDescription}}",
         "SECTION_NAME": "Metrics",
+        "PROJECT_OVERVIEW_DESCRIPTION": "See the project status for the current sprint based on the last analysis.",
+        "TEAM_OVERVIEW_DESCRIPTION": "See the contribution of each team member for the current sprint based on the last analysis.",
         "SPRINT_FILTER_LABEL": "Sprint",
         "SPRINT_GLOBAL": "Global",
         "LOADING": "Loading metrics...",

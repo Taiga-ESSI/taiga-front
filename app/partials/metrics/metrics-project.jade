@@ -38,6 +38,7 @@ div.wrapper
 
                     div.project-tab-panels(ng-switch="metricsView.projectSubTab")
                         div.project-overview-panel(ng-switch-when="overview")
+                            p.section-description(translate="METRICS.PROJECT_OVERVIEW_DESCRIPTION", style="text-align: center;")
                             div.project-metrics-grid(ng-if="metricsView.data.projectMetrics && metricsView.data.projectMetrics.length > 0")
                                 div.project-metric-card(ng-repeat="metric in metricsView.data.projectMetrics track by metric.id")
                                     div.project-metric-header

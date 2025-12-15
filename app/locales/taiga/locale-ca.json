@@ -1720,6 +1720,8 @@
         "PAGE_TITLE": "Mètriques - {{projectName}}",
         "PAGE_DESCRIPTION": "Mètriques del Learning Dashboard per al projecte {{projectName}}: {{projectDescription}}",
         "SECTION_NAME": "Mètriques",
+        "PROJECT_OVERVIEW_DESCRIPTION": "Consulta l'estat del projecte per a l'esprint actual basat en l'últim anàlisi.",
+        "TEAM_OVERVIEW_DESCRIPTION": "Consulta la contribució tècnica de cada membre de l'equip per a l'esprint actual basada en l'últim anàlisi.",
         "SPRINT_FILTER_LABEL": "Sprint",
         "SPRINT_GLOBAL": "Global",
         "LOADING": "Carregant mètriques...",
