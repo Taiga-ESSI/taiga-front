@@ -1,10 +1,10 @@
 .discover-header {
-    background-color: #0073CF;
+    background-color: $color-solid-primary;
     background-image:
-        linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-    background-size: 30px 30px;
+        linear-gradient(rgba(255, 255, 255, .1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, .1) 1px, transparent 1px);
     background-position: center center;
+    background-size: 30px 30px;
     margin-bottom: 2.5rem;
     padding: 1rem 1rem 2rem;
     text-align: center;
@@ -17,9 +17,9 @@
     .title {
         @include font-type(regular);
         @include font-size(xxlarge);
+        color: $white;
         line-height: 3rem;
         margin-bottom: 0;
-        color: $white;
     }
 
     .project-number {

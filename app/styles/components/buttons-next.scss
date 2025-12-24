@@ -7,7 +7,7 @@
     background-color: $color-solid-primary;
     border: 0;
     border-radius: 4px;
-    color: $color-black900;
+    color: $color-white;
     display: inline-flex;
     justify-content: center;
     line-height: initial;
@@ -53,7 +53,7 @@
     padding: .45rem 1rem;
     &[variant='primary'] {
         background-color: $color-solid-primary;
-        color: $color-black900;
+        color: $color-white;
         transition: all .3s linear;
     }
     &[variant='secondary'] {
@@ -80,7 +80,7 @@
     padding: .5rem;
     &[variant='primary'] {
         background-color: $color-solid-primary;
-        color: $color-black900;
+        color: $color-white;
     }
     &[variant='secondary'] {
         background-color: $color-gray400;

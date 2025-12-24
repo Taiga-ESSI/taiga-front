@@ -1189,8 +1189,7 @@ AreaChartDirective = ($parse, $timeout) ->
                             }
                             options: {
                                 responsive: true
-                                maintainAspectRatio: true
-                                aspectRatio: 1.5
+                                maintainAspectRatio: false
                                 scales: {
                                     x: {
                                         type: 'category'
@@ -1255,14 +1254,18 @@ AreaChartDirective = ($parse, $timeout) ->
                                     legend: {
                                         display: data.showLegend ? true
                                         position: 'top'
+                                        align: 'start'
                                         labels: {
                                             color: '#1e293b'
                                             font: {
-                                                size: 12
+                                                size: 10
                                                 weight: 500
                                             }
                                             usePointStyle: true
-                                            padding: 15
+                                            pointStyle: 'circle'
+                                            padding: 8
+                                            boxWidth: 6
+                                            boxHeight: 6
                                         }
                                     }
                                     title: {
@@ -1274,8 +1277,8 @@ AreaChartDirective = ($parse, $timeout) ->
                                             weight: 600
                                         }
                                         padding: {
-                                            top: 10
-                                            bottom: 20
+                                            top: 5
+                                            bottom: 10
                                         }
                                     }
                                     tooltip: {

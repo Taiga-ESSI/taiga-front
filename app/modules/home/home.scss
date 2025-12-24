@@ -14,18 +14,18 @@
 
         // Target ONLY the direct child H1 (The main Dashboard Title)
         >h1 {
-            background-color: #0073CF;
+            background-color: $color-solid-primary;
             background-image:
-                linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px); // Reduced opacity to 0.05
-            background-size: 30px 30px;
+                linear-gradient(rgba(255, 255, 255, .05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, .05) 1px, transparent 1px); // Reduced opacity to 0.05
             background-position: center center;
-            color: $white;
-            padding: 1.5rem 2rem;
-            margin: 0rem 0 2rem 0;
+            background-size: 30px 30px;
             border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, .1);
+            color: $white;
             font-weight: 600;
+            margin: 0 0 2rem 0;
+            padding: 1.5rem 2rem;
         }
     }
 
@@ -78,11 +78,11 @@
         @include font-size(large);
         align-content: center;
         background: $white; // Changed from $mass-white
-        border-bottom: 2px solid #0073CF; // UPC accent
-        color: #0073CF;
+        border-bottom: 2px solid $color-solid-primary; // UPC accent
+        color: $color-solid-primary;
         display: flex;
+        font-weight: bold;
         margin: 0 0 1rem;
         padding: .5rem 1rem;
-        font-weight: bold;
     }
 }

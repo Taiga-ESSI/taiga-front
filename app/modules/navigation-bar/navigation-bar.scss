@@ -1,24 +1,23 @@
 $dropdown-width: 260px;
 
 .navbar {
-    background-color: rgba(255, 255, 255, 0.9); // Slightly more opaque to blend
-    background-color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    background-color: rgba(255, 255, 255, .9); // Slightly more opaque to blend
     background-image:
         // Original Spots (Subtler)
-        radial-gradient(circle at 15% 50%, rgba(0, 115, 207, 0.12) 0px, transparent 25px),
-        radial-gradient(circle at 35% 20%, rgba(68, 188, 222, 0.15) 0px, transparent 30px),
-        radial-gradient(circle at 65% 80%, rgba(0, 115, 207, 0.1) 0px, transparent 20px),
-        radial-gradient(circle at 85% 30%, rgba(0, 115, 207, 0.15) 0px, transparent 35px),
-        radial-gradient(circle at 50% 50%, rgba(68, 188, 222, 0.05) 0px, transparent 60px),
+        radial-gradient(circle at 15% 50%, rgba(0, 115, 207, .12) 0, transparent 25px),
+        radial-gradient(circle at 35% 20%, rgba(68, 188, 222, .15) 0, transparent 30px),
+        radial-gradient(circle at 65% 80%, rgba(0, 115, 207, .1) 0, transparent 20px),
+        radial-gradient(circle at 85% 30%, rgba(0, 115, 207, .15) 0, transparent 35px),
+        radial-gradient(circle at 50% 50%, rgba(68, 188, 222, .05) 0, transparent 60px),
         // Extra Spots (Subtler)
-        radial-gradient(circle at 5% 80%, rgba(68, 188, 222, 0.12) 0px, transparent 15px),
-        radial-gradient(circle at 25% 10%, rgba(0, 115, 207, 0.1) 0px, transparent 18px),
-        radial-gradient(circle at 45% 90%, rgba(0, 115, 207, 0.15) 0px, transparent 22px),
-        radial-gradient(circle at 75% 15%, rgba(68, 188, 222, 0.12) 0px, transparent 28px),
-        radial-gradient(circle at 95% 60%, rgba(0, 115, 207, 0.08) 0px, transparent 40px);
+        radial-gradient(circle at 5% 80%, rgba(68, 188, 222, .12) 0, transparent 15px),
+        radial-gradient(circle at 25% 10%, rgba(0, 115, 207, .1) 0, transparent 18px),
+        radial-gradient(circle at 45% 90%, rgba(0, 115, 207, .15) 0, transparent 22px),
+        radial-gradient(circle at 75% 15%, rgba(68, 188, 222, .12) 0, transparent 28px),
+        radial-gradient(circle at 95% 60%, rgba(0, 115, 207, .08) 0, transparent 40px);
     background-size: 100% 100%;
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(0, 115, 207, 0.2);
+    border-bottom: 1px solid rgba(0, 115, 207, .2);
     display: flex;
     height: $navbar;
     justify-content: space-between;

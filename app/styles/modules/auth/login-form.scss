@@ -59,7 +59,7 @@
 
         &__hint {
             @include font-size(small);
-            color: #0073CF;
+            color: $color-solid-primary;
             margin-top: .5rem;
         }
     }

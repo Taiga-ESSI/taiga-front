@@ -442,6 +442,17 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                     })
                 
                 @scope.metricsView.sprintOptions = options
+                
+                # Select last sprint by default if there are sprints
+                if sorted.length > 0
+                    lastSprint = sorted[sorted.length - 1]
+                    # Set team historical filter to last sprint
+                    @scope.metricsView.teamHistoricalFilters.sprint = lastSprint.id
+                    @.applySprintFilter(@scope.metricsView.teamHistoricalFilters)
+                    # Set project historical filter to last sprint
+                    @scope.metricsView.projectHistoricalFilters.sprint = lastSprint.id
+                    @.applySprintFilter(@scope.metricsView.projectHistoricalFilters)
+                    
             .catch (error) =>
                 console.warn "Metrics: Unable to load milestones", error
 
@@ -1387,6 +1398,27 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                     continue
                 addMetricEntry(metric)
 
+        # Fallback: if no metrics were collected from order, add all non-user metrics
+        # This ensures external provider metrics are shown even without explicit configuration
+        if collected.length is 0 or Object.keys(metricsById).length > collected.length
+            for metric in metricsArray when metric?
+                continue unless metric.id? or metric.externalId?
+                isUserMetric = @.isUserMetricId(metric.id) or @.isUserMetricId(metric.externalId)
+                continue if isUserMetric
+                
+                normalizedMetricId = null
+                if metric.id?
+                    normalizedMetricId = metric.id.toString().toLowerCase()
+                else if metric.externalId?
+                    normalizedMetricId = metric.externalId.toLowerCase()
+                
+                continue if normalizedMetricId and seenIds[normalizedMetricId]
+                
+                classification = @.resolveMetricClassificationValue(metric)
+                continue if classification is 'hidden'
+                continue if classification is 'team'
+                
+                addMetricEntry(metric)
 
 
         context =
