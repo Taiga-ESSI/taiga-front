@@ -51,6 +51,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                   @translate, @projectService, @errorHandlingService, @http, @urls, @$timeout, metricsConfiguration,
                   metricsCustomization) ->
         @scope.sectionName = "METRICS.SECTION_NAME"
+        @scope.projectSlug = @params.pslug
         @metricsConfig = metricsConfiguration
         @metricsHooks = metricsCustomization.getMetricsHooks()
 
@@ -391,18 +392,27 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         return false
 
     loadProject: ->
-        # Ensure projectService has the project loaded
-        unless @projectService.project
+        expectedSlug = @params.pslug
+
+        if @projectService.project
+            project = @projectService.project.toJS()
+            if expectedSlug and project?.slug? and project.slug isnt expectedSlug
+                console.warn "Metrics: Project mismatch, reloading", project.slug, expectedSlug
+                return @projectService.setProjectBySlug(expectedSlug).then =>
+                    @.loadProject()
+        else if expectedSlug
             console.warn "Metrics: Project not loaded in service, attempting fallback load"
-            return @projectService.setProjectBySlug(@params.pslug).then =>
+            return @projectService.setProjectBySlug(expectedSlug).then =>
                 @.loadProject()
             .catch (err) =>
                 console.error "Metrics: Failed to load project", err
                 @scope.metricsView.error = "METRICS.LOAD_ERROR"
                 @scope.metricsView.loading = false
                 return @q.reject(err)
-
-        project = @projectService.project.toJS()
+        else
+            @scope.metricsView.error = "METRICS.LOAD_ERROR"
+            @scope.metricsView.loading = false
+            return @q.reject("Metrics: Missing project slug")
 
         @scope.projectId = project.id
         @scope.project = project
@@ -535,12 +545,18 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
     loadMetrics: (force = false) ->
         return if @scope.metricsView.loading and !force
 
-        projectSlug = @scope.projectSlug
+        projectSlug = @scope.projectSlug or @params.pslug
+        if !@scope.project and @projectService.project
+            @scope.project = @projectService.project.toJS()
+            @scope.projectId = @scope.project?.id
 
         if !projectSlug
             @scope.metricsView.error = "METRICS.LOAD_ERROR"
             @scope.metricsView.data = null
+            @scope.metricsView.loading = false
             return
+
+        @scope.projectSlug = projectSlug
 
         externalId = @scope.metricsAuth.externalProjectId or @metricsConfig.resolveExternalProjectId(projectSlug)
 
@@ -1635,9 +1651,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             ratioValue = Math.max(0, Math.min(normalizedValue / 100, 1))
             userContext = @.resolveMetricUserContext(metric)
 
+            # Try to get translated label first, then fallback to backend name
+            translatedLabel = @.translateMetricId(metric.id)
+            displayLabel = translatedLabel or metric.name or @.formatMetricLabel(metric.id)
+
             entry =
                 id: metric.id or metric.name
-                label: metric.name or @.formatMetricLabel(metric.id)
+                label: displayLabel
                 ratio: ratioValue
                 formattedRatio: Number(ratioValue or 0).toFixed(2)
                 description: metric.description
@@ -1770,9 +1790,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             percentForColor = ratioValue * 100
             categoryColor = @.getInternalGaugeColor(percentForColor)
 
+        # Try to get translated name first, then fallback to backend name
+        translatedName = @.translateMetricId(metric.id)
+        displayName = translatedName or metric.name or metric.id
+
         return {
             id: metric.id
-            name: metric.name or metric.id
+            name: displayName
             description: metric.description or ""
             value: numericValue
             absoluteValue: numericValue
@@ -3887,14 +3911,47 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         unless hasSelected
             @scope.metricsView.teamHistoricalFilters.user = "all"
     
+    translateMetricId: (metricId) ->
+        """
+        Attempt to translate metric ID using METRICS.INTERNAL_METRICS translations.
+        Returns the translated label if available, otherwise null.
+        """
+        return null unless metricId
+        return null unless @translate?.instant?
+
+        # Normalize metric ID (remove user suffix if present)
+        normalizedId = metricId
+        if metricId.indexOf('_') isnt -1
+            parts = metricId.split('_')
+            # Check if it's a user-scoped metric like "closedtasks_username"
+            knownPrefixes = ['closedtasks', 'assignedtasks', 'totalus', 'completedus', 'assignedissues', 'closedissues', 'commits', 'modifiedlines']
+            if knownPrefixes.indexOf(parts[0].toLowerCase()) isnt -1
+                normalizedId = parts[0].toLowerCase()
+
+        # Try to get translation from METRICS.INTERNAL_METRICS
+        translationKey = "METRICS.INTERNAL_METRICS.#{normalizedId}"
+        translated = @translate.instant(translationKey)
+
+        # If translation is the same as the key, it means no translation was found
+        if translated isnt translationKey
+            return translated
+
+        null
+
     formatMetricLabel: (metricId) ->
         """
-        Convert metric ID to a readable label
+        Convert metric ID to a readable label.
+        First attempts to use translations, then falls back to static mappings.
         Example: acceptance_criteria_check -> Acceptance Criteria Application
         """
         return metricId unless metricId
 
-        # Known metric ID to label mappings
+        # First, try to use translated label
+        translatedLabel = @.translateMetricId(metricId)
+        if translatedLabel?
+            return translatedLabel
+
+        # Known metric ID to label mappings (fallback for external provider metrics)
         labelMap = {
             'acceptance_criteria_check': 'Acceptance Criteria Application'
             'closed_tasks_with_ae': 'Closed Tasks with Actual Effort Information'

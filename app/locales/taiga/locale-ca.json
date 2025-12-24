@@ -1727,6 +1727,8 @@
         "LOADING": "Carregant mètriques...",
         "NO_DATA": "No hi ha dades de mètriques disponibles",
         "USER_METRICS_TITLE": "Mètriques d'usuari",
+        "USER_PERFORMANCE": "Resum del rendiment",
+        "USER_METRICS_CHART": "Resum de mètriques",
         "TOTAL_TASKS": "Total de tasques",
         "COMPLETED_TASKS": "Tasques completades",
         "ASSIGNED_TASKS": "Tasques assignades",
@@ -1800,6 +1802,17 @@
         "RADAR_LABEL_COMPLETED_STORIES": "Històries Completades",
         "METRICS_CATEGORIES": "Categories de mètriques",
         "STUDENT_HOURS": "Hores de dedicació de l'alumnat",
+        "DATE_PRESET_LABEL": "Filtre ràpid",
+        "DATE_PRESET_CUSTOM": "Rang personalitzat",
+        "DATE_PRESET_LAST_7_DAYS": "Últims 7 dies",
+        "DATE_PRESET_LAST_14_DAYS": "Últimes 2 setmanes",
+        "DATE_PRESET_LAST_30_DAYS": "Últims 30 dies",
+        "DATE_PRESET_LAST_90_DAYS": "Últims 3 mesos",
+        "DATE_PRESET_CURRENT_MONTH": "Mes actual",
+        "DATE_PRESET_CURRENT_SEMESTER": "Semestre actual",
+        "DATE_PRESET_LAST_SEMESTER": "Últims 6 mesos",
+        "DATE_PRESET_LAST_YEAR": "Últim any",
+        "DATE_PRESET_ALL_TIME": "Tot el temps",
         "LAST_EVALUATION_TITLE": "Última avaluació automatitzada",
         "LAST_EVALUATION_AT": "Generada el {{date}}",
         "STRATEGIC_INDICATORS_TITLE": "Indicadors estratègics",
@@ -1807,6 +1820,10 @@
         "HISTORICAL_METRICS_TITLE": "Històric de mètriques",
         "HISTORICAL_TOGGLE_ON": "Mostrant dades històriques",
         "HISTORICAL_TOGGLE_OFF": "Veure dades històriques",
+        "HISTORICAL_USER_METRICS": "Mètriques històriques d'usuaris",
+        "HISTORICAL_PROJECT_METRICS": "Mètriques històriques del projecte",
+        "NO_HISTORICAL_DATA": "No hi ha dades històriques disponibles",
+        "HISTORICAL_LOAD_ERROR": "Error en carregar les mètriques històriques. Intenta-ho de nou més tard.",
         "TABS": {
             "USERS": "Usuaris",
             "PROJECT": "Projecte",
@@ -1836,7 +1853,12 @@
         "ASSOCIATED_METRICS": "Mètriques Associades",
         "SHOWING_FIRST_50": "Mostrant les primeres 50 de {{total}} mètriques",
         "LAST_UPDATED_AT": "Actualitzat el {{date}}.",
-        "VALUE_IN_PERCENT": "Valor en %: {{value}}%"
+        "VALUE_IN_PERCENT": "Valor en %: {{value}}%",
+        "SIDEBAR": {
+            "TITLE": "Mètriques",
+            "TEAM": "Equip",
+            "PROJECT": "Projecte"
+        }
     },
     "USER_SETTINGS": {
         "AVATAR_MAX_SIZE": "[Max. grandària: {{maxFileSize}}]",
