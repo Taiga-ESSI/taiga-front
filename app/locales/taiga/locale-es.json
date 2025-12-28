@@ -2115,6 +2115,12 @@
             "INPUT_PLACEHOLDER": "Escribe algo...",
             "ACTION_TITLE": "Buscar",
             "RESULTS": "Resultados de búsqueda"
+        },
+        "HOME": {
+            "TITLE": "Bienvenido a Taiga ESSI",
+            "SUBTITLE_1": "Gestione sus proyectos de manera ágil y eficiente.",
+            "SUBTITLE_2": "Esta plataforma le permite coordinar equipos, seguir el progreso y documentar el trabajo realizado.",
+            "ACCESS_BUTTON": "Acceda aquí"
         }
     },
     "ZOOM": {

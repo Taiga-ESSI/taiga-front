@@ -18,10 +18,10 @@
  * including authentication flow and extended data retrieval.
  */
 
-(function() {
+(function () {
   var MetricsController, mixOf, module, taiga,
-    bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
-    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    bind = function (fn, me) { return function () { return fn.apply(me, arguments); }; },
+    extend = function (child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
     hasProp = {}.hasOwnProperty;
 
   taiga = this.taiga;
@@ -30,7 +30,7 @@
 
   module = angular.module("taigaMetrics");
 
-  MetricsController = (function(superClass) {
+  MetricsController = (function (superClass) {
     extend(MetricsController, superClass);
 
     MetricsController.$inject = ["$scope", "$rootScope", "$tgRepo", "$tgResources", "$routeParams", "$q", "$location", "$tgNavUrls", "tgAppMetaService", "$tgAuth", "$translate", "tgProjectService", "tgErrorHandlingService", "$tgHttp", "$tgUrls", "$timeout", "tgMetricsConfiguration", "tgMetricsCustomization"];
@@ -58,25 +58,25 @@
       this.metricsConfig = metricsConfiguration;
       this.metricsHooks = metricsCustomization.getMetricsHooks();
       fallbackHooks = {
-        transformMetricsPayload: function(ctx) {
+        transformMetricsPayload: function (ctx) {
           return ctx != null ? ctx.data : void 0;
         },
-        transformMetricsView: function(ctx) {
+        transformMetricsView: function (ctx) {
           return ctx != null ? ctx.viewData : void 0;
         },
-        transformProjectMetrics: function(ctx) {
+        transformProjectMetrics: function (ctx) {
           return ctx != null ? ctx.metrics : void 0;
         },
-        transformHistoricalPayload: function(ctx) {
+        transformHistoricalPayload: function (ctx) {
           return ctx != null ? ctx.data : void 0;
         },
-        transformTeamHistoricalCharts: function(ctx) {
+        transformTeamHistoricalCharts: function (ctx) {
           return ctx != null ? ctx.charts : void 0;
         },
-        transformProjectHistoricalCharts: function(ctx) {
+        transformProjectHistoricalCharts: function (ctx) {
           return ctx != null ? ctx.charts : void 0;
         },
-        resolveGaugeValue: function(ctx) {
+        resolveGaugeValue: function (ctx) {
           return ctx != null ? ctx.defaultValue : void 0;
         }
       };
@@ -218,13 +218,13 @@
           label: "METRICS.TABS.PROJECT"
         }
       ];
-      this.scope.setActiveTab = (function(_this) {
-        return function(tabId) {
+      this.scope.setActiveTab = (function (_this) {
+        return function (tabId) {
           return _this.scope.metricsView.activeTab = tabId;
         };
       })(this);
-      this.scope.setTeamSubTab = (function(_this) {
-        return function(tabId) {
+      this.scope.setTeamSubTab = (function (_this) {
+        return function (tabId) {
           if (!tabId) {
             return;
           }
@@ -234,8 +234,8 @@
           }
         };
       })(this);
-      this.scope.setProjectSubTab = (function(_this) {
-        return function(tabId) {
+      this.scope.setProjectSubTab = (function (_this) {
+        return function (tabId) {
           var ref3;
           if (!tabId) {
             return;
@@ -246,13 +246,13 @@
           }
         };
       })(this);
-      this.scope.toggleHistorical = (function(_this) {
-        return function() {
+      this.scope.toggleHistorical = (function (_this) {
+        return function () {
           return _this.scope.metricsView.showHistorical = !_this.scope.metricsView.showHistorical;
         };
       })(this);
-      this.scope.toggleHistoricalSection = (function(_this) {
-        return function(sectionName) {
+      this.scope.toggleHistoricalSection = (function (_this) {
+        return function (sectionName) {
           if (_this.scope.metricsView.historicalExpanded[sectionName] == null) {
             return _this.scope.metricsView.historicalExpanded[sectionName] = true;
           } else {
@@ -260,34 +260,34 @@
           }
         };
       })(this);
-      this.scope.loginMetrics = (function(_this) {
-        return function() {
+      this.scope.loginMetrics = (function (_this) {
+        return function () {
           return _this.loginMetrics();
         };
       })(this);
-      this.scope.logoutMetrics = (function(_this) {
-        return function() {
+      this.scope.logoutMetrics = (function (_this) {
+        return function () {
           return _this.logoutMetrics();
         };
       })(this);
-      this.scope.reloadMetrics = (function(_this) {
-        return function() {
+      this.scope.reloadMetrics = (function (_this) {
+        return function () {
           return _this.loadMetrics(true);
         };
       })(this);
-      this.scope.showTestingView = (function(_this) {
-        return function() {
+      this.scope.showTestingView = (function (_this) {
+        return function () {
           _this.scope.metricsView.showTesting = true;
           return setTimeout(_this.drawTestingCharts, 100);
         };
       })(this);
-      this.scope.hideTestingView = (function(_this) {
-        return function() {
+      this.scope.hideTestingView = (function (_this) {
+        return function () {
           return _this.scope.metricsView.showTesting = false;
         };
       })(this);
-      this.scope.clearTeamHistoricalDates = (function(_this) {
-        return function() {
+      this.scope.clearTeamHistoricalDates = (function (_this) {
+        return function () {
           var filters;
           filters = _this.scope.metricsView.teamHistoricalFilters;
           if (filters == null) {
@@ -298,8 +298,8 @@
           return filters.preset = null;
         };
       })(this);
-      this.scope.clearProjectHistoricalDates = (function(_this) {
-        return function() {
+      this.scope.clearProjectHistoricalDates = (function (_this) {
+        return function () {
           var filters;
           filters = _this.scope.metricsView.projectHistoricalFilters;
           if (filters == null) {
@@ -310,28 +310,28 @@
           return filters.preset = null;
         };
       })(this);
-      this.scope.applyTeamDatePreset = (function(_this) {
-        return function(presetId) {
+      this.scope.applyTeamDatePreset = (function (_this) {
+        return function (presetId) {
           return _this.applyDatePreset(_this.scope.metricsView.teamHistoricalFilters, presetId);
         };
       })(this);
-      this.scope.applyProjectDatePreset = (function(_this) {
-        return function(presetId) {
+      this.scope.applyProjectDatePreset = (function (_this) {
+        return function (presetId) {
           return _this.applyDatePreset(_this.scope.metricsView.projectHistoricalFilters, presetId);
         };
       })(this);
-      this.scope.toggleTeamOverviewUser = (function(_this) {
-        return function(username) {
+      this.scope.toggleTeamOverviewUser = (function (_this) {
+        return function (username) {
           return _this.toggleTeamOverviewUser(username);
         };
       })(this);
-      this.scope.resetTeamOverviewUsers = (function(_this) {
-        return function() {
+      this.scope.resetTeamOverviewUsers = (function (_this) {
+        return function () {
           return _this.resetTeamOverviewUsers();
         };
       })(this);
-      this.scope.$watch("metricsView.teamHistoricalFilters", (function(_this) {
-        return function(newFilters, oldFilters) {
+      this.scope.$watch("metricsView.teamHistoricalFilters", (function (_this) {
+        return function (newFilters, oldFilters) {
           if (newFilters == null) {
             return;
           }
@@ -341,8 +341,8 @@
           return _this.applyTeamHistoricalFilters();
         };
       })(this), true);
-      this.scope.$watch("metricsView.projectHistoricalFilters", (function(_this) {
-        return function(newFilters, oldFilters) {
+      this.scope.$watch("metricsView.projectHistoricalFilters", (function (_this) {
+        return function (newFilters, oldFilters) {
           if (newFilters == null) {
             return;
           }
@@ -352,8 +352,8 @@
           return _this.applyProjectHistoricalFilters();
         };
       })(this), true);
-      this.scope.$watch("metricsView.data.historicalMetrics", (function(_this) {
-        return function(historicalMetrics) {
+      this.scope.$watch("metricsView.data.historicalMetrics", (function (_this) {
+        return function (historicalMetrics) {
           if (historicalMetrics == null) {
             return;
           }
@@ -361,8 +361,8 @@
         };
       })(this));
       promise = this.loadInitialData();
-      promise.then((function(_this) {
-        return function() {
+      promise.then((function (_this) {
+        return function () {
           var description, title;
           title = _this.translate.instant("METRICS.PAGE_TITLE", {
             projectName: _this.scope.project.name
@@ -378,7 +378,7 @@
       promise.then(null, this.onInitialDataError.bind(this));
     }
 
-    MetricsController.prototype.loadLocalConfig = function() {
+    MetricsController.prototype.loadLocalConfig = function () {
       var e, saved, slug;
       try {
         slug = this.params.pslug;
@@ -393,7 +393,7 @@
       return null;
     };
 
-    MetricsController.prototype.fetchProjectConfig = function() {
+    MetricsController.prototype.fetchProjectConfig = function () {
       var params, slug, url;
       slug = this.params.pslug;
       if (!slug) {
@@ -405,8 +405,8 @@
       };
       return this.http.get(url, params, {
         withCredentials: true
-      }).then((function(_this) {
-        return function(response) {
+      }).then((function (_this) {
+        return function (response) {
           var config;
           config = _this.normalizeConfigPayload(response != null ? response.data : void 0);
           if (config) {
@@ -424,8 +424,8 @@
           }
           return _this.localConfig;
         };
-      })(this))["catch"]((function(_this) {
-        return function(error) {
+      })(this))["catch"]((function (_this) {
+        return function (error) {
           console.error("Metrics: unable to load persisted config", error);
           if (_this.legacyLocalConfig) {
             console.log("Metrics: Using LEGACY local config", _this.legacyLocalConfig);
@@ -444,7 +444,7 @@
       })(this));
     };
 
-    MetricsController.prototype.normalizeConfigPayload = function(data) {
+    MetricsController.prototype.normalizeConfigPayload = function (data) {
       var defaultProjectOrder, defaultTeamOrder, normalized, providerValue, ref, ref1;
       if (!(data && angular.isObject(data))) {
         return null;
@@ -485,7 +485,7 @@
       return normalized;
     };
 
-    MetricsController.prototype.resolveLocalClassification = function(metricId) {
+    MetricsController.prototype.resolveLocalClassification = function (metricId) {
       var classification, lower, ref;
       if (metricId == null) {
         return null;
@@ -504,7 +504,7 @@
       return null;
     };
 
-    MetricsController.prototype.resolveMetricClassificationValue = function(metric) {
+    MetricsController.prototype.resolveMetricClassificationValue = function (metric) {
       var classification;
       if (metric == null) {
         return null;
@@ -519,7 +519,7 @@
       return classification;
     };
 
-    MetricsController.prototype.matchesConfiguredMetric = function(configuredValue, metricId, metricExternalId, allowPrefix) {
+    MetricsController.prototype.matchesConfiguredMetric = function (configuredValue, metricId, metricExternalId, allowPrefix) {
       var matchesExact, matchesPrefix, normalizedConfig, normalizedExternalId, normalizedMetricId;
       if (allowPrefix == null) {
         allowPrefix = true;
@@ -530,10 +530,10 @@
       normalizedConfig = configuredValue.toString().toLowerCase();
       normalizedMetricId = metricId != null ? metricId.toString().toLowerCase() : null;
       normalizedExternalId = metricExternalId != null ? metricExternalId.toString().toLowerCase() : null;
-      matchesExact = function(value) {
+      matchesExact = function (value) {
         return (value != null) && value === normalizedConfig;
       };
-      matchesPrefix = function(value) {
+      matchesPrefix = function (value) {
         if (!(allowPrefix && (value != null))) {
           return false;
         }
@@ -548,7 +548,7 @@
       return false;
     };
 
-    MetricsController.prototype.loadProject = function() {
+    MetricsController.prototype.loadProject = function () {
       var defaultExternal, project;
       project = this.projectService.project.toJS();
       this.scope.projectId = project.id;
@@ -562,7 +562,7 @@
       return project;
     };
 
-    MetricsController.prototype.bootstrapMetricsAccess = function() {
+    MetricsController.prototype.bootstrapMetricsAccess = function () {
       var base, ref;
       this.scope.metricsAuth.authenticated = true;
       this.scope.metricsAuth.checking = false;
@@ -573,7 +573,7 @@
       return this.loadMetrics(true);
     };
 
-    MetricsController.prototype.loginMetrics = function() {
+    MetricsController.prototype.loginMetrics = function () {
       var externalId, payload, url, username;
       if (this.scope.metricsAuth.loading) {
         return;
@@ -594,8 +594,8 @@
       url = this.urls.resolve("metrics-login");
       return this.http.post(url, payload, null, {
         withCredentials: true
-      }).then((function(_this) {
-        return function(response) {
+      }).then((function (_this) {
+        return function (response) {
           var data;
           data = (response != null ? response.data : void 0) || {};
           _this.scope.metricsAuth.authenticated = true;
@@ -605,8 +605,8 @@
           _this.scope.metricsAuth.loading = false;
           return _this.loadMetrics(true);
         };
-      })(this))["catch"]((function(_this) {
-        return function(error) {
+      })(this))["catch"]((function (_this) {
+        return function (error) {
           var errorKey, ref;
           console.error("✗ Login failed:", error);
           _this.scope.metricsAuth.loading = false;
@@ -616,7 +616,7 @@
       })(this));
     };
 
-    MetricsController.prototype.logoutMetrics = function() {
+    MetricsController.prototype.logoutMetrics = function () {
       var payload, url;
       if (this.scope.metricsAuth.loading) {
         return;
@@ -629,16 +629,16 @@
       };
       return this.http.post(url, payload, null, {
         withCredentials: true
-      }).then((function(_this) {
-        return function() {
+      }).then((function (_this) {
+        return function () {
           _this.scope.metricsAuth.loading = false;
           _this.scope.metricsAuth.authenticated = false;
           _this.scope.metricsAuth.username = null;
           _this.scope.metricsAuth.externalProjectId = _this.metricsConfig.resolveExternalProjectId(_this.scope.projectSlug);
           return _this.scope.metricsView.data = null;
         };
-      })(this))["catch"]((function(_this) {
-        return function(error) {
+      })(this))["catch"]((function (_this) {
+        return function (error) {
           var ref;
           console.error("Error logging out from metrics:", error);
           _this.scope.metricsAuth.loading = false;
@@ -647,7 +647,7 @@
       })(this));
     };
 
-    MetricsController.prototype.loadMetrics = function(force) {
+    MetricsController.prototype.loadMetrics = function (force) {
       var externalId, params, projectSlug, url;
       if (force == null) {
         force = false;
@@ -677,8 +677,8 @@
       url = this.urls.resolve("metrics");
       return this.http.get(url, params, {
         withCredentials: true
-      }).then((function(_this) {
-        return function(response) {
+      }).then((function (_this) {
+        return function (response) {
           var allMetrics, allMetricsData, data, displayMetricGroups, githubUsername, hasHoursData, hoursChart, hoursData, i, j, len, len1, matchesGithub, matchesTaiga, metric, metricId, metricsCategoriesData, normalizedStudents, payloadContext, processedMetrics, processedQualityFactors, processedStrategicIndicators, processedUsers, processedUsersList, projectMetricsList, ref, ref1, ref2, ref3, student, studentMetrics, studentsClosedTasksBar, studentsOverallRadar, studentsRaw, taigaUsername, transformedPayload, transformedView, viewContext, viewData;
           data = (response != null ? response.data : void 0) || {};
           payloadContext = {
@@ -790,8 +790,8 @@
           _this.scope.metricsView.loading = false;
           return _this.loadHistoricalMetrics();
         };
-      })(this))["catch"]((function(_this) {
-        return function(error) {
+      })(this))["catch"]((function (_this) {
+        return function (error) {
           var ref;
           console.error("Error loading metrics:", error);
           _this.scope.metricsView.loading = false;
@@ -805,7 +805,7 @@
       })(this));
     };
 
-    MetricsController.prototype.loadHistoricalMetrics = function() {
+    MetricsController.prototype.loadHistoricalMetrics = function () {
       var externalId, params, projectSlug, url;
       if (!this.scope.metricsAuth.authenticated) {
         return;
@@ -825,8 +825,8 @@
       url = this.urls.resolve("metrics-historical");
       return this.http.get(url, params, {
         withCredentials: true
-      }).then((function(_this) {
-        return function(response) {
+      }).then((function (_this) {
+        return function (response) {
           var data, historicalContext, historicalData, processedHistorical, transformedHistorical;
           data = (response != null ? response.data : void 0) || {};
           historicalData = data.historical_data || {};
@@ -845,18 +845,18 @@
           }
           if (_this.scope.metricsView.data) {
             _this.scope.metricsView.data.historicalMetrics = processedHistorical;
-            _this.$timeout((function() {}), 0);
+            _this.$timeout((function () { }), 0);
             return _this.updateTeamHistoricalSource(processedHistorical);
           } else {
             _this.scope.metricsView.data = {
               historicalMetrics: processedHistorical
             };
-            _this.$timeout((function() {}), 0);
+            _this.$timeout((function () { }), 0);
             return _this.updateTeamHistoricalSource(processedHistorical);
           }
         };
-      })(this))["catch"]((function(_this) {
-        return function(error) {
+      })(this))["catch"]((function (_this) {
+        return function (error) {
           var ref;
           console.error("Error loading historical metrics:", error);
           if (_this.scope.metricsView.data) {
@@ -871,7 +871,7 @@
       })(this));
     };
 
-    MetricsController.prototype.normalizeStudentsCollection = function(students) {
+    MetricsController.prototype.normalizeStudentsCollection = function (students) {
       var metricsList, normalized, username;
       if (students == null) {
         return [];
@@ -898,7 +898,7 @@
       return [];
     };
 
-    MetricsController.prototype.normalizeCategoryKey = function(name) {
+    MetricsController.prototype.normalizeCategoryKey = function (name) {
       var key;
       if (name == null) {
         return null;
@@ -911,7 +911,7 @@
       }
     };
 
-    MetricsController.prototype.buildMetricCategoryPalettes = function(categoriesData) {
+    MetricsController.prototype.buildMetricCategoryPalettes = function (categoriesData) {
       var _, entries, entry, grouped, i, len, nameKey, palette, upper, valid, value;
       grouped = {};
       if (categoriesData == null) {
@@ -955,11 +955,11 @@
       }
       for (nameKey in grouped) {
         palette = grouped[nameKey];
-        valid = palette.filter(function(item) {
+        valid = palette.filter(function (item) {
           return (item.upperThreshold != null) && isFinite(item.upperThreshold);
         });
         if (valid.length > 0) {
-          valid.sort(function(a, b) {
+          valid.sort(function (a, b) {
             if (a.upperThreshold < b.upperThreshold) {
               return -1;
             } else if (a.upperThreshold > b.upperThreshold) {
@@ -976,7 +976,7 @@
       return grouped;
     };
 
-    MetricsController.prototype.normalizeMetricValue = function(rawValue) {
+    MetricsController.prototype.normalizeMetricValue = function (rawValue) {
       var _, candidate, candidateValue, candidates, chosen, i, item, j, k, len, len1, len2, parsed, ref, ref1, value;
       if (rawValue == null) {
         return 0;
@@ -1054,7 +1054,7 @@
       return Math.round(value * 100) / 100;
     };
 
-    MetricsController.prototype.buildMetricDetail = function(metric) {
+    MetricsController.prototype.buildMetricDetail = function (metric) {
       var normalizedValue;
       if (metric == null) {
         return null;
@@ -1072,7 +1072,7 @@
       };
     };
 
-    MetricsController.prototype.processUsersMetrics = function(rawData) {
+    MetricsController.prototype.processUsersMetrics = function (rawData) {
       var completedTasks, completedUS, metrics, processed, ref, ref1, ref2, ref3, ref4, ref5, ref6, ref7, tasksPercentage, totalTasks, totalUS, usPercentage, username;
       processed = {};
       for (username in rawData) {
@@ -1096,7 +1096,7 @@
       return processed;
     };
 
-    MetricsController.prototype.decorateUsersMetrics = function(users) {
+    MetricsController.prototype.decorateUsersMetrics = function (users) {
       var data, username;
       if (!users) {
         return users;
@@ -1111,7 +1111,7 @@
       return users;
     };
 
-    MetricsController.prototype.buildUserRadarData = function(username, userData) {
+    MetricsController.prototype.buildUserRadarData = function (username, userData) {
       var assignedTasks, backgroundColor, borderColor, closedTasks, colorPalette, commits, modifiedLines, radarData;
       if (!(username && userData)) {
         return null;
@@ -1155,7 +1155,7 @@
       return radarData;
     };
 
-    MetricsController.prototype.processStudentsMetrics = function(studentsRaw) {
+    MetricsController.prototype.processStudentsMetrics = function (studentsRaw) {
       var configuredKey, configuredKeys, detail, entry, i, j, k, len, len1, len2, metric, metricId, metricKey, metricValue, metricsList, metricsObject, normalizedName, processed, ratio, ratioUS, rawKey, ref, ref1, ref2, ref3, seenMetricIds, student, students, username;
       processed = {};
       students = this.normalizeStudentsCollection(studentsRaw);
@@ -1178,11 +1178,11 @@
         metricsList = student.metrics || student.metrics_list || student.metricsList || [];
         if (!angular.isArray(metricsList) && (metricsList != null) && typeof metricsList === "object") {
           metricsObject = metricsList;
-          metricsList = Object.keys(metricsObject || {}).map(function(key) {
+          metricsList = Object.keys(metricsObject || {}).map(function (key) {
             return metricsObject[key];
           });
         }
-        metricsList = (metricsList || []).filter(function(metric) {
+        metricsList = (metricsList || []).filter(function (metric) {
           return metric != null;
         });
         entry = {
@@ -1276,7 +1276,7 @@
             entry.usPercentage = Math.min(100, Math.round(ratioUS * 100) / 100);
           }
         }
-        entry.metricsDetails.sort(function(a, b) {
+        entry.metricsDetails.sort(function (a, b) {
           var aName, bName;
           aName = ((a != null ? a.name : void 0) || "").toString().toLowerCase();
           bName = ((b != null ? b.name : void 0) || "").toString().toLowerCase();
@@ -1294,7 +1294,7 @@
       return processed;
     };
 
-    MetricsController.prototype.usersMetricsToArray = function(usersObject) {
+    MetricsController.prototype.usersMetricsToArray = function (usersObject) {
       var cloned, data, detail, details, i, len, list, metric, ref, seen, username;
       if (!usersObject) {
         return [];
@@ -1342,7 +1342,7 @@
         }
         list.push(cloned);
       }
-      list.sort(function(a, b) {
+      list.sort(function (a, b) {
         var aName, bName;
         aName = (a.username || "").toString().toLowerCase();
         bName = (b.username || "").toString().toLowerCase();
@@ -1357,7 +1357,7 @@
       return list;
     };
 
-    MetricsController.prototype.processGessiMetrics = function(metricsArray) {
+    MetricsController.prototype.processGessiMetrics = function (metricsArray) {
       var base, base1, factor, i, j, len, len1, metric, metricType, parts, processed, ref, userName;
       processed = {
         byCategory: {},
@@ -1391,7 +1391,7 @@
       return processed;
     };
 
-    MetricsController.prototype.extractUsersFromMetrics = function(metricsArray) {
+    MetricsController.prototype.extractUsersFromMetrics = function (metricsArray) {
       var base, base1, detail, existingIds, i, len, metric, metricType, normalizedValue, parts, ratio, ratioUS, userData, userName, users;
       users = {};
       for (i = 0, len = metricsArray.length; i < len; i++) {
@@ -1479,7 +1479,7 @@
       for (userName in users) {
         userData = users[userName];
         if (angular.isArray(userData != null ? userData.metricsDetails : void 0)) {
-          userData.metricsDetails.sort(function(a, b) {
+          userData.metricsDetails.sort(function (a, b) {
             var aName, bName;
             aName = ((a != null ? a.name : void 0) || "").toString().toLowerCase();
             bName = ((b != null ? b.name : void 0) || "").toString().toLowerCase();
@@ -1497,7 +1497,7 @@
       return users;
     };
 
-    MetricsController.prototype.prepareUserRadarData = function(username, userData) {
+    MetricsController.prototype.prepareUserRadarData = function (username, userData) {
       if (!userData) {
         return null;
       }
@@ -1507,7 +1507,7 @@
       return userData.radarData;
     };
 
-    MetricsController.prototype.prepareMultiUserRadarData = function(usersData) {
+    MetricsController.prototype.prepareMultiUserRadarData = function (usersData) {
       var borderColor, colorPalette, dataEntry, datasetMap, datasets, fillColor, i, idx, j, len, len1, userData, username, usernames;
       if (!usersData) {
         return null;
@@ -1529,7 +1529,7 @@
         return null;
       }
       usernames = Object.keys(datasetMap);
-      usernames.sort(function(a, b) {
+      usernames.sort(function (a, b) {
         return a.toString().localeCompare(b.toString());
       });
       this.registerUserColors(usernames);
@@ -1557,7 +1557,7 @@
       };
     };
 
-    MetricsController.prototype.prepareProjectMetrics = function(metricsArray) {
+    MetricsController.prototype.prepareProjectMetrics = function (metricsArray) {
       var addMetricEntry, classification, collected, context, finalMetrics, globalHidden, i, isUserMetric, j, k, len, len1, len2, metric, metricId, metricsById, normalizedId, normalizedMetricId, projectOrder, ref, ref1, ref2, ref3, seenIds, transformed;
       if (!angular.isArray(metricsArray)) {
         return [];
@@ -1581,8 +1581,8 @@
       }
       collected = [];
       seenIds = {};
-      addMetricEntry = (function(_this) {
-        return function(metric) {
+      addMetricEntry = (function (_this) {
+        return function (metric) {
           var entry;
           if (_this.isUserMetricId(metric != null ? metric.id : void 0) || _this.isUserMetricId(metric != null ? metric.externalId : void 0)) {
             return;
@@ -1608,8 +1608,8 @@
         normalizedId = metricId.toLowerCase();
         metric = metricsById[normalizedId];
         if (!metric) {
-          metric = _.find(metricsArray, (function(_this) {
-            return function(candidate) {
+          metric = _.find(metricsArray, (function (_this) {
+            return function (candidate) {
               return _this.matchesConfiguredMetric(metricId, candidate.id, candidate.externalId, false);
             };
           })(this));
@@ -1674,7 +1674,7 @@
       return this.scaleProjectMetricsByProjectMax(finalMetrics);
     };
 
-    MetricsController.prototype.resolveMetricCategoryColor = function(categoryName, percentValue) {
+    MetricsController.prototype.resolveMetricCategoryColor = function (categoryName, percentValue) {
       var i, item, key, len, matchedColor, palette, percent, ratio, ref, ref1, ref2;
       if (categoryName == null) {
         return null;
@@ -1705,7 +1705,7 @@
       return matchedColor || null;
     };
 
-    MetricsController.prototype.buildMetricCategorySegments = function(categoryName) {
+    MetricsController.prototype.buildMetricCategorySegments = function (categoryName) {
       var clamped, entry, fallbackColor, i, key, lastThreshold, len, palette, ref, ref1, remainderRatio, segmentRatio, segments, upper;
       if (categoryName == null) {
         return null;
@@ -1756,7 +1756,7 @@
       }
     };
 
-    MetricsController.prototype.isUserMetricId = function(metricId) {
+    MetricsController.prototype.isUserMetricId = function (metricId) {
       var classification, isUserPattern, lowerId, prefixes;
       if (metricId == null) {
         return false;
@@ -1764,7 +1764,7 @@
       lowerId = metricId.toString().toLowerCase();
       classification = this.resolveLocalClassification(metricId);
       prefixes = ["assignedtasks_", "closedtasks_", "completedtasks_", "commits_", "modifiedlines_", "completedus_", "totalus_", "tasksratio_"];
-      isUserPattern = prefixes.some(function(prefix) {
+      isUserPattern = prefixes.some(function (prefix) {
         return lowerId.indexOf(prefix) === 0;
       });
       if (classification === 'project') {
@@ -1776,12 +1776,12 @@
       return isUserPattern;
     };
 
-    MetricsController.prototype.resolveMetricUserContext = function(metric) {
+    MetricsController.prototype.resolveMetricUserContext = function (metric) {
       var displayName, parts, pickValue, username;
       if (metric == null) {
         return null;
       }
-      pickValue = function(obj, keys) {
+      pickValue = function (obj, keys) {
         var i, key, len, trimmed, value;
         if (obj == null) {
           return null;
@@ -1829,7 +1829,7 @@
       };
     };
 
-    MetricsController.prototype.buildMetricDisplayGroups = function(rawMetrics) {
+    MetricsController.prototype.buildMetricDisplayGroups = function (rawMetrics) {
       var categoryName, classificationOverride, displayLabel, entry, factorName, globalHidden, groups, i, isProjectConfigured, isTeamConfigured, isUserMetric, j, k, len, len1, len2, len3, len4, m, metric, n, normalizedExternalId, normalizedMetricId, normalizedValue, pMetric, percentForColor, projectBuckets, projectOrderConfig, projectUnassigned, pushMetric, ratioValue, ref, ref1, ref2, ref3, ref4, ref5, ref6, tMetric, teamBuckets, teamOrderConfig, teamUnassigned, userContext;
       groups = {
         project: [],
@@ -1842,7 +1842,7 @@
       teamBuckets = {};
       projectUnassigned = [];
       teamUnassigned = [];
-      pushMetric = function(bucket, name, entry) {
+      pushMetric = function (bucket, name, entry) {
         if (bucket[name] == null) {
           bucket[name] = [];
         }
@@ -1979,7 +1979,7 @@
       return groups;
     };
 
-    MetricsController.prototype.convertMetricBucketsToGroups = function(buckets, unassignedList, isTeam) {
+    MetricsController.prototype.convertMetricBucketsToGroups = function (buckets, unassignedList, isTeam) {
       var bucketName, label, metricsList, ref, result, sortedFallback, sortedMetrics;
       result = [];
       for (bucketName in buckets) {
@@ -1988,7 +1988,7 @@
         if (!(angular.isArray(metricsList) && metricsList.length > 0)) {
           continue;
         }
-        sortedMetrics = metricsList.slice().sort(function(a, b) {
+        sortedMetrics = metricsList.slice().sort(function (a, b) {
           var aLabel, bLabel;
           aLabel = ((a != null ? a.label : void 0) || "").toString().toLowerCase();
           bLabel = ((b != null ? b.label : void 0) || "").toString().toLowerCase();
@@ -2008,7 +2008,7 @@
           metrics: sortedMetrics
         });
       }
-      result.sort(function(a, b) {
+      result.sort(function (a, b) {
         var aLabel, bLabel;
         aLabel = ((a != null ? a.label : void 0) || "").toString().toLowerCase();
         bLabel = ((b != null ? b.label : void 0) || "").toString().toLowerCase();
@@ -2021,7 +2021,7 @@
         }
       });
       if (angular.isArray(unassignedList) && unassignedList.length > 0) {
-        sortedFallback = unassignedList.slice().sort(function(a, b) {
+        sortedFallback = unassignedList.slice().sort(function (a, b) {
           var aLabel, bLabel;
           aLabel = ((a != null ? a.label : void 0) || "").toString().toLowerCase();
           bLabel = ((b != null ? b.label : void 0) || "").toString().toLowerCase();
@@ -2044,7 +2044,7 @@
       return result;
     };
 
-    MetricsController.prototype.buildProjectMetricEntry = function(metric) {
+    MetricsController.prototype.buildProjectMetricEntry = function (metric) {
       var categoryColor, categoryName, categorySegments, descriptionNumber, formattedPrecise, normalizedValue, numericValue, percentForColor, preciseValue, ratioValue, rawDescription, ref, roundedValue;
       if (!metric) {
         return null;
@@ -2096,7 +2096,7 @@
       };
     };
 
-    MetricsController.prototype.scaleProjectMetricsByProjectMax = function(metricsArray) {
+    MetricsController.prototype.scaleProjectMetricsByProjectMax = function (metricsArray) {
       var absolute, absoluteValues, fallback, i, j, len, len1, maxValue, metric, parsed, ratio, relativePercent;
       if (!(angular.isArray(metricsArray) && metricsArray.length > 0)) {
         return metricsArray;
@@ -2155,7 +2155,7 @@
       return metricsArray;
     };
 
-    MetricsController.prototype.prepareHoursPieData = function(hoursData) {
+    MetricsController.prototype.prepareHoursPieData = function (hoursData) {
       var borderColors, chartColors, colorPalette, data, error, labels, solidColor, student, value, values;
       if (!hoursData) {
         return null;
@@ -2190,7 +2190,7 @@
       };
     };
 
-    MetricsController.prototype.buildStudentsOverallRadar = function(usersList) {
+    MetricsController.prototype.buildStudentsOverallRadar = function (usersList) {
       var areaColor, assignedLabel, assignedTasks, borderColor, colorPalette, commits, commitsLabel, closedLabel, closedTasks, dataset, datasets, i, len, ref, ref1, ref2, user;
       if (!(usersList && usersList.length > 0)) {
         return null;
@@ -2232,7 +2232,7 @@
       };
     };
 
-    MetricsController.prototype.buildInternalStudentsRadar = function(usersList) {
+    MetricsController.prototype.buildInternalStudentsRadar = function (usersList) {
       var areaColor, borderColor, colorPalette, datasets, i, len, ref, ref1, ref2, storiesLabel, storiesPercent, tasksLabel, tasksPercent, user, workloadCount, workloadLabel;
       if (!(usersList && usersList.length > 0)) {
         return null;
@@ -2270,7 +2270,7 @@
       };
     };
 
-    MetricsController.prototype.buildClosedTasksComparison = function(usersList) {
+    MetricsController.prototype.buildClosedTasksComparison = function (usersList) {
       var barColors, borderColors, closedTasks, colorPalette, i, label, labels, len, ref, solidColor, user, values;
       if (!(usersList && usersList.length > 0)) {
         return null;
@@ -2315,7 +2315,7 @@
       };
     };
 
-    MetricsController.prototype.prepareStrategicIndicators = function(indicators) {
+    MetricsController.prototype.prepareStrategicIndicators = function (indicators) {
       var categoryLabel, entry, i, indicator, len, percentValue, processed, ref, ref1, value;
       if (!angular.isArray(indicators)) {
         return [];
@@ -2348,7 +2348,7 @@
       return processed;
     };
 
-    MetricsController.prototype.prepareQualityFactors = function(factors) {
+    MetricsController.prototype.prepareQualityFactors = function (factors) {
       var categoryColor, entry, factor, i, len, percentValue, processed, ref, value;
       if (!angular.isArray(factors)) {
         return [];
@@ -2385,7 +2385,7 @@
       return processed;
     };
 
-    MetricsController.prototype.getInternalGaugeColor = function(percentValue) {
+    MetricsController.prototype.getInternalGaugeColor = function (percentValue) {
       if (percentValue < 33) {
         return 'rgba(239, 68, 68, 0.9)';
       } else if (percentValue < 66) {
@@ -2395,14 +2395,14 @@
       }
     };
 
-    MetricsController.prototype.loadInitialData = function() {
+    MetricsController.prototype.loadInitialData = function () {
       var configPromise, project;
       project = this.loadProject();
       configPromise = this.fetchProjectConfig();
       return this.q.all([this.q.when(project), configPromise]);
     };
 
-    MetricsController.prototype.resolveErrorKey = function(value, defaultKey) {
+    MetricsController.prototype.resolveErrorKey = function (value, defaultKey) {
       var slug;
       if (!value) {
         return defaultKey;
@@ -2414,19 +2414,19 @@
       return "METRICS.ERROR_" + slug;
     };
 
-    MetricsController.prototype.drawTestingCharts = function() {
+    MetricsController.prototype.drawTestingCharts = function () {
       this.drawRadarChart();
       return this.drawSemicircleChart();
     };
 
-    MetricsController.prototype.drawRadarChart = function() {
+    MetricsController.prototype.drawRadarChart = function () {
       var canvas, checkChart;
       canvas = document.getElementById("radarChart");
       if (!canvas) {
         return;
       }
-      checkChart = (function(_this) {
-        return function() {
+      checkChart = (function (_this) {
+        return function () {
           if (window.Chart != null) {
             return _this.renderRadarWithChartJS(canvas);
           } else {
@@ -2437,7 +2437,7 @@
       return checkChart();
     };
 
-    MetricsController.prototype.renderRadarWithChartJS = function(canvas) {
+    MetricsController.prototype.renderRadarWithChartJS = function (canvas) {
       var config, ctx, data;
       ctx = canvas.getContext("2d");
       if (!ctx) {
@@ -2481,7 +2481,7 @@
                 font: {
                   size: 11
                 },
-                callback: function(value) {
+                callback: function (value) {
                   return value + "%";
                 }
               },
@@ -2503,7 +2503,7 @@
             },
             tooltip: {
               callbacks: {
-                label: function(context) {
+                label: function (context) {
                   return context.parsed.r + "%";
                 }
               }
@@ -2514,14 +2514,14 @@
       return this.testingRadarChart = new window.Chart(ctx, config);
     };
 
-    MetricsController.prototype.drawSemicircleChart = function() {
+    MetricsController.prototype.drawSemicircleChart = function () {
       var canvas, checkChart;
       canvas = document.getElementById("semicircleChart");
       if (!canvas) {
         return;
       }
-      checkChart = (function(_this) {
-        return function() {
+      checkChart = (function (_this) {
+        return function () {
           if (window.Chart != null) {
             return _this.renderSemicircleWithChartJS(canvas);
           } else {
@@ -2538,7 +2538,7 @@
      * Description: Renders the semicircle gauge that paints the acceptance criteria indicator as a half moon.
      */
 
-    MetricsController.prototype.renderSemicircleWithChartJS = function(canvas) {
+    MetricsController.prototype.renderSemicircleWithChartJS = function (canvas) {
       var color, config, ctx, gaugeContext, ref, resolvedValue, value;
       ctx = canvas.getContext("2d");
       if (!ctx) {
@@ -2594,8 +2594,8 @@
         plugins: [
           {
             id: 'gaugeCenterText',
-            afterDatasetDraw: (function(_this) {
-              return function(chart) {
+            afterDatasetDraw: (function (_this) {
+              return function (chart) {
                 var height, width;
                 ctx = chart.ctx;
                 width = chart.width;
@@ -2632,7 +2632,7 @@
       return this.testingSemicircleChart = new window.Chart(ctx, config);
     };
 
-    MetricsController.prototype.processHistoricalData = function(historicalData) {
+    MetricsController.prototype.processHistoricalData = function (historicalData) {
       "Process historical metrics data from LD backend into chart-ready format\nThe LD backend returns data already organized and processed:\n{\n    userMetrics: { metricKey: [{date, value, name, username}, ...] },\n    projectMetrics: { metricKey: [{date, value, name}, ...] },\n    strategicMetrics: { metricKey: [{date, value, name}, ...] },\n    qualityFactors: { metricKey: [{date, value, name}, ...] }\n}";
       var projectMetricsRaw, qualityFactorsRaw, result, strategicMetricsRaw, userMetricsRaw;
       if (!historicalData || typeof historicalData !== 'object') {
@@ -2658,7 +2658,7 @@
       return result;
     };
 
-    MetricsController.prototype.convertRawMetricsToCharts = function(metricsData, category) {
+    MetricsController.prototype.convertRawMetricsToCharts = function (metricsData, category) {
       "Convert raw metrics arrays into Chart.js format for tg-area-chart\nInput: { metricKey: [{date, value, name, student?}, ...], ... }\nOutput: { [key]: {labels: [...], datasets: [{...}], ...}, ... }";
       var chartDataset, dataPoints, date, displayLabel, i, labels, len, maxValue, metricKey, metricName, parsed, point, result, value, values;
       result = {};
@@ -2725,7 +2725,7 @@
           title: displayLabel,
           labels: labels,
           datasets: [chartDataset],
-          yAxisMax: maxValue <= 1 ? 1.08 : null,
+          yAxisMax: maxValue <= 1 ? 1.0 : null,
           showLegend: false,
           metricCategory: category
         };
@@ -2733,7 +2733,7 @@
       return result;
     };
 
-    MetricsController.prototype.buildTeamHistoricalData = function(userMetricsRaw) {
+    MetricsController.prototype.buildTeamHistoricalData = function (userMetricsRaw) {
       var base, base1, bundle, category, collection, dataPoints, groupedByStudent, i, len, mergedMetrics, metricId, normalizedId, normalizedStudent, point, result, student, studentPoints, userSet;
       result = {
         users: [],
@@ -2793,13 +2793,13 @@
           result.chartsByCategory[category][student] = collection;
         }
       }
-      result.users = Object.keys(userSet).sort(function(a, b) {
+      result.users = Object.keys(userSet).sort(function (a, b) {
         return a.localeCompare(b);
       });
       return result;
     };
 
-    MetricsController.prototype.buildHistoricalEntryCollection = function(student, category, metricId, dataPoints) {
+    MetricsController.prototype.buildHistoricalEntryCollection = function (student, category, metricId, dataPoints) {
       var entries, i, label, len, metricName, point, rawLabel, timestamp, value;
       if (!(angular.isArray(dataPoints) && dataPoints.length)) {
         return null;
@@ -2833,7 +2833,7 @@
       if (!entries.length) {
         return null;
       }
-      entries.sort(function(a, b) {
+      entries.sort(function (a, b) {
         if ((a.timestamp != null) && (b.timestamp != null)) {
           return a.timestamp - b.timestamp;
         }
@@ -2854,7 +2854,7 @@
       };
     };
 
-    MetricsController.prototype.normalizeFilterDate = function(value) {
+    MetricsController.prototype.normalizeFilterDate = function (value) {
       var parsed, timestamp;
       if (value == null) {
         return null;
@@ -2876,7 +2876,7 @@
       return parsed;
     };
 
-    MetricsController.prototype.filterHistoricalEntries = function(entries, dateFrom, dateTo) {
+    MetricsController.prototype.filterHistoricalEntries = function (entries, dateFrom, dateTo) {
       var fromTimestamp, toTimestamp;
       if (!angular.isArray(entries)) {
         return [];
@@ -2889,7 +2889,7 @@
       if (toTimestamp != null) {
         toTimestamp += 24 * 60 * 60 * 1000 - 1;
       }
-      return entries.filter(function(entry) {
+      return entries.filter(function (entry) {
         var include;
         include = true;
         if ((fromTimestamp != null) && (entry.timestamp != null)) {
@@ -2906,7 +2906,7 @@
       });
     };
 
-    MetricsController.prototype.buildChartDatasetFromEntries = function(student, category, entries) {
+    MetricsController.prototype.buildChartDatasetFromEntries = function (student, category, entries) {
       var axisConfig, colorPalette, dataset, entry, i, labels, len, numericValue, values;
       if (!(angular.isArray(entries) && entries.length)) {
         return null;
@@ -2949,14 +2949,14 @@
       };
     };
 
-    MetricsController.prototype.normalizeHistoricalMetricId = function(metricId) {
+    MetricsController.prototype.normalizeHistoricalMetricId = function (metricId) {
       if (metricId == null) {
         return "";
       }
       return metricId.toString().toLowerCase().replace(/[-\s]+/g, "_");
     };
 
-    MetricsController.prototype.historicalPointKey = function(point) {
+    MetricsController.prototype.historicalPointKey = function (point) {
       var error, label, timestamp;
       if (point == null) {
         return null;
@@ -2977,7 +2977,7 @@
       }
     };
 
-    MetricsController.prototype.deduplicateAndSortHistoricalPoints = function(points) {
+    MetricsController.prototype.deduplicateAndSortHistoricalPoints = function (points) {
       var cleaned, i, key, len, point, seen;
       if (!angular.isArray(points)) {
         return [];
@@ -2999,8 +2999,8 @@
         seen[key] = true;
         cleaned.push(point);
       }
-      cleaned.sort((function(_this) {
-        return function(a, b) {
+      cleaned.sort((function (_this) {
+        return function (a, b) {
           var labelA, labelB, tsA, tsB;
           tsA = _this.extractHistoricalPointTimestamp(a);
           tsB = _this.extractHistoricalPointTimestamp(b);
@@ -3024,7 +3024,7 @@
       return cleaned;
     };
 
-    MetricsController.prototype.mergeHistoricalMetricSeries = function(metricsRaw) {
+    MetricsController.prototype.mergeHistoricalMetricSeries = function (metricsRaw) {
       var dataPoints, entry, merged, metricId, normalizedId, pointsCopy;
       merged = {};
       if (!((metricsRaw != null) && typeof metricsRaw === "object")) {
@@ -3058,7 +3058,7 @@
       return merged;
     };
 
-    MetricsController.prototype.extractHistoricalPointValue = function(point) {
+    MetricsController.prototype.extractHistoricalPointValue = function (point) {
       var candidate, candidates, i, len, normalized;
       if (point == null) {
         return null;
@@ -3077,7 +3077,7 @@
       return null;
     };
 
-    MetricsController.prototype.extractHistoricalPointTimestamp = function(point) {
+    MetricsController.prototype.extractHistoricalPointTimestamp = function (point) {
       var parsed, raw, timestamp;
       if (point == null) {
         return null;
@@ -3103,7 +3103,7 @@
       return parsed;
     };
 
-    MetricsController.prototype.identifyHistoricalMetricCategory = function(metricId) {
+    MetricsController.prototype.identifyHistoricalMetricCategory = function (metricId) {
       var normalized;
       if (metricId == null) {
         return null;
@@ -3124,7 +3124,7 @@
       return null;
     };
 
-    MetricsController.prototype.resolveUserColor = function(seed) {
+    MetricsController.prototype.resolveUserColor = function (seed) {
       var aliasKey, color, defaultColor, identifier, key, ref, ref1, ref2, ref3, ref4, similarKey, stored;
       defaultColor = ((ref = this.userColorPalette) != null ? ref[0] : void 0) || this.prepareColorFromHex("#6366F1");
       identifier = this.normalizeUserIdentifier(seed);
@@ -3155,7 +3155,7 @@
       return color != null ? color : defaultColor;
     };
 
-    MetricsController.prototype.registerUserColors = function(users) {
+    MetricsController.prototype.registerUserColors = function (users) {
       var aliasFromAttr, aliasList, attr, base, candidate, candidates, i, identifier, j, key, len, len1, name1, ref, results, seen, user, value;
       if (users == null) {
         return;
@@ -3212,7 +3212,7 @@
           });
         }
       }
-      candidates.sort(function(a, b) {
+      candidates.sort(function (a, b) {
         return a.identifier.localeCompare(b.identifier);
       });
       seen = {};
@@ -3241,13 +3241,13 @@
       return results;
     };
 
-    MetricsController.prototype.resetUserColorAssignments = function() {
+    MetricsController.prototype.resetUserColorAssignments = function () {
       this.userColorAssignments = {};
       this.userColorIndex = 0;
       return this.userColorAliasIndex = {};
     };
 
-    MetricsController.prototype.assignColorForKey = function(key) {
+    MetricsController.prototype.assignColorForKey = function (key) {
       var color, ref;
       if ((ref = this.userColorAssignments) != null ? ref[key] : void 0) {
         return this.userColorAssignments[key];
@@ -3261,7 +3261,7 @@
       return color;
     };
 
-    MetricsController.prototype.nextUserColor = function() {
+    MetricsController.prototype.nextUserColor = function () {
       var basePalette, colorTemplate, error, hue;
       basePalette = this.userColorPalette || [];
       if (this.userColorIndex < basePalette.length) {
@@ -3282,17 +3282,17 @@
       return this.generateColorFromHue(hue);
     };
 
-    MetricsController.prototype.buildUserColorPalette = function() {
+    MetricsController.prototype.buildUserColorPalette = function () {
       var baseHex;
       baseHex = ["#DC2626", "#2563EB", "#059669", "#F59E0B", "#9333EA", "#0891B2", "#7C3AED", "#65A30D", "#6366F1", "#F97316", "#14B8A6", "#A855F7", "#EF4444", "#0EA5E9", "#22C55E", "#D946EF", "#F43F5E", "#3B82F6", "#10B981", "#E53E3E"];
-      return baseHex.map((function(_this) {
-        return function(hex) {
+      return baseHex.map((function (_this) {
+        return function (hex) {
           return _this.prepareColorFromHex(hex);
         };
       })(this));
     };
 
-    MetricsController.prototype.normalizeUserIdentifier = function(input) {
+    MetricsController.prototype.normalizeUserIdentifier = function (input) {
       var candidate, candidates, i, len, ref, ref1, ref2, ref3, trimmed, value;
       if (input == null) {
         return "";
@@ -3317,7 +3317,7 @@
       return "";
     };
 
-    MetricsController.prototype.normalizeUserColorKey = function(identifier) {
+    MetricsController.prototype.normalizeUserColorKey = function (identifier) {
       var error, key, slug;
       if (identifier == null) {
         return "";
@@ -3336,7 +3336,7 @@
       return key;
     };
 
-    MetricsController.prototype.collectUserAliasKeys = function(user, canonicalKey) {
+    MetricsController.prototype.collectUserAliasKeys = function (user, canonicalKey) {
       var aliasCandidates, aliasKey, aliases, candidate, i, len, seen;
       if (canonicalKey == null) {
         canonicalKey = "";
@@ -3375,7 +3375,7 @@
       return aliases;
     };
 
-    MetricsController.prototype.registerAliasKeys = function(aliases, canonicalKey) {
+    MetricsController.prototype.registerAliasKeys = function (aliases, canonicalKey) {
       var aliasKey, existing, i, len, results;
       if (canonicalKey == null) {
         return;
@@ -3407,7 +3407,7 @@
       return results;
     };
 
-    MetricsController.prototype.findSimilarUserColorKey = function(key) {
+    MetricsController.prototype.findSimilarUserColorKey = function (key) {
       var assignments, color, existingKey;
       if (key == null) {
         return null;
@@ -3429,7 +3429,7 @@
       return null;
     };
 
-    MetricsController.prototype.prepareColorFromHex = function(hex, fillAlpha, solidAlpha) {
+    MetricsController.prototype.prepareColorFromHex = function (hex, fillAlpha, solidAlpha) {
       var rgb;
       if (fillAlpha == null) {
         fillAlpha = 0.26;
@@ -3452,7 +3452,7 @@
       };
     };
 
-    MetricsController.prototype.hexToRgb = function(hex) {
+    MetricsController.prototype.hexToRgb = function (hex) {
       var b, g, intVal, normalized, r, ref;
       if (typeof hex !== "string") {
         return null;
@@ -3462,7 +3462,7 @@
         return null;
       }
       if (normalized.length === 3) {
-        normalized = normalized.split("").map(function(char) {
+        normalized = normalized.split("").map(function (char) {
           return "" + char + char;
         }).join("");
       }
@@ -3480,7 +3480,7 @@
       };
     };
 
-    MetricsController.prototype.generateColorFromHue = function(hue) {
+    MetricsController.prototype.generateColorFromHue = function (hue) {
       var hex, hueValue, rgb;
       hueValue = ((hue % 360) + 360) % 360;
       rgb = this.hslToRgb(hueValue / 360, 0.62, 0.55);
@@ -3488,7 +3488,7 @@
       return this.prepareColorFromHex(hex);
     };
 
-    MetricsController.prototype.hslToRgb = function(h, s, l) {
+    MetricsController.prototype.hslToRgb = function (h, s, l) {
       var b, g, hue2rgb, p, q, r;
       h = Math.max(0, Math.min(1, h));
       s = Math.max(0, Math.min(1, s));
@@ -3498,7 +3498,7 @@
         g = l;
         b = l;
       } else {
-        hue2rgb = function(p, q, t) {
+        hue2rgb = function (p, q, t) {
           if (t < 0) {
             t += 1;
           }
@@ -3525,9 +3525,9 @@
       return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
     };
 
-    MetricsController.prototype.rgbToHex = function(r, g, b) {
+    MetricsController.prototype.rgbToHex = function (r, g, b) {
       var componentToHex;
-      componentToHex = function(value) {
+      componentToHex = function (value) {
         var clamped, hexComponent;
         clamped = Math.max(0, Math.min(255, Math.round(value)));
         hexComponent = clamped.toString(16);
@@ -3540,11 +3540,11 @@
       return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
     };
 
-    MetricsController.prototype.resolveHistoricalAxisConfig = function(category, values) {
+    MetricsController.prototype.resolveHistoricalAxisConfig = function (category, values) {
       var adjustedMax, baseMax, config, isPercentage, maxValue, numericValues, percentageCategories;
       numericValues = [];
       if (angular.isArray(values)) {
-        numericValues = values.filter(function(value) {
+        numericValues = values.filter(function (value) {
           return typeof value === "number" && !isNaN(value);
         });
       }
@@ -3565,7 +3565,7 @@
       return config;
     };
 
-    MetricsController.prototype.metricCategoryLabelKey = function(category) {
+    MetricsController.prototype.metricCategoryLabelKey = function (category) {
       switch (category) {
         case "tasks":
           return "METRICS.TEAM_HISTORICAL_METRIC_TASKS";
@@ -3580,7 +3580,7 @@
       }
     };
 
-    MetricsController.prototype.buildQualityFactorNamesMap = function(metricsData) {
+    MetricsController.prototype.buildQualityFactorNamesMap = function (metricsData) {
 
       /*
        * Build a map from quality factor id to its display name
@@ -3634,7 +3634,7 @@
       return map;
     };
 
-    MetricsController.prototype.formatMetricCategoryLabel = function(category) {
+    MetricsController.prototype.formatMetricCategoryLabel = function (category) {
       var categoryStr, formatted, knownQualityFactors, normalizedCategory, words;
       if (category == null) {
         return "";
@@ -3666,7 +3666,7 @@
       }
       formatted = categoryStr.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').replace(/contribution/gi, ' Contribution').replace(/relation/gi, ' Relation').replace(/management/gi, ' Management').replace(/information/gi, ' Information').replace(/distribution/gi, ' Distribution').replace(/fulfillment/gi, 'Fulfillment ').replace(/deviation/gi, 'Deviation ').replace(/modified/gi, 'Modified ').replace(/quality/gi, ' Quality').replace(/\s+/g, ' ').trim();
       words = formatted.split(' ');
-      return words.map(function(word) {
+      return words.map(function (word) {
         if (word.length > 0) {
           return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
         } else {
@@ -3675,7 +3675,7 @@
       }).join(' ');
     };
 
-    MetricsController.prototype.composeTeamHistoricalChart = function(collection, metricLabelKey, filteredEntries) {
+    MetricsController.prototype.composeTeamHistoricalChart = function (collection, metricLabelKey, filteredEntries) {
       var baseLabel, chartData, metricLabel, ref, ref1, title, titleKey, translatedLabel;
       if (collection == null) {
         return null;
@@ -3705,7 +3705,7 @@
       };
     };
 
-    MetricsController.prototype.composeAggregatedTeamHistoricalCharts = function(chartsByCategory, dateFrom, dateTo) {
+    MetricsController.prototype.composeAggregatedTeamHistoricalCharts = function (chartsByCategory, dateFrom, dateTo) {
       var categoryCollections, categoryId, chart, charts;
       charts = [];
       if (chartsByCategory == null) {
@@ -3719,7 +3719,7 @@
           charts.push(chart);
         }
       }
-      charts.sort(function(a, b) {
+      charts.sort(function (a, b) {
         var labelA, labelB;
         labelA = (a != null ? a.metricLabel : void 0) != null ? a.metricLabel.toString() : "";
         labelB = (b != null ? b.metricLabel : void 0) != null ? b.metricLabel.toString() : "";
@@ -3728,7 +3728,7 @@
       return charts;
     };
 
-    MetricsController.prototype.composeAggregatedTeamHistoricalChart = function(categoryId, categoryCollections, dateFrom, dateTo) {
+    MetricsController.prototype.composeAggregatedTeamHistoricalChart = function (categoryId, categoryCollections, dateFrom, dateTo) {
       var allValues, axisConfig, baseLabel, chartData, collection, dataset, datasetClone, datasetInfos, datasetTemplate, datasets, error, filteredEntries, hasNumeric, i, idx, info, j, label, labelSet, labels, len, len1, metricLabel, metricLabelKey, ref, ref1, ref2, ref3, ref4, student, title, titleKey, translatedLabel, userLabel, value, valueMap;
       if (!((categoryCollections != null) && typeof categoryCollections === "object")) {
         return null;
@@ -3786,7 +3786,7 @@
           student: collection.student
         });
       }
-      labels = Object.keys(labelSet).sort(function(a, b) {
+      labels = Object.keys(labelSet).sort(function (a, b) {
         return a.localeCompare(b);
       });
       if (!(labels.length && datasetInfos.length)) {
@@ -3796,7 +3796,7 @@
       for (j = 0, len1 = datasetInfos.length; j < len1; j++) {
         info = datasetInfos[j];
         datasetClone = info.dataset || {};
-        datasetClone.data = labels.map(function(label) {
+        datasetClone.data = labels.map(function (label) {
           var numeric;
           value = info.valueMap[label];
           if (typeof value === "number" && !isNaN(value)) {
@@ -3816,7 +3816,7 @@
         datasetClone.label = datasetClone.label || info.student;
         hasNumeric = false;
         if (angular.isArray(datasetClone.data)) {
-          hasNumeric = datasetClone.data.some(function(value) {
+          hasNumeric = datasetClone.data.some(function (value) {
             return typeof value === "number" && !isNaN(value);
           });
         }
@@ -3876,7 +3876,7 @@
      * @param presetId {String} The preset identifier
      */
 
-    MetricsController.prototype.applyDatePreset = function(filters, presetId) {
+    MetricsController.prototype.applyDatePreset = function (filters, presetId) {
       var firstOfMonth, fromDate, month, toDate, today;
       if (filters == null) {
         return;
@@ -3934,7 +3934,7 @@
      * Format a Date object to YYYY-MM-DD string for date input
      */
 
-    MetricsController.prototype.formatDateForInput = function(date) {
+    MetricsController.prototype.formatDateForInput = function (date) {
       var day, month, year;
       if (date == null) {
         return null;
@@ -3950,13 +3950,13 @@
      * Get human-readable label for the current date range
      */
 
-    MetricsController.prototype.getDateRangeLabel = function(filters) {
+    MetricsController.prototype.getDateRangeLabel = function (filters) {
       var presetOption, ref, ref1;
       if (filters == null) {
         return "";
       }
       if (filters.preset) {
-        presetOption = (ref = this.scope.metricsView.datePresetOptions) != null ? ref.find(function(opt) {
+        presetOption = (ref = this.scope.metricsView.datePresetOptions) != null ? ref.find(function (opt) {
           return opt.id === filters.preset;
         }) : void 0;
         if ((presetOption != null ? presetOption.label : void 0) && (((ref1 = this.translate) != null ? ref1.instant : void 0) != null)) {
@@ -3973,12 +3973,12 @@
       return "";
     };
 
-    MetricsController.prototype.applyTeamHistoricalFilters = function() {
+    MetricsController.prototype.applyTeamHistoricalFilters = function () {
       var aggregatedCharts, applyOverrides, categoryCollections, categoryId, charts, chartsByCategory, collection, dateFrom, dateTo, filters, metric, metricLabelKey, processCollection, ref, ref1, ref2, ref3, ref4, source, student, user, userCollections;
       filters = this.scope.metricsView.teamHistoricalFilters || {};
       source = this.scope.metricsView.teamHistoricalSource;
-      applyOverrides = (function(_this) {
-        return function(chartsList) {
+      applyOverrides = (function (_this) {
+        return function (chartsList) {
           var context, transformedCharts;
           context = {
             charts: chartsList,
@@ -4012,8 +4012,8 @@
       }
       metricLabelKey = metric === "all" ? null : this.metricCategoryLabelKey(metric);
       charts = [];
-      processCollection = (function(_this) {
-        return function(collection) {
+      processCollection = (function (_this) {
+        return function (collection) {
           var chart, filteredEntries;
           filteredEntries = _this.filterHistoricalEntries(collection.entries, dateFrom, dateTo);
           if (!(filteredEntries != null ? filteredEntries.length : void 0)) {
@@ -4060,13 +4060,13 @@
           }
         }
       }
-      charts.sort(function(a, b) {
+      charts.sort(function (a, b) {
         return a.user.localeCompare(b.user);
       });
       return this.scope.metricsView.teamHistoricalCharts = applyOverrides(charts);
     };
 
-    MetricsController.prototype.filterProjectHistoricalPoints = function(dataPoints, dateFrom, dateTo) {
+    MetricsController.prototype.filterProjectHistoricalPoints = function (dataPoints, dateFrom, dateTo) {
       var fromTimestamp, toTimestamp;
       if (!angular.isArray(dataPoints)) {
         return [];
@@ -4079,8 +4079,8 @@
       if (toTimestamp != null) {
         toTimestamp += 24 * 60 * 60 * 1000 - 1;
       }
-      return dataPoints.filter((function(_this) {
-        return function(point) {
+      return dataPoints.filter((function (_this) {
+        return function (point) {
           var include, timestamp;
           timestamp = _this.extractHistoricalPointTimestamp(point);
           include = true;
@@ -4099,7 +4099,7 @@
       })(this));
     };
 
-    MetricsController.prototype.applyProjectHistoricalFilters = function(historicalMetrics) {
+    MetricsController.prototype.applyProjectHistoricalFilters = function (historicalMetrics) {
       var applyOverrides, bundle, chartData, chartMap, charts, dataPoints, filteredData, filteredPoints, filters, i, len, mergedProjectMetrics, metricId, normalizedId, rawProjectMetrics, ref, ref1, ref2, title;
       if (historicalMetrics == null) {
         historicalMetrics = null;
@@ -4115,8 +4115,8 @@
       rawProjectMetrics = (historicalMetrics != null ? (ref1 = historicalMetrics.raw) != null ? ref1.projectMetrics : void 0 : void 0) || {};
       mergedProjectMetrics = this.mergeHistoricalMetricSeries(rawProjectMetrics);
       filteredData = {};
-      applyOverrides = (function(_this) {
-        return function(chartsList, chartMapReference) {
+      applyOverrides = (function (_this) {
+        return function (chartsList, chartMapReference) {
           var context, transformedCharts;
           context = {
             charts: chartsList,
@@ -4180,7 +4180,7 @@
       return this.scope.metricsView.projectHistoricalCharts = applyOverrides(charts, chartMap);
     };
 
-    MetricsController.prototype.updateTeamHistoricalSource = function(historicalMetrics) {
+    MetricsController.prototype.updateTeamHistoricalSource = function (historicalMetrics) {
       var rawUserMetrics, ref, ref1, teamData;
       if (historicalMetrics == null) {
         this.scope.metricsView.teamHistoricalSource = null;
@@ -4199,7 +4199,7 @@
       return this.updateProjectHistoricalCharts(historicalMetrics);
     };
 
-    MetricsController.prototype.updateProjectHistoricalCharts = function(historicalMetrics) {
+    MetricsController.prototype.updateProjectHistoricalCharts = function (historicalMetrics) {
       if (historicalMetrics != null) {
         return this.applyProjectHistoricalFilters(historicalMetrics);
       } else {
@@ -4207,7 +4207,7 @@
       }
     };
 
-    MetricsController.prototype.buildTeamOverviewDefaultState = function() {
+    MetricsController.prototype.buildTeamOverviewDefaultState = function () {
       return {
         usersList: [],
         uiUsers: [],
@@ -4223,11 +4223,11 @@
       };
     };
 
-    MetricsController.prototype.resetTeamOverviewState = function() {
+    MetricsController.prototype.resetTeamOverviewState = function () {
       return this.scope.metricsView.teamOverview = this.buildTeamOverviewDefaultState();
     };
 
-    MetricsController.prototype.initializeTeamOverviewState = function() {
+    MetricsController.prototype.initializeTeamOverviewState = function () {
       var borderColor, colorPalette, data, dataset, displayName, i, j, k, label, len, len1, len2, matchedUsername, overview, primaryColor, ref, ref1, ref2, ref3, user, username, usersList;
       this.resetTeamOverviewState();
       data = this.scope.metricsView.data;
@@ -4304,7 +4304,7 @@
       return this.updateTeamOverviewCharts();
     };
 
-    MetricsController.prototype.updateTeamOverviewCharts = function() {
+    MetricsController.prototype.updateTeamOverviewCharts = function () {
       var activeLabels, activeUsernames, baseBar, cloned, dataset, datasets, filteredBar, filteredDatasets, filteredLabels, filteredRadar, i, idx, include, isActive, j, k, label, len, len1, len2, len3, len4, len5, m, n, o, overview, ref, ref1, ref2, ref3, ref4, ref5, ref6, ref7, selectedIndices, user, username, usersList;
       overview = this.scope.metricsView.teamOverview;
       if (overview == null) {
@@ -4418,22 +4418,22 @@
             dataset = ref7[o];
             cloned = angular.copy(dataset) || {};
             if (angular.isArray(dataset != null ? dataset.data : void 0)) {
-              cloned.data = selectedIndices.map(function(index) {
+              cloned.data = selectedIndices.map(function (index) {
                 return dataset.data[index];
               });
             }
             if (angular.isArray(dataset != null ? dataset.backgroundColor : void 0)) {
-              cloned.backgroundColor = selectedIndices.map(function(index) {
+              cloned.backgroundColor = selectedIndices.map(function (index) {
                 return dataset.backgroundColor[index];
               });
             }
             if (angular.isArray(dataset != null ? dataset.borderColor : void 0)) {
-              cloned.borderColor = selectedIndices.map(function(index) {
+              cloned.borderColor = selectedIndices.map(function (index) {
                 return dataset.borderColor[index];
               });
             }
             if (angular.isArray(dataset != null ? dataset.hoverBackgroundColor : void 0)) {
-              cloned.hoverBackgroundColor = selectedIndices.map(function(index) {
+              cloned.hoverBackgroundColor = selectedIndices.map(function (index) {
                 return dataset.hoverBackgroundColor[index];
               });
             }
@@ -4447,7 +4447,7 @@
       }
     };
 
-    MetricsController.prototype.toggleTeamOverviewUser = function(username) {
+    MetricsController.prototype.toggleTeamOverviewUser = function (username) {
       var isActive, normalized, overview;
       if (username == null) {
         return;
@@ -4465,7 +4465,7 @@
       return this.updateTeamOverviewCharts();
     };
 
-    MetricsController.prototype.resetTeamOverviewUsers = function() {
+    MetricsController.prototype.resetTeamOverviewUsers = function () {
       var i, len, overview, ref, user, username;
       overview = this.scope.metricsView.teamOverview;
       if (overview == null) {
@@ -4483,7 +4483,7 @@
       return this.updateTeamOverviewCharts();
     };
 
-    MetricsController.prototype.matchUserByLabel = function(label, overview) {
+    MetricsController.prototype.matchUserByLabel = function (label, overview) {
       var i, labelStr, len, ref, ref1, ref2, user, username;
       if (overview == null) {
         overview = null;
@@ -4517,7 +4517,7 @@
       return null;
     };
 
-    MetricsController.prototype.initializeTeamHistoricalUsers = function(usersList) {
+    MetricsController.prototype.initializeTeamHistoricalUsers = function (usersList) {
       var baseOption, displayName, hasSelected, i, len, normalized, options, ref, seen, selectedUser, user, username;
       baseOption = {
         id: "all",
@@ -4553,7 +4553,7 @@
       }
       hasSelected = false;
       if (selectedUser != null) {
-        hasSelected = options.some(function(opt) {
+        hasSelected = options.some(function (opt) {
           return opt.id === selectedUser;
         });
       }
@@ -4563,7 +4563,7 @@
       }
     };
 
-    MetricsController.prototype.mergeTeamHistoricalUsers = function(usernames) {
+    MetricsController.prototype.mergeTeamHistoricalUsers = function (usernames) {
       var existing, hasSelected, i, j, len, len1, normalized, option, options, ref, seen, selectedUser, username;
       if (!angular.isArray(usernames)) {
         return;
@@ -4599,7 +4599,7 @@
           translate: false
         });
       }
-      options.sort(function(a, b) {
+      options.sort(function (a, b) {
         if (a.id === "all") {
           return -1;
         }
@@ -4611,7 +4611,7 @@
       selectedUser = (ref = this.scope.metricsView.teamHistoricalFilters) != null ? ref.user : void 0;
       hasSelected = false;
       if (selectedUser != null) {
-        hasSelected = options.some(function(opt) {
+        hasSelected = options.some(function (opt) {
           return opt.id === selectedUser;
         });
       }
@@ -4621,7 +4621,7 @@
       }
     };
 
-    MetricsController.prototype.formatMetricLabel = function(metricId) {
+    MetricsController.prototype.formatMetricLabel = function (metricId) {
       "Convert metric ID to a readable label\nExample: acceptance_criteria_check -> Acceptance Criteria Application";
       var labelMap, parts, prefix, userMetricMap, words;
       if (!metricId) {
@@ -4661,7 +4661,7 @@
         }
       }
       words = metricId.split('_');
-      return words.map(function(word) {
+      return words.map(function (word) {
         if (word.length > 0) {
           return word.charAt(0).toUpperCase() + word.slice(1);
         } else {
@@ -4674,8 +4674,8 @@
 
   })(mixOf(taiga.Controller, taiga.PageMixin));
 
-  module.filter("hasData", function() {
-    return function(obj) {
+  module.filter("hasData", function () {
+    return function (obj) {
       if (obj == null) {
         return false;
       }

@@ -77,7 +77,7 @@ div.wrapper
                                     select#projectHistoricalSprint(
                                         ng-model="metricsView.projectHistoricalFilters.sprint"
                                         ng-change="applySprintFilter(metricsView.projectHistoricalFilters)"
-                                        ng-options="option.id as (option.translate ? (option.name | translate) : option.name) for option in metricsView.sprintOptions track by option.id"
+                                        ng-options="option.id as (option.translate ? (option.name | translate) : option.name) for option in metricsView.sprintOptions"
                                     )
                                 //- Custom date range
                                 div.filter-group.date-group
@@ -93,6 +93,13 @@ div.wrapper
                                         type="date"
                                         ng-model="metricsView.projectHistoricalFilters.dateTo"
                                         ng-change="metricsView.projectHistoricalFilters.preset = null"
+                                    )
+                                div.filter-group.metric-filter
+                                    label.filter-label(for="projectHistoricalMetric", translate="METRICS.TEAM_HISTORICAL_METRIC_FILTER")
+                                    select#projectHistoricalMetric(
+                                        ng-model="metricsView.projectHistoricalFilters.metric"
+                                        ng-change="applyProjectHistoricalFilters()"
+                                        ng-options="metric.id as (metric.label | translate) for metric in metricsView.projectHistoricalMetricOptions"
                                     )
                                 div.filter-group.filter-actions
                                     button.filter-action(

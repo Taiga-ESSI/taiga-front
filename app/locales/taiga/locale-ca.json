@@ -2115,6 +2115,12 @@
             "INPUT_PLACEHOLDER": "Escriu algo...",
             "ACTION_TITLE": "Cerca",
             "RESULTS": "Resultats de la cerca"
+        },
+        "HOME": {
+            "TITLE": "Benvinguts a Taiga ESSI",
+            "SUBTITLE_1": "Gestioneu els vostres projectes de manera àgil i eficient.",
+            "SUBTITLE_2": "Aquesta plataforma us permet coordinar equips, seguir el progrés i documentar la feina feta.",
+            "ACCESS_BUTTON": "Accedeix aquí"
         }
     },
     "ZOOM": {

@@ -110,10 +110,6 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 user: "all"
                 dateFrom: null
                 dateTo: null
-                metric: "all"
-                user: "all"
-                dateFrom: null
-                dateTo: null
                 preset: null
                 sprint: null
             teamHistoricalMetricOptions: [
@@ -129,14 +125,15 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             teamHistoricalCharts: []
             teamHistoricalSource: null
             projectHistoricalCharts: []
-            teamHistoricalCharts: []
-            teamHistoricalSource: null
-            projectHistoricalCharts: []
             projectHistoricalFilters:
+                metric: "all"
                 dateFrom: null
                 dateTo: null
                 preset: null
                 sprint: null
+            projectHistoricalMetricOptions: [
+                {id: "all", label: "METRICS.TEAM_HISTORICAL_METRIC_ALL"}
+            ]
             # Sprint options
             sprintOptions: [
                 {id: null, name: "METRICS.SPRINT_GLOBAL", translate: true}
@@ -453,15 +450,17 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 
                 @scope.metricsView.sprintOptions = options
                 
-                # Select last sprint by default if there are sprints
-                if sorted.length > 0
-                    lastSprint = sorted[sorted.length - 1]
-                    # Set team historical filter to last sprint
-                    @scope.metricsView.teamHistoricalFilters.sprint = lastSprint.id
+                # Select global (null) by default
+                @$timeout =>
+                    @scope.metricsView.teamHistoricalFilters.sprint = null
+                    @scope.metricsView.teamHistoricalFilters.user = "all"
+                    @scope.metricsView.teamHistoricalFilters.metric = "all"
                     @.applySprintFilter(@scope.metricsView.teamHistoricalFilters)
-                    # Set project historical filter to last sprint
-                    @scope.metricsView.projectHistoricalFilters.sprint = lastSprint.id
+                    
+                    @scope.metricsView.projectHistoricalFilters.sprint = null
+                    @scope.metricsView.projectHistoricalFilters.metric = "all"
                     @.applySprintFilter(@scope.metricsView.projectHistoricalFilters)
+                , 0
                     
             .catch (error) =>
                 console.warn "Metrics: Unable to load milestones", error
@@ -2460,7 +2459,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 title: displayLabel
                 labels: labels
                 datasets: [chartDataset]
-                yAxisMax: if maxValue <= 1 then 1.08 else null
+                yAxisMax: if maxValue <= 1 then 1.0 else null
                 showLegend: false
                 metricCategory: category
             }
@@ -3558,6 +3557,15 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         filters = @scope.metricsView.projectHistoricalFilters or {}
         rawProjectMetrics = historicalMetrics?.raw?.projectMetrics or {}
         mergedProjectMetrics = @.mergeHistoricalMetricSeries(rawProjectMetrics)
+        
+        # Update metric options if empty
+        if @scope.metricsView.projectHistoricalMetricOptions.length <= 1
+            for own metricId, bundle of mergedProjectMetrics
+                @scope.metricsView.projectHistoricalMetricOptions.push({
+                    id: metricId
+                    label: bundle.metricLabel or @.formatMetricLabel(metricId)
+                })
+
         filteredData = {}
 
         applyOverrides = (chartsList, chartMapReference) =>
@@ -3575,6 +3583,10 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             return chartsList
 
         for own normalizedId, bundle of mergedProjectMetrics
+            # Apply metric filter if not 'all'
+            if filters.metric isnt "all" and bundle.metricId isnt filters.metric
+                continue
+
             dataPoints = bundle?.dataPoints
             continue unless angular.isArray(dataPoints) and dataPoints.length
 
@@ -3585,24 +3597,34 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         chartMap = @.convertRawMetricsToCharts(filteredData, 'project')
         charts = []
 
-        for metricId in @metricsConfig.projectHistoricalMetricsOrder
-            chartData = chartMap[metricId]
-            continue unless chartData?
+        # If filtering by specific metric, we can just take it from chartMap
+        if filters.metric isnt "all"
+            chartData = chartMap[filters.metric]
+            if chartData
+                charts.push({
+                    id: filters.metric
+                    title: chartData.title or @.formatMetricLabel(filters.metric)
+                    chartData: chartData
+                })
+        else
+            for metricId in @metricsConfig.projectHistoricalMetricsOrder
+                chartData = chartMap[metricId]
+                continue unless chartData?
 
-            title = chartData.title or @.formatMetricLabel(metricId)
-            charts.push({
-                id: metricId
-                title: title
-                chartData: chartData
-            })
+                title = chartData.title or @.formatMetricLabel(metricId)
+                charts.push({
+                    id: metricId
+                    title: title
+                    chartData: chartData
+                })
 
-        for own metricId, chartData of chartMap when @metricsConfig.projectHistoricalMetricsOrder.indexOf(metricId) is -1
-            title = chartData.title or @.formatMetricLabel(metricId)
-            charts.push({
-                id: metricId
-                title: title
-                chartData: chartData
-            })
+            for own metricId, chartData of chartMap when @metricsConfig.projectHistoricalMetricsOrder.indexOf(metricId) is -1
+                title = chartData.title or @.formatMetricLabel(metricId)
+                charts.push({
+                    id: metricId
+                    title: title
+                    chartData: chartData
+                })
 
         @scope.metricsView.projectHistoricalCharts = applyOverrides(charts, chartMap)
 

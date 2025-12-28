@@ -124,7 +124,7 @@ div.wrapper
                                     select#teamHistoricalSprint(
                                         ng-model="metricsView.teamHistoricalFilters.sprint"
                                         ng-change="applySprintFilter(metricsView.teamHistoricalFilters)"
-                                        ng-options="option.id as (option.translate ? (option.name | translate) : option.name) for option in metricsView.sprintOptions track by option.id"
+                                        ng-options="option.id as (option.translate ? (option.name | translate) : option.name) for option in metricsView.sprintOptions"
                                     )
                                 //- Custom date range
                                 div.filter-group.date-group
@@ -146,14 +146,14 @@ div.wrapper
                                     select#teamHistoricalUser(
                                         ng-model="metricsView.teamHistoricalFilters.user"
                                         ng-change="applyTeamHistoricalFilters()"
-                                        ng-options="option.id as (option.translate ? (option.label | translate) : option.label) for option in metricsView.teamHistoricalUserOptions track by option.id"
+                                        ng-options="option.id as (option.translate ? (option.label | translate) : option.label) for option in metricsView.teamHistoricalUserOptions"
                                     )
                                 div.filter-group.metric-filter
                                     label.filter-label(for="teamHistoricalMetric", translate="METRICS.TEAM_HISTORICAL_METRIC_FILTER")
                                     select#teamHistoricalMetric(
                                         ng-model="metricsView.teamHistoricalFilters.metric"
                                         ng-change="applyTeamHistoricalFilters()"
-                                        ng-options="metric.id as (metric.label | translate) for metric in metricsView.teamHistoricalMetricOptions track by metric.id"
+                                        ng-options="metric.id as (metric.label | translate) for metric in metricsView.teamHistoricalMetricOptions"
                                     )
                                 div.filter-group.filter-actions
                                     button.filter-action(

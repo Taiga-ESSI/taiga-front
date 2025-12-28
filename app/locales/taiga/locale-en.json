@@ -2109,6 +2109,12 @@
             "INPUT_PLACEHOLDER": "Type something...",
             "ACTION_TITLE": "Search",
             "RESULTS": "Search results"
+        },
+        "HOME": {
+            "TITLE": "Welcome to Taiga ESSI",
+            "SUBTITLE_1": "Manage your projects in an agile and efficient way.",
+            "SUBTITLE_2": "This platform allows you to coordinate teams, track progress, and document the work done.",
+            "ACCESS_BUTTON": "Access here"
         }
     },
     "ZOOM": {
