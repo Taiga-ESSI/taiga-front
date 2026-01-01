@@ -6,7 +6,7 @@
  *              Versión ajustada para registrar Chart.js dinámicamente en Taiga Front.
  */
 
-(function() {
+(function () {
   var AreaChartDirective, BarChartDirective, LineChartDirective, PieChartDirective, RadarChartDirective, SpeedometerChartDirective, chartReadyPromise, ensureChartReady, getChartMajorVersion, module, taiga;
 
   taiga = this.taiga;
@@ -15,15 +15,15 @@
 
   chartReadyPromise = null;
 
-  ensureChartReady = function() {
+  ensureChartReady = function () {
     if (chartReadyPromise != null) {
       return chartReadyPromise;
     }
-    chartReadyPromise = new Promise(function(resolve, reject) {
+    chartReadyPromise = new Promise(function (resolve, reject) {
       var attempts, checkChart, maxAttempts, registerIfNeeded;
       maxAttempts = 100;
       attempts = 0;
-      registerIfNeeded = function() {
+      registerIfNeeded = function () {
         var error;
         if ((window.Chart != null) && (window.Chart.register != null) && (window.Chart.registerables != null) && !window.Chart._taigaMetricsRegistered) {
           try {
@@ -36,7 +36,7 @@
           }
         }
       };
-      checkChart = function() {
+      checkChart = function () {
         attempts++;
         if (window.Chart != null) {
           console.log("✓ Chart.js found, version:", window.Chart.version);
@@ -55,7 +55,7 @@
     return chartReadyPromise;
   };
 
-  getChartMajorVersion = function(ChartLib) {
+  getChartMajorVersion = function (ChartLib) {
     var major, version;
     version = ChartLib != null ? ChartLib.version : void 0;
     if (version == null) {
@@ -69,9 +69,9 @@
     }
   };
 
-  RadarChartDirective = function($parse, $timeout) {
+  RadarChartDirective = function ($parse, $timeout) {
     var link;
-    link = function(scope, element, attrs) {
+    link = function (scope, element, attrs) {
       var canvas, canvasId, chart, destroyChart, isRendering, renderChart;
       console.log("RadarChart directive linking, initial data:", scope.data);
       canvasId = "radar-chart-" + (Date.now()) + "-" + (Math.random().toString(36).substr(2, 9));
@@ -82,7 +82,7 @@
       element.append(canvas);
       chart = null;
       isRendering = false;
-      destroyChart = function() {
+      destroyChart = function () {
         var e;
         if (chart != null) {
           try {
@@ -95,7 +95,7 @@
           return chart = null;
         }
       };
-      renderChart = function(data) {
+      renderChart = function (data) {
         console.log("RadarChart renderChart called with data:", data);
         if (!data || !data.datasets || data.datasets.length === 0) {
           console.warn("No valid data for radar chart");
@@ -106,9 +106,9 @@
           return;
         }
         isRendering = true;
-        return ensureChartReady().then(function(ChartLib) {
+        return ensureChartReady().then(function (ChartLib) {
           console.log("Chart.js ready, rendering radar chart for:", canvasId);
-          return $timeout(function() {
+          return $timeout(function () {
             var baseConfig, ctx, error, majorVersion;
             try {
               ctx = canvas.getContext('2d');
@@ -140,7 +140,7 @@
                     ticks: {
                       stepSize: 20,
                       color: '#1e293b',
-                      callback: function(value) {
+                      callback: function (value) {
                         return value + "%";
                       }
                     },
@@ -150,7 +150,7 @@
                         size: 12,
                         weight: 600
                       },
-                      callback: function(label) {
+                      callback: function (label) {
                         var currentLine, j, len, lines, word, words;
                         if (!label || typeof label !== 'string') {
                           return label;
@@ -189,7 +189,7 @@
                   },
                   tooltip: {
                     callbacks: {
-                      label: function(context) {
+                      label: function (context) {
                         var label, parts, ref, ref1, value;
                         label = ((ref = context.dataset) != null ? ref.label : void 0) || '';
                         parts = [];
@@ -210,14 +210,14 @@
                     max: 100,
                     stepSize: 20,
                     fontColor: '#1e293b',
-                    callback: function(value) {
+                    callback: function (value) {
                       return value + "%";
                     }
                   },
                   pointLabels: {
                     fontColor: '#0f172a',
                     fontSize: 12,
-                    callback: function(label) {
+                    callback: function (label) {
                       var currentLine, j, len, lines, word, words;
                       if (!label || typeof label !== 'string') {
                         return label;
@@ -254,7 +254,7 @@
                 };
                 baseConfig.options.tooltips = {
                   callbacks: {
-                    label: function(tooltipItem, chartData) {
+                    label: function (tooltipItem, chartData) {
                       var dataset, label, ref, ref1, ref2, value, valueNumber;
                       dataset = chartData != null ? (ref = chartData.datasets) != null ? ref[tooltipItem.datasetIndex] : void 0 : void 0;
                       label = (dataset != null ? dataset.label : void 0) || '';
@@ -275,18 +275,18 @@
               isRendering = false;
             }
           }, 250);
-        })["catch"](function(error) {
+        })["catch"](function (error) {
           console.error("Chart.js not available:", error);
           return isRendering = false;
         });
       };
-      $timeout(function() {
+      $timeout(function () {
         if (scope.data && scope.data.datasets && scope.data.datasets.length > 0) {
           console.log("RadarChart initial render with:", scope.data);
           return renderChart(scope.data);
         }
       }, 0);
-      scope.$watch('data', function(newVal, oldVal) {
+      scope.$watch('data', function (newVal, oldVal) {
         if (newVal === oldVal && (chart != null)) {
           return;
         }
@@ -297,7 +297,7 @@
           return destroyChart();
         }
       }, false);
-      return scope.$on('$destroy', function() {
+      return scope.$on('$destroy', function () {
         console.log("RadarChart directive destroyed:", canvasId);
         return destroyChart();
       });
@@ -313,9 +313,9 @@
 
   module.directive("tgRadarChart", ["$parse", "$timeout", RadarChartDirective]);
 
-  SpeedometerChartDirective = function($parse, $timeout) {
+  SpeedometerChartDirective = function ($parse, $timeout) {
     var link;
-    link = function(scope, element, attrs) {
+    link = function (scope, element, attrs) {
       var buildPaletteDataset, canvas, canvasId, chart, deriveRemainderColor, destroyChart, drawCenterText, drawPointer, drawScaleMarks, formatScaleValue, getGradientForValue, isRendering, renderChart, scheduleRender;
       console.log("Speedometer directive linking");
       canvasId = "speedometer-" + (Date.now()) + "-" + (Math.random().toString(36).substr(2, 9));
@@ -326,7 +326,7 @@
       element.append(canvas);
       chart = null;
       isRendering = false;
-      destroyChart = function() {
+      destroyChart = function () {
         var e;
         if (chart != null) {
           try {
@@ -338,7 +338,7 @@
           return chart = null;
         }
       };
-      formatScaleValue = function(value, unit) {
+      formatScaleValue = function (value, unit) {
         var absValue, decimals, formatted;
         if (!isFinite(value)) {
           return "";
@@ -354,7 +354,7 @@
           return formatted;
         }
       };
-      deriveRemainderColor = function(color) {
+      deriveRemainderColor = function (color) {
         var b, base, g, hex, hexMatch, parts, r, rgbMatch;
         base = typeof color === "string" ? color.trim() : "";
         if (!base.length) {
@@ -370,7 +370,7 @@
         }
         rgbMatch = base.match(/^rgba?\(([^)]+)\)$/i);
         if (rgbMatch) {
-          parts = rgbMatch[1].split(',').map(function(part) {
+          parts = rgbMatch[1].split(',').map(function (part) {
             return part.trim();
           });
           r = parseInt(parts[0], 10) || 148;
@@ -380,7 +380,7 @@
         }
         return 'rgba(148, 163, 184, 0.25)';
       };
-      buildPaletteDataset = function(segments, fallbackColor, maxRangeRatio) {
+      buildPaletteDataset = function (segments, fallbackColor, maxRangeRatio) {
         var colorValue, colors, data, entries, j, len, rangeRatio, scaleFactor, segment, segmentValue, totalRatio;
         if (maxRangeRatio == null) {
           maxRangeRatio = 1;
@@ -424,10 +424,10 @@
           totalRatio = 1;
         }
         scaleFactor = 100 / totalRatio;
-        data = entries.map(function(entry) {
+        data = entries.map(function (entry) {
           return Math.max(0, entry.ratio * scaleFactor);
         });
-        colors = entries.map(function(entry) {
+        colors = entries.map(function (entry) {
           return entry.color;
         });
         return {
@@ -435,14 +435,14 @@
           colors: colors
         };
       };
-      renderChart = function(value, label, maxValue, rawValue, unit, metricKey, customColor, paletteSegments) {
+      renderChart = function (value, label, maxValue, rawValue, unit, metricKey, customColor, paletteSegments) {
         console.log("Speedometer renderChart:", value, label, maxValue, rawValue);
         if (isRendering) {
           return;
         }
         isRendering = true;
-        return ensureChartReady().then(function(ChartLib) {
-          return $timeout(function() {
+        return ensureChartReady().then(function (ChartLib) {
+          return $timeout(function () {
             var absoluteRatio, config, ctx, datasetColors, datasetData, datasetObject, error, gaugeBaseColor, gaugeFillStyle, gaugeRemainderColor, hasCustomScale, inputRatio, maxRefRatio, normalized, paletteDataset, providedColor, ratioClamped;
             try {
               ctx = canvas.getContext('2d');
@@ -536,8 +536,8 @@
                 plugins: [
                   {
                     id: 'gaugeEnhancements',
-                    afterDatasetDraw: (function(_this) {
-                      return function(chart) {
+                    afterDatasetDraw: (function (_this) {
+                      return function (chart) {
                         var arcItem, circumferenceDeg, contextInfo, cx, cy, dataset, endAngle, firstArc, gaugeEnd, gaugeStart, innerRadius, j, len, meta, normalizedValue, outerRadius, pointerAngle, ref, ref1, ref2, ref3, ref4, rotationDeg, span, startAngle;
                         meta = chart.getDatasetMeta(0);
                         firstArc = meta != null ? (ref = meta.data) != null ? ref[0] : void 0 : void 0;
@@ -603,7 +603,7 @@
           }, 250);
         });
       };
-      drawScaleMarks = function(ctx, cx, cy, outerRadius, innerRadius, hasCustomScale, maxRef, unit, displayAsRatio) {
+      drawScaleMarks = function (ctx, cx, cy, outerRadius, innerRadius, hasCustomScale, maxRef, unit, displayAsRatio) {
         var angle, endRadius, i, j, labelRadius, labelText, labelValue, labelX, labelY, len, ref, results, startRadius, x1, x2, y1, y2;
         if (displayAsRatio == null) {
           displayAsRatio = false;
@@ -646,8 +646,8 @@
         }
         return results;
       };
-      drawCenterText = function(ctx, cx, cy, normalized, label, absolute, unit, hasCustomScale, maxRef) {};
-      drawPointer = function(ctx, cx, cy, angle, innerRadius, outerRadius, pointerColor) {
+      drawCenterText = function (ctx, cx, cy, normalized, label, absolute, unit, hasCustomScale, maxRef) { };
+      drawPointer = function (ctx, cx, cy, angle, innerRadius, outerRadius, pointerColor) {
         var endX, endY, headLength, pointerRadius, pointerWidth;
         pointerRadius = innerRadius + (outerRadius - innerRadius) * 0.8;
         pointerWidth = 6;
@@ -688,47 +688,76 @@
         ctx.arc(cx, cy, 4, 0, Math.PI * 2);
         return ctx.fill();
       };
-      getGradientForValue = function(ctx, value, label, metricKey) {
-        var gradient, identifier, normalizedIdentifier, remainderGradient, treatAsUnassigned;
+      getGradientForValue = function (ctx, value, label, metricKey) {
+        var gradient, identifier, isInternal, isWorsening, normalizedIdentifier, remainderGradient;
         identifier = metricKey || label || "";
         normalizedIdentifier = identifier.toString().toLowerCase();
-        treatAsUnassigned = normalizedIdentifier.indexOf("unassigned") !== -1;
-        if (!treatAsUnassigned) {
+
+        // Identify if it's an internal metric and what type of behavior it has
+        // "Worsening" means high value is bad (Green -> Red)
+        // "Improving" means high value is good (Red -> Green)
+        isWorsening = /unassigned|deviation|commits_anonymous|pattern_check/.test(normalizedIdentifier);
+        isInternal = isWorsening || /acceptance_criteria|closed_tasks_with_ae|commits_sd|commits_taskreference|tasks_sd|tasks_with_ee/.test(normalizedIdentifier);
+
+        if (!isInternal) {
           return {
             fill: 'rgba(37, 99, 235, 0.92)',
             remainder: 'rgba(37, 99, 235, 0.18)'
           };
         }
+
         gradient = ctx.createLinearGradient(0, 0, 400, 0);
         remainderGradient = ctx.createLinearGradient(0, 0, 400, 0);
-        remainderGradient.addColorStop(0, 'rgba(34, 197, 94, 0.18)');
-        remainderGradient.addColorStop(0.5, 'rgba(251, 191, 36, 0.18)');
-        remainderGradient.addColorStop(1, 'rgba(239, 68, 68, 0.18)');
-        if (value < 33) {
-          gradient.addColorStop(0, 'rgba(34, 197, 94, 0.9)');
-          gradient.addColorStop(1, 'rgba(22, 163, 74, 0.9)');
-        } else if (value < 66) {
-          gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)');
-          gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)');
+
+        if (isWorsening) {
+          // Green -> Orange -> Red
+          remainderGradient.addColorStop(0, 'rgba(34, 197, 94, 0.18)');
+          remainderGradient.addColorStop(0.5, 'rgba(251, 191, 36, 0.18)');
+          remainderGradient.addColorStop(1, 'rgba(239, 68, 68, 0.18)');
+
+          if (value < 33) {
+            gradient.addColorStop(0, 'rgba(34, 197, 94, 0.9)');
+            gradient.addColorStop(1, 'rgba(22, 163, 74, 0.9)');
+          } else if (value < 66) {
+            gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)');
+            gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)');
+          } else {
+            gradient.addColorStop(0, 'rgba(239, 68, 68, 0.9)');
+            gradient.addColorStop(1, 'rgba(220, 38, 38, 0.9)');
+          }
         } else {
-          gradient.addColorStop(0, 'rgba(239, 68, 68, 0.9)');
-          gradient.addColorStop(1, 'rgba(220, 38, 38, 0.9)');
+          // Red -> Orange -> Green
+          remainderGradient.addColorStop(0, 'rgba(239, 68, 68, 0.18)');
+          remainderGradient.addColorStop(0.5, 'rgba(251, 191, 36, 0.18)');
+          remainderGradient.addColorStop(1, 'rgba(34, 197, 94, 0.18)');
+
+          if (value < 33) {
+            gradient.addColorStop(0, 'rgba(239, 68, 68, 0.9)');
+            gradient.addColorStop(1, 'rgba(220, 38, 38, 0.9)');
+          } else if (value < 66) {
+            gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)');
+            gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)');
+          } else {
+            gradient.addColorStop(0, 'rgba(34, 197, 94, 0.9)');
+            gradient.addColorStop(1, 'rgba(22, 163, 74, 0.9)');
+          }
         }
+
         return {
           fill: gradient,
           remainder: remainderGradient
         };
       };
-      scheduleRender = function() {
+      scheduleRender = function () {
         if (!((scope.value != null) || (scope.rawValue != null))) {
           return;
         }
         return renderChart(scope.value, scope.label, scope.maxValue, scope.rawValue, scope.unit, scope.metricKey, scope.color, scope.palette);
       };
-      scope.$watchGroup(['value', 'label', 'maxValue', 'rawValue', 'unit', 'metricKey', 'color', 'palette'], function() {
+      scope.$watchGroup(['value', 'label', 'maxValue', 'rawValue', 'unit', 'metricKey', 'color', 'palette'], function () {
         return scheduleRender();
       });
-      return scope.$on('$destroy', function() {
+      return scope.$on('$destroy', function () {
         return destroyChart();
       });
     };
@@ -750,9 +779,9 @@
 
   module.directive("tgSpeedometerChart", ["$parse", "$timeout", SpeedometerChartDirective]);
 
-  PieChartDirective = function($parse, $timeout) {
+  PieChartDirective = function ($parse, $timeout) {
     var link;
-    link = function(scope, element, attrs) {
+    link = function (scope, element, attrs) {
       var canvas, canvasId, chart, destroyChart, generateColors, isRendering, renderChart;
       console.log("PieChart directive linking");
       canvasId = "pie-" + (Date.now()) + "-" + (Math.random().toString(36).substr(2, 9));
@@ -763,7 +792,7 @@
       element.append(canvas);
       chart = null;
       isRendering = false;
-      destroyChart = function() {
+      destroyChart = function () {
         var e;
         if (chart != null) {
           try {
@@ -775,7 +804,7 @@
           return chart = null;
         }
       };
-      renderChart = function(data) {
+      renderChart = function (data) {
         console.log("PieChart renderChart:", data);
         if (!data) {
           destroyChart();
@@ -785,8 +814,8 @@
           return;
         }
         isRendering = true;
-        return ensureChartReady().then(function(ChartLib) {
-          return $timeout(function() {
+        return ensureChartReady().then(function (ChartLib) {
+          return $timeout(function () {
             var config, ctx, error, ref;
             try {
               ctx = canvas.getContext('2d');
@@ -826,7 +855,7 @@
                     },
                     tooltip: {
                       callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                           var j, label, len, percentage, point, ref1, ref2, total, value;
                           label = context.label || '';
                           value = context.parsed || 0;
@@ -855,19 +884,19 @@
           }, 100);
         });
       };
-      generateColors = function(count) {
+      generateColors = function (count) {
         var colors;
         colors = ['rgba(255, 99, 132, 0.8)', 'rgba(54, 162, 235, 0.8)', 'rgba(255, 206, 86, 0.8)', 'rgba(75, 192, 192, 0.8)', 'rgba(153, 102, 255, 0.8)', 'rgba(255, 159, 64, 0.8)', 'rgba(199, 199, 199, 0.8)', 'rgba(83, 102, 255, 0.8)', 'rgba(255, 99, 255, 0.8)', 'rgba(99, 255, 132, 0.8)'];
         return colors.slice(0, count);
       };
-      scope.$watch('data', function(newVal, oldVal) {
+      scope.$watch('data', function (newVal, oldVal) {
         if (newVal) {
           return renderChart(newVal);
         } else {
           return destroyChart();
         }
       }, true);
-      return scope.$on('$destroy', function() {
+      return scope.$on('$destroy', function () {
         return destroyChart();
       });
     };
@@ -882,9 +911,9 @@
 
   module.directive("tgPieChart", ["$parse", "$timeout", PieChartDirective]);
 
-  BarChartDirective = function($parse, $timeout) {
+  BarChartDirective = function ($parse, $timeout) {
     var link;
-    link = function(scope, element, attrs) {
+    link = function (scope, element, attrs) {
       var canvas, canvasId, chart, destroyChart, isRendering, renderChart;
       console.log("BarChart directive linking");
       canvasId = "bar-" + (Date.now()) + "-" + (Math.random().toString(36).substr(2, 9));
@@ -895,7 +924,7 @@
       element.append(canvas);
       chart = null;
       isRendering = false;
-      destroyChart = function() {
+      destroyChart = function () {
         var e;
         if (chart != null) {
           try {
@@ -907,7 +936,7 @@
           return chart = null;
         }
       };
-      renderChart = function(data) {
+      renderChart = function (data) {
         console.log("BarChart renderChart:", data);
         if (!data || !(data.datasets && data.datasets.length > 0)) {
           destroyChart();
@@ -917,8 +946,8 @@
           return;
         }
         isRendering = true;
-        return ensureChartReady().then(function(ChartLib) {
-          return $timeout(function() {
+        return ensureChartReady().then(function (ChartLib) {
+          return $timeout(function () {
             var config, ctx, customOptions, error;
             try {
               ctx = canvas.getContext('2d');
@@ -964,7 +993,7 @@
                       ticks: {
                         stepSize: 20,
                         color: '#1e293b',
-                        callback: function(value) {
+                        callback: function (value) {
                           return value + "%";
                         }
                       },
@@ -987,7 +1016,7 @@
                     },
                     tooltip: {
                       callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                           var label, parts, ref, ref1, value;
                           label = ((ref = context.dataset) != null ? ref.label : void 0) || '';
                           value = (ref1 = context.parsed) != null ? ref1.y : void 0;
@@ -1020,12 +1049,12 @@
               isRendering = false;
             }
           }, 150);
-        })["catch"](function(error) {
+        })["catch"](function (error) {
           console.error("Chart.js not available for bar chart:", error);
           return isRendering = false;
         });
       };
-      scope.$watch('data', function(newVal, oldVal) {
+      scope.$watch('data', function (newVal, oldVal) {
         if (newVal === oldVal && (chart != null)) {
           return;
         }
@@ -1035,7 +1064,7 @@
           return destroyChart();
         }
       }, false);
-      return scope.$on('$destroy', function() {
+      return scope.$on('$destroy', function () {
         return destroyChart();
       });
     };
@@ -1050,9 +1079,9 @@
 
   module.directive("tgBarChart", ["$parse", "$timeout", BarChartDirective]);
 
-  LineChartDirective = function($parse, $timeout) {
+  LineChartDirective = function ($parse, $timeout) {
     var link;
-    link = function(scope, element, attrs) {
+    link = function (scope, element, attrs) {
       var canvas, canvasId, chart, destroyChart, isRendering, renderChart;
       console.log("LineChart directive linking");
       canvasId = "line-" + (Date.now()) + "-" + (Math.random().toString(36).substr(2, 9));
@@ -1063,7 +1092,7 @@
       element.append(canvas);
       chart = null;
       isRendering = false;
-      destroyChart = function() {
+      destroyChart = function () {
         var e;
         if (chart != null) {
           try {
@@ -1075,7 +1104,7 @@
           return chart = null;
         }
       };
-      renderChart = function(data) {
+      renderChart = function (data) {
         console.log("LineChart renderChart:", data);
         if (!data) {
           destroyChart();
@@ -1085,8 +1114,8 @@
           return;
         }
         isRendering = true;
-        return ensureChartReady().then(function(ChartLib) {
-          return $timeout(function() {
+        return ensureChartReady().then(function (ChartLib) {
+          return $timeout(function () {
             var config, ctx, error, ref;
             try {
               ctx = canvas.getContext('2d');
@@ -1112,7 +1141,7 @@
                       max: data.maxValue || 100,
                       ticks: {
                         color: '#1e293b',
-                        callback: function(value) {
+                        callback: function (value) {
                           if (data.isPercentage) {
                             return value + '%';
                           }
@@ -1159,14 +1188,14 @@
           }, 100);
         });
       };
-      scope.$watch('data', function(newVal, oldVal) {
+      scope.$watch('data', function (newVal, oldVal) {
         if (newVal) {
           return renderChart(newVal);
         } else {
           return destroyChart();
         }
       }, true);
-      return scope.$on('$destroy', function() {
+      return scope.$on('$destroy', function () {
         return destroyChart();
       });
     };
@@ -1181,9 +1210,9 @@
 
   module.directive("tgLineChart", ["$parse", "$timeout", LineChartDirective]);
 
-  AreaChartDirective = function($parse, $timeout) {
+  AreaChartDirective = function ($parse, $timeout) {
     var link;
-    link = function(scope, element, attrs) {
+    link = function (scope, element, attrs) {
       var canvas, canvasId, chart, destroyChart, isRendering, renderChart;
       canvasId = "area-chart-" + (Date.now()) + "-" + (Math.random().toString(36).substr(2, 9));
       canvas = document.createElement('canvas');
@@ -1193,7 +1222,7 @@
       element.append(canvas);
       chart = null;
       isRendering = false;
-      destroyChart = function() {
+      destroyChart = function () {
         var e;
         if (chart != null) {
           try {
@@ -1205,7 +1234,7 @@
           return chart = null;
         }
       };
-      renderChart = function(data) {
+      renderChart = function (data) {
         if (!data || !data.labels || !data.datasets || data.datasets.length === 0) {
           console.warn("No valid data for area chart");
           destroyChart();
@@ -1215,8 +1244,8 @@
           return;
         }
         isRendering = true;
-        return ensureChartReady().then(function(ChartLib) {
-          return $timeout(function() {
+        return ensureChartReady().then(function (ChartLib) {
+          return $timeout(function () {
             var areaColor, config, ctx, error, ref, ref1, ref2;
             try {
               ctx = canvas.getContext('2d');
@@ -1231,7 +1260,7 @@
                 type: 'line',
                 data: {
                   labels: data.labels,
-                  datasets: data.datasets.map(function(dataset) {
+                  datasets: data.datasets.map(function (dataset) {
                     return {
                       label: dataset.label || '',
                       data: dataset.data,
@@ -1295,7 +1324,7 @@
                           size: 11
                         },
                         stepSize: (ref1 = data.yAxisStep) != null ? ref1 : void 0,
-                        callback: function(value) {
+                        callback: function (value) {
                           var numericValue;
                           if (typeof value !== 'number') {
                             return value;
@@ -1359,7 +1388,7 @@
                       padding: 10,
                       displayColors: true,
                       callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                           var formatted, label, numericValue, value;
                           label = context.dataset.label || '';
                           value = context.parsed.y;
@@ -1387,14 +1416,14 @@
           }, 100);
         });
       };
-      scope.$watch('data', function(newVal, oldVal) {
+      scope.$watch('data', function (newVal, oldVal) {
         if (newVal) {
           return renderChart(newVal);
         } else {
           return destroyChart();
         }
       }, true);
-      return scope.$on('$destroy', function() {
+      return scope.$on('$destroy', function () {
         return destroyChart();
       });
     };

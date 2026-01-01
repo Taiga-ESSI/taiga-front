@@ -118,6 +118,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 {id: "closed_tasks", label: "METRICS.TEAM_HISTORICAL_METRIC_CLOSED_TASKS"}
                 {id: "modified_lines", label: "METRICS.TEAM_HISTORICAL_METRIC_MODIFIED_LINES"}
                 {id: "commits", label: "METRICS.TEAM_HISTORICAL_METRIC_COMMITS"}
+                {id: "story_points", label: "METRICS.TEAM_HISTORICAL_METRIC_STORY_POINTS"}
+                {id: "stories_closed", label: "METRICS.TEAM_HISTORICAL_METRIC_STORIES_CLOSED"}
             ]
             teamHistoricalUserOptions: [
                 {id: "all", label: "METRICS.TEAM_HISTORICAL_ALL_USERS", translate: true}
@@ -602,7 +604,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 @qualityFactorNamesMap = @.buildQualityFactorNamesMap(allMetricsData)
 
                 processedMetrics = @.processGessiMetrics(data.metrics or [])
+                console.log "[DEBUG] Before buildMetricDisplayGroups, metrics count:", (data.metrics or []).length, "sample:", data.metrics?[0]
                 displayMetricGroups = @.buildMetricDisplayGroups(data.metrics or [])
+                console.log "[DEBUG] After buildMetricDisplayGroups, team groups:", displayMetricGroups?.team?.length
                 projectMetricsList = @.prepareProjectMetrics(data.metrics or [])
                 studentsRaw = data.students
                 
@@ -722,8 +726,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 @scope.metricsView.projectHistoricalCharts = []
 
     loadHistoricalMetrics: ->
-        # Don't load historical metrics if not authenticated
-        return unless @scope.metricsAuth.authenticated
+        # For internal provider, skip authentication check
+        # For external provider, require authentication
+        console.log "[DEBUG] loadHistoricalMetrics called, authenticated:", @scope.metricsAuth?.authenticated, "provider:", @metricsProvider
+        
+        if @metricsProvider isnt "internal"
+            return unless @scope.metricsAuth.authenticated
+        
         return unless @scope.projectSlug
 
         projectSlug = @scope.projectSlug
@@ -737,11 +746,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             params.external = externalId
 
         url = @urls.resolve("metrics-historical")
+        console.log "[DEBUG] Fetching historical metrics from:", url, "params:", params
         
         @http.get(url, params, {withCredentials: true})
             .then (response) =>
                 data = response?.data || {}
                 historicalData = data.historical_data || {}
+                console.log "[DEBUG] Historical data received:", Object.keys(historicalData), "userMetrics keys:", Object.keys(historicalData.userMetrics || {})
                 
                 # Process historical data into user and project charts
                 processedHistorical = @.processHistoricalData(historicalData)
@@ -1254,10 +1265,14 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                     else if metricType == "modifiedlines"
                         users[userName].modifiedLines = normalizedValue
                     else if metricType == "totalus"
-                        users[userName].totalUS = normalizedValue
+                        # totalus is an absolute count, not a ratio - use raw value
+                        rawValue = if typeof metric.value is 'number' then metric.value else parseFloat(metric.value) or 0
+                        users[userName].totalUS = rawValue
                     else if metricType == "completedus" or metricType == "closedus"
-                        users[userName].completedUS = normalizedValue
-                        users[userName].usPercentage = normalizedValue
+                        # completedus is an absolute count, not a ratio - use raw value
+                        rawValue = if typeof metric.value is 'number' then metric.value else parseFloat(metric.value) or 0
+                        users[userName].completedUS = rawValue
+                        users[userName].usPercentage = rawValue
 
                     if users[userName].totalTasks > 0 and users[userName].completedTasks > 0
                         ratio = users[userName].completedTasks
@@ -1512,12 +1527,74 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         if segments.length then segments else null
 
+    # Extract metric category from user metric ID
+    # E.g., "user_closed_tasks_alice" -> "closed_tasks"
+    # E.g., "task_completion_adriaguilera" -> "task_completion"
+    # E.g., "story_points_pol" -> "story_points"
+    extractMetricCategoryFromId: (metricId) ->
+        return null unless metricId?
+        
+        lowerId = metricId.toString().toLowerCase()
+        
+        # New internal metrics format: task_completion_username, story_points_username, etc.
+        # Extract the metric type (first part before second underscore or hyphen)
+        parts = lowerId.split('_')
+        if parts.length >= 2
+            # For "task_completion_user" or "story_points_user"
+            metricType = parts[0] + '_' + parts[1].split('-')[0]
+            
+            # Map metric types to display categories
+            categoryMap =
+                'task_completion': 'closed_tasks'
+                'tasks_assigned': 'tasks'
+                'story_points': 'story_points'
+                'stories_closed': 'stories_closed'
+                'commits_count': 'commits'
+                'lines_modified': 'modified_lines'
+                'code_contributions': 'modified_lines'
+            
+            if categoryMap[metricType]
+                return categoryMap[metricType]
+            
+            # If not in map, return the metric type itself
+            return metricType
+        
+        # Old internal metrics patterns (Taiga native)
+        if lowerId.indexOf('user_closed_tasks') is 0 or lowerId.indexOf('closedtasks_') is 0 or lowerId.indexOf('completedtasks_') is 0
+            return 'closed_tasks'
+        if lowerId.indexOf('user_story_points') is 0 or lowerId.indexOf('totalus_') is 0
+            return 'story_points'
+        if lowerId.indexOf('user_stories_closed') is 0 or lowerId.indexOf('completedus_') is 0
+            return 'stories_closed'
+        if lowerId.indexOf('user_commits') is 0 or lowerId.indexOf('commits_') is 0
+            return 'commits'
+        if lowerId.indexOf('user_assigned_tasks') is 0 or lowerId.indexOf('assignedtasks_') is 0
+            return 'tasks'
+        if lowerId.indexOf('user_modified_lines') is 0 or lowerId.indexOf('modifiedlines_') is 0
+            return 'modified_lines'
+        if lowerId.indexOf('tasksratio_') is 0
+            return 'tasks_ratio'
+        
+        null
+
     isUserMetricId: (metricId) ->
         return false unless metricId?
 
         lowerId = metricId.toString().toLowerCase()
-        classification = @.resolveLocalClassification(metricId)
-        prefixes = [
+        
+        # New patterns: task_completion_username, story_points_username, etc.
+        newPatterns = [
+            "task_completion_"
+            "tasks_assigned_"
+            "story_points_"
+            "stories_closed_"
+            "commits_count_"
+            "lines_modified_"
+            "code_contributions_"
+        ]
+        
+        # Old patterns
+        oldPrefixes = [
             "assignedtasks_"
             "closedtasks_"
             "completedtasks_"
@@ -1527,18 +1604,24 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             "totalus_"
             "tasksratio_"
         ]
-        isUserPattern = prefixes.some (prefix) -> lowerId.indexOf(prefix) is 0
-
-        # Allow explicit overrides: a metric explicitly classified as project should
-        # never be treated as a user-scoped metric. For team classification, only
-        # mark it as user-scoped when it matches one of the known user patterns.
+        
+        isNewPattern = newPatterns.some (prefix) -> lowerId.indexOf(prefix) is 0
+        isOldPattern = oldPrefixes.some (prefix) -> lowerId.indexOf(prefix) is 0
+        isUserPattern = isNewPattern or isOldPattern
+        
+        # If the ID matches user metric patterns, it's a user metric
+        # regardless of what classification says
+        return true if isUserPattern
+        
+        # Otherwise check classification
+        classification = @.resolveLocalClassification(metricId)
         if classification is 'project'
             return false
 
         if classification is 'team'
             return isUserPattern
 
-        return isUserPattern
+        return false
     
     resolveMetricUserContext: (metric) ->
         return null unless metric?
@@ -1575,6 +1658,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         }
 
     buildMetricDisplayGroups: (rawMetrics) ->
+        console.log "[DEBUG] buildMetricDisplayGroups - provider: #{@metricsProvider}, metrics count:", rawMetrics?.length
         groups =
             project: []
             team: []
@@ -1680,30 +1764,58 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                         entry.label = @.formatMetricLabel(metric.id)
 
             # Pol Alcoverro added: Resolve colors for gauges
-            categoryName = metric.categoryName or metric.category_name or metric.category?.name or metric.category
-            # If no explicit category name, try to use the first quality factor if available
-            if !categoryName and angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
-                categoryName = metric.qualityFactors[0]
+            # For internal user metrics, ALWAYS extract category from ID to group by metric type
+            if @metricsProvider is "internal" and isUserMetric and metric.id
+                categoryName = @.extractMetricCategoryFromId(metric.id)
+                console.log "[DEBUG] Extracted category '#{categoryName}' from user metric ID: #{metric.id}"
+            else
+                # For non-user metrics, use standard category resolution
+                categoryName = metric.categoryName or metric.category_name or metric.category?.name or metric.category
+                # If no explicit category name, try to use the first quality factor if available
+                if !categoryName and angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
+                    categoryName = metric.qualityFactors[0]
 
             entry.categoryColor = @.resolveMetricCategoryColor(categoryName, normalizedValue)
             entry.categorySegments = @.buildMetricCategorySegments(categoryName)
+            entry.categoryName = categoryName
             
             # For internal provider, if no category color was resolved, use value-based color
             # Use ratioValue * 100 to get the percentage for color calculation
             if @metricsProvider is "internal" and not entry.categoryColor
                 percentForColor = ratioValue * 100
-                entry.categoryColor = @.getInternalGaugeColor(percentForColor)
+                entry.categoryColor = @.getInternalGaugeColor(percentForColor, categoryName)
+                entry.categoryPalette = @.getInternalGaugePalette(categoryName)
+                console.log("🎯 Team metric palette:", categoryName, entry.categoryPalette)
+            
+            # For internal provider: if no qualityFactors defined, use extracted category as group
+            # Also, if qualityFactors are generic (like "Delivery"), replace with specific category
+            effectiveQualityFactors = metric.qualityFactors
+            console.log "[DEBUG] Metric #{metric.id}: provider=#{@metricsProvider}, hasQF=#{effectiveQualityFactors?.length > 0}, category=#{categoryName}, isTeam=#{isTeamConfigured}, isUser=#{isUserMetric}, user=#{userContext?.displayName}"
+            
+            if @metricsProvider is "internal" and isUserMetric and userContext?.displayName
+                # For internal user metrics, group by USER NAME instead of metric type
+                effectiveQualityFactors = [userContext.displayName]
+                console.log "[DEBUG] ✓ Auto-grouping internal user metric #{metric.id} by user: #{userContext.displayName}"
+            else if @metricsProvider is "internal" and isUserMetric and userContext?.username
+                # Fallback to username if displayName not available
+                effectiveQualityFactors = [userContext.username]
+                console.log "[DEBUG] ✓ Auto-grouping internal user metric #{metric.id} by username: #{userContext.username}"
+            else if @metricsProvider is "internal" and (!effectiveQualityFactors or effectiveQualityFactors.length is 0) and categoryName
+                effectiveQualityFactors = [categoryName]
+                console.log "[DEBUG] ✓ Auto-grouping metric #{metric.id} (no QF) into category: #{categoryName}"
+            else if effectiveQualityFactors?.length > 0
+                console.log "[DEBUG] ✗ Metric #{metric.id} keeping qualityFactors:", effectiveQualityFactors
             
             if isProjectConfigured
-                if angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
-                    for factorName in metric.qualityFactors when factorName
+                if angular.isArray(effectiveQualityFactors) and effectiveQualityFactors.length > 0
+                    for factorName in effectiveQualityFactors when factorName
                         pushMetric(projectBuckets, factorName, entry)
                 else
                     projectUnassigned.push(angular.copy(entry))
 
             if isTeamConfigured
-                if angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
-                    for factorName in metric.qualityFactors when factorName
+                if angular.isArray(effectiveQualityFactors) and effectiveQualityFactors.length > 0
+                    for factorName in effectiveQualityFactors when factorName
                         pushMetric(teamBuckets, factorName, entry)
                 else
                     teamUnassigned.push(angular.copy(entry))
@@ -1718,7 +1830,18 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         for own bucketName, metricsList of buckets
             continue unless angular.isArray(metricsList) and metricsList.length > 0
-            sortedMetrics = metricsList.slice().sort (a, b) ->
+            
+            # Sort metrics: first by category type, then by user name
+            sortedMetrics = metricsList.slice().sort (a, b) =>
+                # Extract category from metric ID for sorting
+                aCat = a?.categoryName or @.extractMetricCategoryFromId(a?.id) or ""
+                bCat = b?.categoryName or @.extractMetricCategoryFromId(b?.id) or ""
+                
+                # First sort by category
+                catCompare = aCat.localeCompare(bCat)
+                return catCompare if catCompare isnt 0
+                
+                # Then sort by label (user name)
                 aLabel = (a?.label or "").toString().toLowerCase()
                 bLabel = (b?.label or "").toString().toLowerCase()
                 if aLabel < bLabel then -1 else if aLabel > bLabel then 1 else 0
@@ -1783,11 +1906,22 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         categoryColor = @.resolveMetricCategoryColor(categoryName, preciseValue or numericValue)
         categorySegments = @.buildMetricCategorySegments(categoryName)
         
-        # For internal provider, if no category color was resolved, use value-based color
-        # Use ratioValue * 100 to get the percentage for color calculation
+        # For internal provider, force palette generation if possible to match Team Metrics style
+        categoryPalette = null
+        if @metricsProvider is "internal"
+            # Use categoryName OR metric ID for palette lookup (mapped in getInternalGaugePalette)
+            paletteLookupKey = categoryName or metric.id
+            categoryPalette = @.getInternalGaugePalette(paletteLookupKey)
+            
+            # If we have a palette, we might want to ensure color is also set correctly if it was missing
+            if !categoryColor and categoryPalette
+                percentForColor = ratioValue * 100
+                categoryColor = @.getInternalGaugeColor(percentForColor, paletteLookupKey)
+        
+        # Legacy fallback
         if @metricsProvider is "internal" and not categoryColor
             percentForColor = ratioValue * 100
-            categoryColor = @.getInternalGaugeColor(percentForColor)
+            categoryColor = @.getInternalGaugeColor(percentForColor, categoryName)
 
         # Try to get translated name first, then fallback to backend name
         translatedName = @.translateMetricId(metric.id)
@@ -1812,6 +1946,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             raw: metric
             categoryName: categoryName
             categoryColor: categoryColor
+            categoryPalette: categoryPalette
             categorySegments: categorySegments
         }
     
@@ -2078,10 +2213,14 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             percentValue = value * 100
             percentValue = Math.max(0, Math.min(100, percentValue))
             
-            # Assign color based on value for internal provider
+            # Assign color and palette based on value for internal provider
             categoryColor = null
+            categoryPalette = null
+            categoryName = factor.name or factor.id
             if @metricsProvider is "internal"
-                categoryColor = @.getInternalGaugeColor(percentValue)
+                categoryColor = @.getInternalGaugeColor(percentValue, categoryName)
+                categoryPalette = @.getInternalGaugePalette(categoryName)
+                console.log("📊 Factor palette assigned:", categoryName, "->", categoryPalette)
             
             entry = {
                 id: factor.id
@@ -2096,15 +2235,98 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 metrics: factor.metrics or []
                 missingMetrics: factor.missingMetrics or []
                 categoryColor: categoryColor
+                categoryPalette: categoryPalette
             }
             
             processed.push(entry)
         
         return processed
     
-    # Returns color for internal gauges based on percentage value
-    # Red (0-33%), Orange (34-66%), Green (67-100%)
-    getInternalGaugeColor: (percentValue) ->
+    # Returns color for internal gauges based on metric category and percentage value
+    # Different colors for different metric types to improve visual organization
+    # Generate palette segments for traffic light effect (red-orange-green)
+    getInternalGaugePalette: (categoryName = null) ->
+        console.log("🎨 getInternalGaugePalette called with:", categoryName)
+        categoryLower = if categoryName then categoryName.toString().toLowerCase() else ""
+        
+        # Determine if "more is better" or "less is better" for this metric
+        higherIsBetter = true
+        
+        # For assigned/unassigned tasks, lower is better (less pending work)
+        if categoryLower.indexOf('assigned') isnt -1 or categoryLower.indexOf('unassigned') isnt -1
+            if categoryLower.indexOf('closed') is -1 and categoryLower.indexOf('completed') is -1
+                higherIsBetter = false
+        
+        palette = if higherIsBetter
+            # Green (good) -> Yellow (medium) -> Red (bad)
+            [
+                { value: 33, color: 'rgba(239, 68, 68, 0.9)' }    # 0-33%: Red
+                { value: 33, color: 'rgba(251, 191, 36, 0.9)' }   # 33-66%: Orange/Yellow
+                { value: 34, color: 'rgba(34, 197, 94, 0.9)' }    # 66-100%: Green
+            ]
+        else
+            # Red (bad) -> Yellow (medium) -> Green (good)
+            [
+                { value: 33, color: 'rgba(34, 197, 94, 0.9)' }    # 0-33%: Green
+                { value: 33, color: 'rgba(251, 191, 36, 0.9)' }   # 33-66%: Orange/Yellow
+                { value: 34, color: 'rgba(239, 68, 68, 0.9)' }    # 66-100%: Red
+            ]
+        
+        console.log("🎨 Returning palette:", palette, "higherIsBetter:", higherIsBetter)
+        return palette
+
+    getInternalGaugeColor: (percentValue, categoryName = null) ->
+        # If category is provided, use category-specific colors
+        if categoryName
+            categoryLower = categoryName.toString().toLowerCase()
+            
+            # Assign colors by metric category for better visual differentiation
+            if categoryLower.indexOf('task') isnt -1 or categoryLower.indexOf('tareas') isnt -1
+                # Tasks: Blue tones
+                if percentValue < 33
+                    return 'rgba(239, 68, 68, 0.9)'  # Red
+                else if percentValue < 66
+                    return 'rgba(59, 130, 246, 0.9)'  # Blue
+                else
+                    return 'rgba(37, 99, 235, 0.9)'   # Dark Blue
+            
+            else if categoryLower.indexOf('commit') isnt -1
+                # Commits: Purple tones
+                if percentValue < 33
+                    return 'rgba(239, 68, 68, 0.9)'  # Red
+                else if percentValue < 66
+                    return 'rgba(168, 85, 247, 0.9)'  # Purple
+                else
+                    return 'rgba(126, 34, 206, 0.9)'  # Dark Purple
+            
+            else if categoryLower.indexOf('story') isnt -1 or categoryLower.indexOf('point') isnt -1
+                # Story Points: Green tones
+                if percentValue < 33
+                    return 'rgba(239, 68, 68, 0.9)'  # Red
+                else if percentValue < 66
+                    return 'rgba(34, 197, 94, 0.9)'   # Green
+                else
+                    return 'rgba(22, 163, 74, 0.9)'   # Dark Green
+            
+            else if categoryLower.indexOf('line') isnt -1 or categoryLower.indexOf('code') isnt -1
+                # Modified Lines: Orange/Amber tones
+                if percentValue < 33
+                    return 'rgba(239, 68, 68, 0.9)'  # Red
+                else if percentValue < 66
+                    return 'rgba(251, 191, 36, 0.9)'  # Amber
+                else
+                    return 'rgba(245, 158, 11, 0.9)'  # Dark Amber
+            
+            else if categoryLower.indexOf('hour') isnt -1 or categoryLower.indexOf('time') isnt -1 or categoryLower.indexOf('hora') isnt -1
+                # Hours/Time: Teal tones
+                if percentValue < 33
+                    return 'rgba(239, 68, 68, 0.9)'  # Red
+                else if percentValue < 66
+                    return 'rgba(20, 184, 166, 0.9)'  # Teal
+                else
+                    return 'rgba(13, 148, 136, 0.9)'  # Dark Teal
+        
+        # Default fallback: Red/Orange/Green based on percentage
         if percentValue < 33
             return 'rgba(239, 68, 68, 0.9)'  # Red
         else if percentValue < 66
@@ -2478,6 +2700,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         userSet = {}
 
         mergedMetrics = @.mergeHistoricalMetricSeries(userMetricsRaw)
+        console.log "[DEBUG] buildTeamHistoricalData - mergedMetrics keys:", Object.keys(mergedMetrics)
 
         for own normalizedId, bundle of mergedMetrics
             metricId = bundle?.metricId
@@ -2485,6 +2708,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             continue unless metricId? and angular.isArray(dataPoints) and dataPoints.length
 
             category = @.identifyHistoricalMetricCategory(metricId)
+            console.log "[DEBUG] metricId:", metricId, "-> category:", category
             continue unless category
 
             groupedByStudent = {}
@@ -2601,6 +2825,31 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             values.push(if isNaN(numericValue) then 0 else numericValue)
 
         colorPalette = @.resolveUserColor(student)
+        
+        # Use category-specific color variations if internal provider
+        if @metricsProvider is "internal" and category
+            # Calculate average value for color selection
+            avgValue = 0
+            if values.length > 0
+                sum = values.reduce ((a, b) -> a + b), 0
+                avgValue = sum / values.length
+            
+            # Get color based on category and value
+            categoryColorRgba = @.getInternalGaugeColor(avgValue, category)
+            
+            # Parse the rgba to create variations for the chart
+            if categoryColorRgba and typeof categoryColorRgba is 'string'
+                rgbaMatch = categoryColorRgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/)
+                if rgbaMatch
+                    r = parseInt(rgbaMatch[1])
+                    g = parseInt(rgbaMatch[2])
+                    b = parseInt(rgbaMatch[3])
+                    
+                    colorPalette = {
+                        border: "rgba(#{r}, #{g}, #{b}, 0.9)"
+                        fill: "rgba(#{r}, #{g}, #{b}, 0.26)"
+                        solid: "rgba(#{r}, #{g}, #{b}, 0.74)"
+                    }
 
         dataset = {
             label: student
@@ -2749,6 +2998,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         normalized = metricId.toString().toLowerCase()
 
+        # External data patterns (Learning Dashboard)
         if normalized.indexOf("assignedtasks_") isnt -1 or normalized.indexOf("tasksratio_") isnt -1
             return "tasks"
         if normalized.indexOf("closedtasks_") isnt -1 or normalized.indexOf("completedtasks_") isnt -1
@@ -2757,6 +3007,20 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             return "modified_lines"
         if normalized.indexOf("commits_") isnt -1
             return "commits"
+        
+        # Internal metrics support (Taiga native) - per user
+        if normalized is "user_closed_tasks"
+            return "closed_tasks"
+        if normalized is "user_story_points"
+            return "story_points"
+        if normalized is "user_stories_closed"
+            return "stories_closed"
+        if normalized is "user_commits"
+            return "commits"
+        if normalized is "user_assigned_tasks"
+            return "tasks"
+        if normalized is "user_modified_lines"
+            return "modified_lines"
 
         null
 
@@ -3080,8 +3344,14 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         maxValue = if numericValues.length then Math.max.apply(Math, numericValues) else 0
 
-        percentageCategories = ["tasks", "closed_tasks", "modified_lines", "commits"]
+        # Only these categories should be treated as percentages (0-100%)
+        # closed_tasks is NOT a percentage in internal metrics, but it was in external metrics
+        # We need to distinguish or just remove it from here if we want raw counts
+        percentageCategories = ["tasks", "modified_lines", "commits"]
+        
         isPercentage = percentageCategories.indexOf(category) isnt -1
+        
+        console.log "[DEBUG] resolveHistoricalAxisConfig - category:", category, "isPercentage:", isPercentage, "maxValue:", maxValue, "percentageCategories:", percentageCategories
 
         config =
             isPercentage: isPercentage
@@ -3093,6 +3363,15 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             adjustedMax = if maxValue > baseMax then Math.ceil(maxValue / 10) * 10 else baseMax
             config.max = adjustedMax
             config.step = 20
+        else
+            # For non-percentage metrics (counts), set a reasonable max/step
+            # If max is small (e.g. < 10), set max to 10 or similar to avoid weird fractional steps
+            if maxValue > 0 and maxValue <= 5
+                config.max = 5
+                config.step = 1
+            else if maxValue > 5 and maxValue <= 10
+                config.max = 10
+                config.step = 2
 
         return config
 
@@ -3102,6 +3381,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             when "closed_tasks" then "METRICS.TEAM_HISTORICAL_METRIC_CLOSED_TASKS"
             when "modified_lines" then "METRICS.TEAM_HISTORICAL_METRIC_MODIFIED_LINES"
             when "commits" then "METRICS.TEAM_HISTORICAL_METRIC_COMMITS"
+            when "story_points" then "METRICS.TEAM_HISTORICAL_METRIC_STORY_POINTS"
+            when "stories_closed" then "METRICS.TEAM_HISTORICAL_METRIC_STORIES_CLOSED"
             else null
 
     buildQualityFactorNamesMap: (metricsData) ->
@@ -3168,10 +3449,14 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             "deviationmetrics": "Deviation Metrics"
             "activitydistribution": "Activity Distribution"
             "unassignedtasks": "Unassigned Tasks"
-            "closed_tasks": "Closed Tasks"
+            "closed_tasks": "Tareas Cerradas"
+            "task_completion": "Tareas Cerradas"
             "commits": "Commits"
-            "modified_lines": "Modified Lines"
-            "tasks": "Tasks"
+            "modified_lines": "Líneas Modificadas"
+            "tasks": "Tareas Asignadas"
+            "story_points": "Puntos de Historia"
+            "stories_closed": "Historias Cerradas"
+            "tasks_ratio": "Ratio de Tareas"
         
         if knownQualityFactors[normalizedCategory]?
             return knownQualityFactors[normalizedCategory]
@@ -3242,6 +3527,55 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             title: title
             chartData: chartData
         }
+
+    ###
+    # Compose simple charts for internal data - one chart per user per metric
+    ###
+    composeSimpleTeamHistoricalCharts: (chartsByCategory, dateFrom, dateTo) ->
+        charts = []
+        unless chartsByCategory?
+            console.warn "[WARN] composeSimpleTeamHistoricalCharts - No chartsByCategory provided"
+            return charts
+        
+        console.log "[DEBUG] composeSimpleTeamHistoricalCharts - ENTERED FUNCTION - categories:", Object.keys(chartsByCategory)
+
+        # Para cada métrica y cada usuario, crear un gráfico individual
+        for own categoryId, categoryCollections of chartsByCategory
+            unless categoryCollections? and typeof categoryCollections is "object"
+                console.warn "[WARN] Skipping category #{categoryId} - invalid categoryCollections"
+                continue
+            
+            console.log "[DEBUG] Processing category:", categoryId, "with", Object.keys(categoryCollections).length, "users"
+
+            # Obtener el label de la métrica
+            metricLabelKey = @.metricCategoryLabelKey(categoryId)
+            
+            # Procesar cada usuario individualmente
+            for own student, collection of categoryCollections
+                continue unless collection?.entries? and angular.isArray(collection.entries)
+                
+                filteredEntries = @.filterHistoricalEntries(collection.entries, dateFrom, dateTo)
+                continue unless angular.isArray(filteredEntries) and filteredEntries.length
+                
+                # Crear un gráfico para este usuario y esta métrica
+                chart = @.composeTeamHistoricalChart(collection, metricLabelKey, filteredEntries, true)
+                if chart
+                    charts.push(chart)
+                    console.log "[DEBUG] Created individual chart for", categoryId, "-", student
+
+        console.log "[DEBUG] composeSimpleTeamHistoricalCharts - created", charts.length, "individual charts"
+        
+        # Ordenar primero por métrica y luego por usuario para mejor organización
+        charts.sort (a, b) ->
+            # Primero ordenar por métrica
+            labelA = if a?.metricLabel? then a.metricLabel.toString() else ""
+            labelB = if b?.metricLabel? then b.metricLabel.toString() else ""
+            metricCompare = labelA.localeCompare(labelB)
+            return metricCompare if metricCompare isnt 0
+            # Si es la misma métrica, ordenar por usuario
+            a.user.localeCompare(b.user)
+
+        charts
 
     composeAggregatedTeamHistoricalCharts: (chartsByCategory, dateFrom, dateTo) ->
         charts = []
@@ -3462,6 +3796,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
     applyTeamHistoricalFilters: ->
         filters = @scope.metricsView.teamHistoricalFilters or {}
         source = @scope.metricsView.teamHistoricalSource
+        console.log "[DEBUG] applyTeamHistoricalFilters - source:", source?, "chartsByCategory:", Object.keys(source?.chartsByCategory or {})
 
         applyOverrides = (chartsList) =>
             context =
@@ -3478,6 +3813,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             return chartsList
 
         unless source? and source.chartsByCategory?
+            console.log "[DEBUG] applyTeamHistoricalFilters - No source or chartsByCategory, returning empty"
             @scope.metricsView.teamHistoricalCharts = []
             return
 
@@ -3485,10 +3821,25 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         user = filters.user or "all"
         dateFrom = filters.dateFrom or null
         dateTo = filters.dateTo or null
+        
+        # Detectar el proveedor actual - usar la configuración más reciente
+        currentProvider = @localConfig?.provider or @scope.config?.provider or @metricsProvider or "external"
+        isInternalProvider = currentProvider is "internal"
+        console.log "[DEBUG] applyTeamHistoricalFilters - metric:", metric, "user:", user, "provider:", currentProvider, "isInternal:", isInternalProvider
 
+        # Para datos INTERNOS: mostrar gráficos simples por métrica
+        # Para datos EXTERNOS: mantener gráficos agregados múltiples
         if user is "all" and metric is "all"
-            aggregatedCharts = @.composeAggregatedTeamHistoricalCharts(source.chartsByCategory, dateFrom, dateTo)
-            @scope.metricsView.teamHistoricalCharts = applyOverrides(aggregatedCharts)
+            if isInternalProvider
+                # Internal: crear gráficos simples separados por métrica
+                simpleCharts = @.composeSimpleTeamHistoricalCharts(source.chartsByCategory, dateFrom, dateTo)
+                console.log "[DEBUG] applyTeamHistoricalFilters - simpleCharts (internal):", simpleCharts?.length
+                @scope.metricsView.teamHistoricalCharts = applyOverrides(simpleCharts)
+            else
+                # External: usar gráficos agregados (comportamiento actual)
+                aggregatedCharts = @.composeAggregatedTeamHistoricalCharts(source.chartsByCategory, dateFrom, dateTo)
+                console.log "[DEBUG] applyTeamHistoricalFilters - aggregatedCharts (external):", aggregatedCharts?.length
+                @scope.metricsView.teamHistoricalCharts = applyOverrides(aggregatedCharts)
             return
 
         metricLabelKey = if metric is "all" then null else @.metricCategoryLabelKey(metric)
@@ -3629,6 +3980,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         @scope.metricsView.projectHistoricalCharts = applyOverrides(charts, chartMap)
 
     updateTeamHistoricalSource: (historicalMetrics) ->
+        console.log "[DEBUG] updateTeamHistoricalSource called, historicalMetrics:", historicalMetrics?
         unless historicalMetrics?
             @scope.metricsView.teamHistoricalSource = null
             @scope.metricsView.teamHistoricalCharts = []
@@ -3636,7 +3988,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             return
 
         rawUserMetrics = historicalMetrics?.raw?.userMetrics or {}
+        console.log "[DEBUG] rawUserMetrics keys:", Object.keys(rawUserMetrics)
         teamData = @.buildTeamHistoricalData(rawUserMetrics)
+        console.log "[DEBUG] teamData built:", teamData?.users?.length, "users, chartsByCategory:", Object.keys(teamData?.chartsByCategory or {})
 
         @scope.metricsView.teamHistoricalSource = teamData
 

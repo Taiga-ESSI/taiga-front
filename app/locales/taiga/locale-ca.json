@@ -1775,6 +1775,8 @@
         "TEAM_HISTORICAL_METRIC_CLOSED_TASKS": "Tasques tancades",
         "TEAM_HISTORICAL_METRIC_MODIFIED_LINES": "Línies modificades",
         "TEAM_HISTORICAL_METRIC_COMMITS": "Commits",
+        "TEAM_HISTORICAL_METRIC_STORY_POINTS": "Story Points",
+        "TEAM_HISTORICAL_METRIC_STORIES_CLOSED": "Històries tancades",
         "TEAM_HISTORICAL_ALL_USERS": "Tots els usuaris",
         "TEAM_HISTORICAL_NO_DATA": "No hi ha dades històriques per als filtres seleccionats.",
         "TEAM_HISTORICAL_DATE_FROM": "Des de",

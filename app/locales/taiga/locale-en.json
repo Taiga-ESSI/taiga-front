@@ -1769,6 +1769,8 @@
         "TEAM_HISTORICAL_METRIC_CLOSED_TASKS": "Closed Tasks",
         "TEAM_HISTORICAL_METRIC_MODIFIED_LINES": "Modified Lines",
         "TEAM_HISTORICAL_METRIC_COMMITS": "Commits",
+        "TEAM_HISTORICAL_METRIC_STORY_POINTS": "Story Points",
+        "TEAM_HISTORICAL_METRIC_STORIES_CLOSED": "Stories Closed",
         "TEAM_HISTORICAL_ALL_USERS": "All users",
         "TEAM_HISTORICAL_NO_DATA": "No historical data matches the selected filters.",
         "TEAM_HISTORICAL_DATE_FROM": "From",

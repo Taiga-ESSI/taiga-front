@@ -19,24 +19,27 @@ $metrics-color-slate-800: rgb(15, 23, 42);
 $metrics-color-slate-600: rgb(71, 85, 105);
 
 // Gradient definitions
-$metrics-gradient-accent: linear-gradient(
-    90deg,
-    $metrics-color-primary-500 0%,
-    $metrics-color-primary-400 50%,
-    rgba(14, 165, 233, .8) 100%
-);
-$metrics-gradient-accent-simple: linear-gradient(
-    90deg,
-    $metrics-color-primary-500,
-    $metrics-color-primary-400,
-    rgba(14, 165, 233, .8)
-);
-$metrics-gradient-text: linear-gradient(
-    135deg,
-    $metrics-color-primary-500 0%,
-    $metrics-color-primary-400 60%,
-    rgba(14, 165, 233, .9) 100%
-);
+$metrics-gradient-accent:
+    linear-gradient(
+        90deg,
+        $metrics-color-primary-500 0%,
+        $metrics-color-primary-400 50%,
+        rgba(14, 165, 233, .8) 100%
+    );
+$metrics-gradient-accent-simple:
+    linear-gradient(
+        90deg,
+        $metrics-color-primary-500,
+        $metrics-color-primary-400,
+        rgba(14, 165, 233, .8)
+    );
+$metrics-gradient-text:
+    linear-gradient(
+        135deg,
+        $metrics-color-primary-500 0%,
+        $metrics-color-primary-400 60%,
+        rgba(14, 165, 233, .9) 100%
+    );
 
 .metrics {
     .metrics-view-switch {
@@ -1081,9 +1084,15 @@ $metrics-gradient-text: linear-gradient(
 }
 
 @keyframes pulse-glow {
+
     0%,
-    100% { box-shadow: 0 0 0 5px rgba(79, 70, 229, .1), 0 0 0 10px rgba(79, 70, 229, .05); }
-    50% { box-shadow: 0 0 0 7px rgba(79, 70, 229, .15), 0 0 0 14px rgba(79, 70, 229, .08); }
+    100% {
+        box-shadow: 0 0 0 5px rgba(79, 70, 229, .1), 0 0 0 10px rgba(79, 70, 229, .05);
+    }
+
+    50% {
+        box-shadow: 0 0 0 7px rgba(79, 70, 229, .15), 0 0 0 14px rgba(79, 70, 229, .08);
+    }
 }
 
 .metric-group .project-metrics-grid {
@@ -1732,6 +1741,30 @@ $metrics-gradient-text: linear-gradient(
 // Team historical cards - more complex with multiple users/series
 .team-historical-card {
     padding: 1.25rem;
+    position: relative;
+
+    // Add a subtle left border to indicate metric category
+    &::before {
+        background:
+            linear-gradient(
+                180deg,
+                rgba(99, 102, 241, .8) 0%,
+                rgba(99, 102, 241, .4) 100%
+            );
+        border-radius: 16px 0 0 16px;
+        bottom: 0;
+        content: '';
+        left: 0;
+        opacity: .6;
+        position: absolute;
+        top: 0;
+        transition: opacity .3s ease;
+        width: 4px;
+    }
+
+    &:hover::before {
+        opacity: 1;
+    }
 
     tg-area-chart {
         background: transparent;
@@ -1747,6 +1780,18 @@ $metrics-gradient-text: linear-gradient(
     tg-area-chart canvas {
         height: 280px;
         width: 100%;
+    }
+
+    // Add visual grouping hints
+    .chart-title {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: .25rem;
+    }
+
+    .chart-subtitle {
+        font-size: .8rem;
+        opacity: .85;
     }
 }
 

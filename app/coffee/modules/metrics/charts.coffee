@@ -373,7 +373,7 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             }
 
         renderChart = (value, label, maxValue, rawValue, unit, metricKey, customColor, paletteSegments) ->
-            console.log("Speedometer renderChart:", value, label, maxValue, rawValue)
+            console.log("Speedometer renderChart:", value, label, "customColor:", customColor, "paletteSegments:", paletteSegments)
             
             return if isRendering
             isRendering = true
@@ -406,15 +406,24 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                             absoluteRatio = ratioClamped
                         absoluteRatio = Math.max(0, absoluteRatio)
 
-                        gaugeFillStyle = getGradientForValue(ctx, normalized, label, metricKey)
                         providedColor = if typeof customColor is "string" and customColor.trim().length > 0 then customColor.trim() else null
 
-                        if providedColor
+                        # Attempt to get gradient logic (especially for traffic light internal metrics)
+                        gaugeFillStyle = getGradientForValue(ctx, normalized, label, metricKey)
+                        useGradientRendering = gaugeFillStyle? and typeof gaugeFillStyle is "object" and gaugeFillStyle.fill
+
+                        if useGradientRendering
+                            # Use our custom gradient logic (for identified internal metrics)
+                            gaugeBaseColor = gaugeFillStyle.fill
+                            gaugeRemainderColor = gaugeFillStyle.remainder
+                        else if providedColor
+                            # Use provided solid color
                             gaugeBaseColor = providedColor
                             gaugeRemainderColor = deriveRemainderColor(providedColor)
                         else
-                            gaugeBaseColor = gaugeFillStyle?.fill or gaugeFillStyle
-                            gaugeRemainderColor = gaugeFillStyle?.remainder or 'rgba(220, 220, 220, 0.15)'
+                            # Fallback (from getGradientForValue or default)
+                            gaugeBaseColor = gaugeFillStyle?.fill or gaugeFillStyle or 'rgba(37, 99, 235, 0.92)'
+                            gaugeRemainderColor = gaugeFillStyle?.remainder or 'rgba(37, 99, 235, 0.18)'
 
                         paletteDataset = buildPaletteDataset(paletteSegments, gaugeRemainderColor, maxRefRatio)
 
@@ -422,17 +431,13 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                         datasetColors = []
 
                         if paletteDataset?
+                            # Use palette segments if explicitly provided (traffic light or segments)
                             datasetData = paletteDataset.data
                             datasetColors = paletteDataset.colors
                         else
-                            datasetData = [
-                                normalized
-                                Math.max(100 - normalized, 0)
-                            ]
-                            datasetColors = [
-                                gaugeBaseColor
-                                gaugeRemainderColor
-                            ]
+                            # Partial fill rendering (needle + backdrop with gradient/solid)
+                            datasetData = [normalized, Math.max(100 - normalized, 0)]
+                            datasetColors = [gaugeBaseColor, gaugeRemainderColor]
                         
                         datasetObject = {
                             data: datasetData
@@ -662,9 +667,25 @@ SpeedometerChartDirective = ($parse, $timeout) ->
         getGradientForValue = (ctx, value, label, metricKey) ->
             identifier = metricKey or label or ""
             normalizedIdentifier = identifier.toString().toLowerCase()
-            treatAsUnassigned = normalizedIdentifier.indexOf("unassigned") isnt -1
+            
+            console.log("Gauge check:", {label: label, key: metricKey, normalized: normalizedIdentifier})
 
-            if !treatAsUnassigned
+            # Identify if it's an internal metric and what type of behavior it has
+            # "Worsening" means high value is bad (Green -> Red)
+            # "Improving" means high value is good (Red -> Green)
+            
+            # Worsening keywords
+            isWorsening = /unassigned|deviation|commits_anonymous|pattern_check/.test(normalizedIdentifier)
+            
+            # Improving keywords (Broadened)
+            # We assume anything containing these words that ISN'T worsening is improving
+            isImproving = /acceptance|criteria|closed|completed|commits|tasks|lines|stories|points|us|issue|velocity|cycle|lead/.test(normalizedIdentifier)
+            
+            isInternal = isWorsening or isImproving
+
+            console.log("Gauge classified:", {isInternal: isInternal, isWorsening: isWorsening, identifier: normalizedIdentifier})
+
+            if !isInternal
                 # Solid blue fill for the rest of project metrics
                 return {
                     fill: 'rgba(37, 99, 235, 0.92)'
@@ -674,22 +695,42 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             gradient = ctx.createLinearGradient(0, 0, 400, 0)
             remainderGradient = ctx.createLinearGradient(0, 0, 400, 0)
 
-            remainderGradient.addColorStop(0, 'rgba(34, 197, 94, 0.18)')
-            remainderGradient.addColorStop(0.5, 'rgba(251, 191, 36, 0.18)')
-            remainderGradient.addColorStop(1, 'rgba(239, 68, 68, 0.18)')
+            if isWorsening
+                # Green -> Orange -> Red
+                remainderGradient.addColorStop(0, 'rgba(34, 197, 94, 0.18)')
+                remainderGradient.addColorStop(0.5, 'rgba(251, 191, 36, 0.18)')
+                remainderGradient.addColorStop(1, 'rgba(239, 68, 68, 0.18)')
 
-            if value < 33
-                # Low unassigned percentage -> green
-                gradient.addColorStop(0, 'rgba(34, 197, 94, 0.9)')
-                gradient.addColorStop(1, 'rgba(22, 163, 74, 0.9)')
-            else if value < 66
-                # Mid values -> orange
-                gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)')
-                gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)')
+                if value < 33
+                    # Low unassigned percentage -> green
+                    gradient.addColorStop(0, 'rgba(34, 197, 94, 0.9)')
+                    gradient.addColorStop(1, 'rgba(22, 163, 74, 0.9)')
+                else if value < 66
+                    # Mid values -> orange
+                    gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)')
+                    gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)')
+                else
+                    # High unassigned percentage -> red
+                    gradient.addColorStop(0, 'rgba(239, 68, 68, 0.9)')
+                    gradient.addColorStop(1, 'rgba(220, 38, 38, 0.9)')
             else
-                # High unassigned percentage -> red
-                gradient.addColorStop(0, 'rgba(239, 68, 68, 0.9)')
-                gradient.addColorStop(1, 'rgba(220, 38, 38, 0.9)')
+                # Red -> Orange -> Green
+                remainderGradient.addColorStop(0, 'rgba(239, 68, 68, 0.18)')
+                remainderGradient.addColorStop(0.5, 'rgba(251, 191, 36, 0.18)')
+                remainderGradient.addColorStop(1, 'rgba(34, 197, 94, 0.18)')
+
+                if value < 33
+                    # Low value -> red
+                    gradient.addColorStop(0, 'rgba(239, 68, 68, 0.9)')
+                    gradient.addColorStop(1, 'rgba(220, 38, 38, 0.9)')
+                else if value < 66
+                    # Mid values -> orange
+                    gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)')
+                    gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)')
+                else
+                    # High value -> green
+                    gradient.addColorStop(0, 'rgba(34, 197, 94, 0.9)')
+                    gradient.addColorStop(1, 'rgba(22, 163, 74, 0.9)')
 
             return {
                 fill: gradient
@@ -1218,7 +1259,7 @@ AreaChartDirective = ($parse, $timeout) ->
                                     }
                                     y: {
                                         beginAtZero: true
-                                        max: data.yAxisMax ? undefined
+                                        max: if data.yAxisMax? then data.yAxisMax else undefined
                                         grid: {
                                             display: true
                                             color: '#e2e8f0'
@@ -1230,13 +1271,19 @@ AreaChartDirective = ($parse, $timeout) ->
                                             font: {
                                                 size: 11
                                             }
-                                            stepSize: data.yAxisStep ? undefined
+                                            stepSize: if data.yAxisStep? then data.yAxisStep else undefined
                                             callback: (value) ->
                                                 return value unless typeof value is 'number'
                                                 numericValue = Number(value)
                                                 return value unless isFinite(numericValue)
                                                 if data.isPercentage
                                                     return "#{numericValue.toFixed(1)}%"
+                                                
+                                                # If it's an integer, show as integer
+                                                if Number.isInteger(numericValue)
+                                                    return numericValue.toString()
+                                                
+                                                # Otherwise show with decimals
                                                 numericValue.toFixed(2)
                                         }
                                         title: {
