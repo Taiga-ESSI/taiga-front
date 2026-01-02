@@ -53,7 +53,7 @@ div.wrapper
                                                     label="{{ metric.name }}"
                                                     metric-key="{{ metric.id }}"
                                                     color="metric.categoryColor"
-                                                    palette="metric.categoryPalette"
+                                                    palette="metric.categorySegments || metric.categoryPalette"
                                                 )
                                             div.project-metric-insights
                                                 div.metric-value-wrapper

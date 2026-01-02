@@ -966,6 +966,9 @@
       if (externalId) {
         params.external = externalId;
       }
+      if (this.metricsProvider === "internal") {
+        params.refresh = true;
+      }
       url = this.urls.resolve("metrics-historical");
       console.log("[DEBUG] Fetching historical metrics from:", url, "params:", params);
       return this.http.get(url, params, {
@@ -1385,6 +1388,7 @@
             if (metricId.indexOf(configuredKey) === -1) {
               continue;
             }
+            console.log("✅ Metric match: " + metricId + " contains '" + configuredKey + "', value=" + metricValue);
             if (configuredKey === "assignedtasks") {
               entry.assignedTasks = metricValue;
               entry.totalTasks = Math.max(entry.totalTasks, metricValue);
@@ -1596,9 +1600,8 @@
                 rawValue = typeof metric.value === 'number' ? metric.value : parseFloat(metric.value) || 0;
                 users[userName].totalUS = rawValue;
               } else if (metricType === "completedus" || metricType === "closedus") {
-                rawValue = typeof metric.value === 'number' ? metric.value : parseFloat(metric.value) || 0;
-                users[userName].completedUS = rawValue;
-                users[userName].usPercentage = rawValue;
+                users[userName].completedUS = normalizedValue;
+                users[userName].usPercentage = normalizedValue;
               }
               if (users[userName].totalTasks > 0 && users[userName].completedTasks > 0) {
                 ratio = users[userName].completedTasks;
@@ -2525,7 +2528,7 @@
     };
 
     MetricsController.prototype.buildInternalStudentsRadar = function(usersList) {
-      var areaColor, borderColor, colorPalette, datasets, i, len, ref, ref1, ref2, storiesLabel, storiesVal, tasksLabel, tasksVal, user, workloadCount, workloadLabel;
+      var areaColor, borderColor, colorPalette, datasets, i, j, len, len1, metric, rawVal, ref, ref1, ref2, ref3, ref4, storiesLabel, storiesVal, tasksLabel, tasksVal, user, workloadCount, workloadLabel;
       if (!(usersList && usersList.length > 0)) {
         return null;
       }
@@ -2542,6 +2545,31 @@
         tasksVal = Number(parseFloat(user.closedTasks) || 0);
         storiesVal = Number(parseFloat(user.completedUS) || 0);
         workloadCount = Number(parseFloat(user.assignedTasks) || 0);
+        if (storiesVal === 0 && ((ref3 = user.metricsDetails) != null ? ref3.length : void 0) > 0) {
+          ref4 = user.metricsDetails;
+          for (j = 0, len1 = ref4.length; j < len1; j++) {
+            metric = ref4[j];
+            if ((metric != null ? metric.id : void 0) != null) {
+              if (metric.id.toLowerCase().indexOf('completedus') !== -1) {
+                rawVal = metric.value || metric.ratio || 0;
+                if (rawVal <= 1 && rawVal > 0) {
+                  storiesVal = rawVal * 100;
+                } else {
+                  storiesVal = rawVal;
+                }
+                console.log("📦 Found completedUS in metricsDetails: " + metric.id + " = " + rawVal + " -> " + storiesVal);
+                break;
+              }
+            }
+          }
+        }
+        console.log("🎯 Radar data for " + user.username + ":", {
+          closedTasks: user.closedTasks,
+          completedUS: user.completedUS,
+          assignedTasks: user.assignedTasks,
+          storiesValFinal: storiesVal,
+          parsed: [tasksVal, storiesVal, workloadCount]
+        });
         datasets.push({
           label: "" + (user.displayName || user.username),
           data: [tasksVal, storiesVal, workloadCount],

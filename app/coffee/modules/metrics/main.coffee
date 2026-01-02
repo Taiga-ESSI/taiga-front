@@ -745,6 +745,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         if externalId
             params.external = externalId
 
+        if @metricsProvider is "internal"
+            params.refresh = true
+
         url = @urls.resolve("metrics-historical")
         console.log "[DEBUG] Fetching historical metrics from:", url, "params:", params
         
@@ -1096,6 +1099,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 for rawKey in configuredKeys when rawKey?
                     configuredKey = rawKey.toString().toLowerCase()
                     continue unless metricId.indexOf(configuredKey) isnt -1
+                    
+                    console.log "✅ Metric match: #{metricId} contains '#{configuredKey}', value=#{metricValue}"
 
                     if configuredKey is "assignedtasks"
                         entry.assignedTasks = metricValue
@@ -1269,10 +1274,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                         rawValue = if typeof metric.value is 'number' then metric.value else parseFloat(metric.value) or 0
                         users[userName].totalUS = rawValue
                     else if metricType == "completedus" or metricType == "closedus"
-                        # completedus is an absolute count, not a ratio - use raw value
-                        rawValue = if typeof metric.value is 'number' then metric.value else parseFloat(metric.value) or 0
-                        users[userName].completedUS = rawValue
-                        users[userName].usPercentage = rawValue
+                        # completedus is a ratio (closed/assigned), use normalized value like other metrics
+                        users[userName].completedUS = normalizedValue
+                        users[userName].usPercentage = normalizedValue
 
                     if users[userName].totalTasks > 0 and users[userName].completedTasks > 0
                         ratio = users[userName].completedTasks
@@ -2111,6 +2115,27 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             tasksVal = Number(parseFloat(user.closedTasks) or 0)
             storiesVal = Number(parseFloat(user.completedUS) or 0)
             workloadCount = Number(parseFloat(user.assignedTasks) or 0)
+            
+            # Fallback: If completedUS is 0, try to find it in user's metricsDetails
+            if storiesVal is 0 and user.metricsDetails?.length > 0
+                for metric in user.metricsDetails when metric?.id?
+                    if metric.id.toLowerCase().indexOf('completedus') isnt -1
+                        rawVal = metric.value or metric.ratio or 0
+                        # Normalize if it's a ratio (0-1)
+                        if rawVal <= 1 and rawVal > 0
+                            storiesVal = rawVal * 100
+                        else
+                            storiesVal = rawVal
+                        console.log "📦 Found completedUS in metricsDetails: #{metric.id} = #{rawVal} -> #{storiesVal}"
+                        break
+            
+            console.log "🎯 Radar data for #{user.username}:", {
+                closedTasks: user.closedTasks,
+                completedUS: user.completedUS,
+                assignedTasks: user.assignedTasks,
+                storiesValFinal: storiesVal,
+                parsed: [tasksVal, storiesVal, workloadCount]
+            }
 
             datasets.push({
                 label: "#{user.displayName or user.username}"

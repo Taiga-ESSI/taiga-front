@@ -311,29 +311,15 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             else
                 formatted
 
-        deriveRemainderColor = (color) ->
-            base = if typeof color is "string" then color.trim() else ""
-            return 'rgba(148, 163, 184, 0.25)' unless base.length
+        # Solid colors only - NO transparency
+        SOLID_BLUE = '#2563EB'
+        SOLID_GREY = 'rgb(203, 213, 225)'
+        
 
-            hexMatch = base.match(/^#([0-9a-f]{6})$/i)
-            if hexMatch
-                hex = hexMatch[1]
-                r = parseInt(hex.substr(0, 2), 16)
-                g = parseInt(hex.substr(2, 2), 16)
-                b = parseInt(hex.substr(4, 2), 16)
-                return "rgba(#{r}, #{g}, #{b}, 0.18)"
-
-            rgbMatch = base.match(/^rgba?\(([^)]+)\)$/i)
-            if rgbMatch
-                parts = rgbMatch[1].split(',').map (part) -> part.trim()
-                r = parseInt(parts[0], 10) or 148
-                g = parseInt(parts[1], 10) or 163
-                b = parseInt(parts[2], 10) or 184
-                return "rgba(#{r}, #{g}, #{b}, 0.18)"
-
-            'rgba(148, 163, 184, 0.25)'
 
         buildPaletteDataset = (segments, fallbackColor, maxRangeRatio = 1) ->
+            # Only process when we have valid palette segments (typically from EXTERNAL provider)
+            # The segments already come complete from buildMetricCategorySegments
             return null unless Array.isArray(segments) and segments.length > 0
 
             entries = []
@@ -342,7 +328,10 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             for segment in segments when segment?
                 segmentValue = Number(segment.value)
                 continue unless isFinite(segmentValue) and segmentValue > 0
-                colorValue = if typeof segment.color is "string" and segment.color.trim().length > 0 then segment.color.trim() else fallbackColor
+                
+                # Use colors directly from API - they already come without transparency
+                colorValue = segment.color or SOLID_BLUE
+                
                 entries.push({
                     ratio: segmentValue
                     color: colorValue
@@ -351,16 +340,8 @@ SpeedometerChartDirective = ($parse, $timeout) ->
 
             return null unless entries.length
 
-            rangeRatio = if isFinite(maxRangeRatio) and maxRangeRatio > 0 then maxRangeRatio else totalRatio
-
-            if rangeRatio > totalRatio
-                entries.push({
-                    ratio: rangeRatio - totalRatio
-                    color: fallbackColor or 'rgba(148, 163, 184, 0.25)'
-                })
-                totalRatio = rangeRatio
-
-            totalRatio = rangeRatio if rangeRatio < totalRatio
+            # The segments already cover the full range, no need to add remainder
+            # Just normalize to 100% for the chart
             totalRatio = 1 if totalRatio <= 0
 
             scaleFactor = 100 / totalRatio
@@ -406,26 +387,22 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                             absoluteRatio = ratioClamped
                         absoluteRatio = Math.max(0, absoluteRatio)
 
-                        providedColor = if typeof customColor is "string" and customColor.trim().length > 0 then customColor.trim() else null
-
-                        # Attempt to get gradient logic (especially for traffic light internal metrics)
-                        gaugeFillStyle = getGradientForValue(ctx, normalized, label, metricKey)
-                        useGradientRendering = gaugeFillStyle? and typeof gaugeFillStyle is "object" and gaugeFillStyle.fill
-
-                        if useGradientRendering
-                            # Use our custom gradient logic (for identified internal metrics)
-                            gaugeBaseColor = gaugeFillStyle.fill
-                            gaugeRemainderColor = gaugeFillStyle.remainder
-                        else if providedColor
-                            # Use provided solid color
-                            gaugeBaseColor = providedColor
-                            gaugeRemainderColor = deriveRemainderColor(providedColor)
+                        # Use palette segments if provided (EXTERNAL), otherwise use solid colors
+                        paletteDataset = buildPaletteDataset(paletteSegments, SOLID_GREY, maxRefRatio)
+                        
+                        # Determine gauge colors - always solid, no transparency
+                        gaugeBaseColor = SOLID_BLUE
+                        gaugeRemainderColor = SOLID_GREY
+                        
+                        # If custom color provided, use it
+                        if typeof customColor is "string" and customColor.trim().length > 0
+                            gaugeBaseColor = customColor.trim()
+                        # If gradient style available (internal metrics), use it
                         else
-                            # Fallback (from getGradientForValue or default)
-                            gaugeBaseColor = gaugeFillStyle?.fill or gaugeFillStyle or 'rgba(37, 99, 235, 0.92)'
-                            gaugeRemainderColor = gaugeFillStyle?.remainder or 'rgba(37, 99, 235, 0.18)'
-
-                        paletteDataset = buildPaletteDataset(paletteSegments, gaugeRemainderColor, maxRefRatio)
+                            gaugeFillStyle = getGradientForValue(ctx, normalized, label, metricKey)
+                            if gaugeFillStyle? and typeof gaugeFillStyle is "object" and gaugeFillStyle.fill
+                                gaugeBaseColor = gaugeFillStyle.fill
+                                gaugeRemainderColor = gaugeFillStyle.remainder
 
                         datasetData = []
                         datasetColors = []
@@ -686,10 +663,10 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             }
 
             if not isInternal and not isAssignedMetric
-                # Solid blue fill for the rest of project metrics
+                # Solid blue fill - NO transparency
                 return {
-                    fill: 'rgba(37, 99, 235, 0.92)'
-                    remainder: 'rgba(37, 99, 235, 0.18)'
+                    fill: 'rgb(37, 99, 235)'
+                    remainder: SOLID_GREY
                 }
 
             gradient = ctx.createLinearGradient(0, 0, 400, 0)
@@ -698,28 +675,28 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             if isAssignedMetric
                 # Custom ranges: 0-10 Orange, 10-30 Green, 30-50 Orange, 50+ Red
                 
-                # Remainder gradient (background track) - mirroring the ranges broadly
-                remainderGradient.addColorStop(0, 'rgba(251, 191, 36, 0.18)')   # 0-10
-                remainderGradient.addColorStop(0.2, 'rgba(34, 197, 94, 0.18)')  # 10-30
-                remainderGradient.addColorStop(0.4, 'rgba(251, 191, 36, 0.18)') # 30-50
-                remainderGradient.addColorStop(1, 'rgba(239, 68, 68, 0.18)')    # 50+
+                # Remainder gradient (background track) - SOLID colors
+                remainderGradient.addColorStop(0, 'rgb(251, 191, 36)')   # 0-10 Orange
+                remainderGradient.addColorStop(0.2, 'rgb(34, 197, 94)')  # 10-30 Green
+                remainderGradient.addColorStop(0.4, 'rgb(251, 191, 36)') # 30-50 Orange
+                remainderGradient.addColorStop(1, 'rgb(239, 68, 68)')    # 50+ Red
 
                 if value < 10
-                    # 0 - 10: Orange
-                    gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)')
-                    gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)')
+                    # 0 - 10: Orange - SOLID
+                    gradient.addColorStop(0, 'rgb(251, 191, 36)')
+                    gradient.addColorStop(1, 'rgb(245, 158, 11)')
                 else if value < 30
-                    # 10 - 30: Green
-                    gradient.addColorStop(0, 'rgba(34, 197, 94, 0.9)')
-                    gradient.addColorStop(1, 'rgba(22, 163, 74, 0.9)')
+                    # 10 - 30: Green - SOLID
+                    gradient.addColorStop(0, 'rgb(34, 197, 94)')
+                    gradient.addColorStop(1, 'rgb(22, 163, 74)')
                 else if value < 50
-                    # 30 - 50: Orange
-                    gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)')
-                    gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)')
+                    # 30 - 50: Orange - SOLID
+                    gradient.addColorStop(0, 'rgb(251, 191, 36)')
+                    gradient.addColorStop(1, 'rgb(245, 158, 11)')
                 else
-                    # 50 - 100: Red
-                    gradient.addColorStop(0, 'rgba(239, 68, 68, 0.9)')
-                    gradient.addColorStop(1, 'rgba(220, 38, 38, 0.9)')
+                    # 50 - 100: Red - SOLID
+                    gradient.addColorStop(0, 'rgb(239, 68, 68)')
+                    gradient.addColorStop(1, 'rgb(220, 38, 38)')
 
                 return {
                     fill: gradient
@@ -727,41 +704,41 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                 }
 
             if isWorsening
-                # Green -> Orange -> Red
-                remainderGradient.addColorStop(0, 'rgba(34, 197, 94, 0.18)')
-                remainderGradient.addColorStop(0.5, 'rgba(251, 191, 36, 0.18)')
-                remainderGradient.addColorStop(1, 'rgba(239, 68, 68, 0.18)')
+                # Green -> Orange -> Red - SOLID colors
+                remainderGradient.addColorStop(0, 'rgb(34, 197, 94)')
+                remainderGradient.addColorStop(0.5, 'rgb(251, 191, 36)')
+                remainderGradient.addColorStop(1, 'rgb(239, 68, 68)')
 
                 if value < 33
-                    # Low unassigned percentage -> green
-                    gradient.addColorStop(0, 'rgba(34, 197, 94, 0.9)')
-                    gradient.addColorStop(1, 'rgba(22, 163, 74, 0.9)')
+                    # Low unassigned percentage -> green - SOLID
+                    gradient.addColorStop(0, 'rgb(34, 197, 94)')
+                    gradient.addColorStop(1, 'rgb(22, 163, 74)')
                 else if value < 66
-                    # Mid values -> orange
-                    gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)')
-                    gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)')
+                    # Mid values -> orange - SOLID
+                    gradient.addColorStop(0, 'rgb(251, 191, 36)')
+                    gradient.addColorStop(1, 'rgb(245, 158, 11)')
                 else
-                    # High unassigned percentage -> red
-                    gradient.addColorStop(0, 'rgba(239, 68, 68, 0.9)')
-                    gradient.addColorStop(1, 'rgba(220, 38, 38, 0.9)')
+                    # High unassigned percentage -> red - SOLID
+                    gradient.addColorStop(0, 'rgb(239, 68, 68)')
+                    gradient.addColorStop(1, 'rgb(220, 38, 38)')
             else
-                # Red -> Orange -> Green
-                remainderGradient.addColorStop(0, 'rgba(239, 68, 68, 0.18)')
-                remainderGradient.addColorStop(0.5, 'rgba(251, 191, 36, 0.18)')
-                remainderGradient.addColorStop(1, 'rgba(34, 197, 94, 0.18)')
+                # Red -> Orange -> Green - SOLID colors
+                remainderGradient.addColorStop(0, 'rgb(239, 68, 68)')
+                remainderGradient.addColorStop(0.5, 'rgb(251, 191, 36)')
+                remainderGradient.addColorStop(1, 'rgb(34, 197, 94)')
 
                 if value < 33
-                    # Low value -> red
-                    gradient.addColorStop(0, 'rgba(239, 68, 68, 0.9)')
-                    gradient.addColorStop(1, 'rgba(220, 38, 38, 0.9)')
+                    # Low value -> red - SOLID
+                    gradient.addColorStop(0, 'rgb(239, 68, 68)')
+                    gradient.addColorStop(1, 'rgb(220, 38, 38)')
                 else if value < 66
-                    # Mid values -> orange
-                    gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)')
-                    gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)')
+                    # Mid values -> orange - SOLID
+                    gradient.addColorStop(0, 'rgb(251, 191, 36)')
+                    gradient.addColorStop(1, 'rgb(245, 158, 11)')
                 else
-                    # High value -> green
-                    gradient.addColorStop(0, 'rgba(34, 197, 94, 0.9)')
-                    gradient.addColorStop(1, 'rgba(22, 163, 74, 0.9)')
+                    # High value -> green - SOLID
+                    gradient.addColorStop(0, 'rgb(34, 197, 94)')
+                    gradient.addColorStop(1, 'rgb(22, 163, 74)')
 
             return {
                 fill: gradient
