@@ -1536,7 +1536,23 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         
         lowerId = metricId.toString().toLowerCase()
         
-        # New internal metrics format: task_completion_username, story_points_username, etc.
+        # 1. Specialized internal metrics patterns (check prefixes first to avoid generic matches)
+        if lowerId.indexOf('user_closed_tasks') is 0 or lowerId.indexOf('closedtasks_') is 0 or lowerId.indexOf('completedtasks_') is 0
+            return 'closed_tasks'
+        if lowerId.indexOf('user_story_points') is 0 or lowerId.indexOf('totalus_') is 0
+            return 'story_points'
+        if lowerId.indexOf('user_stories_closed') is 0 or lowerId.indexOf('completedus_') is 0
+            return 'stories_closed'
+        if lowerId.indexOf('user_commits') is 0 or lowerId.indexOf('commits_') is 0
+            return 'commits'
+        if lowerId.indexOf('user_assigned_tasks') is 0 or lowerId.indexOf('assignedtasks_') is 0
+            return 'tasks'
+        if lowerId.indexOf('user_modified_lines') is 0 or lowerId.indexOf('modifiedlines_') is 0
+            return 'modified_lines'
+        if lowerId.indexOf('tasksratio_') is 0
+            return 'tasks_ratio'
+
+        # 2. Generic format: task_completion_username, story_points_username, etc.
         # Extract the metric type (first part before second underscore or hyphen)
         parts = lowerId.split('_')
         if parts.length >= 2
@@ -1558,22 +1574,6 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             
             # If not in map, return the metric type itself
             return metricType
-        
-        # Old internal metrics patterns (Taiga native)
-        if lowerId.indexOf('user_closed_tasks') is 0 or lowerId.indexOf('closedtasks_') is 0 or lowerId.indexOf('completedtasks_') is 0
-            return 'closed_tasks'
-        if lowerId.indexOf('user_story_points') is 0 or lowerId.indexOf('totalus_') is 0
-            return 'story_points'
-        if lowerId.indexOf('user_stories_closed') is 0 or lowerId.indexOf('completedus_') is 0
-            return 'stories_closed'
-        if lowerId.indexOf('user_commits') is 0 or lowerId.indexOf('commits_') is 0
-            return 'commits'
-        if lowerId.indexOf('user_assigned_tasks') is 0 or lowerId.indexOf('assignedtasks_') is 0
-            return 'tasks'
-        if lowerId.indexOf('user_modified_lines') is 0 or lowerId.indexOf('modifiedlines_') is 0
-            return 'modified_lines'
-        if lowerId.indexOf('tasksratio_') is 0
-            return 'tasks_ratio'
         
         null
 
@@ -1831,17 +1831,34 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         for own bucketName, metricsList of buckets
             continue unless angular.isArray(metricsList) and metricsList.length > 0
             
-            # Sort metrics: first by category type, then by user name
+            # Define priority for categories to control the order within a group (e.g. user box)
+            # Lower number = Higher priority (appears first)
+            CATEGORY_PRIORITY =
+                'tasks': 10
+                'closed_tasks': 20
+                'story_points': 30
+                'stories_closed': 40
+                'commits': 50
+                'modified_lines': 60
+
+            # Sort metrics: first by category priority, then by label (user name)
             sortedMetrics = metricsList.slice().sort (a, b) =>
                 # Extract category from metric ID for sorting
                 aCat = a?.categoryName or @.extractMetricCategoryFromId(a?.id) or ""
                 bCat = b?.categoryName or @.extractMetricCategoryFromId(b?.id) or ""
                 
-                # First sort by category
+                aPriority = CATEGORY_PRIORITY[aCat] or 999
+                bPriority = CATEGORY_PRIORITY[bCat] or 999
+
+                # First sort by priority
+                priorityCompare = aPriority - bPriority
+                return priorityCompare if priorityCompare isnt 0
+
+                # Then sort by category name (if priorities are equal/unknown)
                 catCompare = aCat.localeCompare(bCat)
                 return catCompare if catCompare isnt 0
                 
-                # Then sort by label (user name)
+                # Then sort by label (usually the metric name)
                 aLabel = (a?.label or "").toString().toLowerCase()
                 bLabel = (b?.label or "").toString().toLowerCase()
                 if aLabel < bLabel then -1 else if aLabel > bLabel then 1 else 0
