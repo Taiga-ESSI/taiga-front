@@ -1784,8 +1784,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             if @metricsProvider is "internal" and not entry.categoryColor
                 percentForColor = ratioValue * 100
                 entry.categoryColor = @.getInternalGaugeColor(percentForColor, categoryName)
-                entry.categoryPalette = @.getInternalGaugePalette(categoryName)
-                console.log("🎯 Team metric palette:", categoryName, entry.categoryPalette)
+                entry.categoryPalette = @.getInternalGaugePalette(categoryName, metric.id)
+                console.log("🎯 Team metric palette:", categoryName, "metricId:", metric.id, entry.categoryPalette)
             
             # For internal provider: if no qualityFactors defined, use extracted category as group
             # Also, if qualityFactors are generic (like "Delivery"), replace with specific category
@@ -1928,7 +1928,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         if @metricsProvider is "internal"
             # Use categoryName OR metric ID for palette lookup (mapped in getInternalGaugePalette)
             paletteLookupKey = categoryName or metric.id
-            categoryPalette = @.getInternalGaugePalette(paletteLookupKey)
+            categoryPalette = @.getInternalGaugePalette(paletteLookupKey, metric.id)
             
             # If we have a palette, we might want to ensure color is also set correctly if it was missing
             if !categoryColor and categoryPalette
@@ -2108,13 +2108,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             borderColor = colorPalette?.border or '#3B82F6'
             areaColor = colorPalette?.fill or 'rgba(59, 130, 246, 0.26)'
 
-            tasksPercent = Math.max(0, Math.min(100, parseFloat(user.tasksPercentage) or parseFloat(user.closedTasks) or 0))
-            storiesPercent = Math.max(0, Math.min(100, parseFloat(user.usPercentage) or parseFloat(user.completedUS) or 0))
-            workloadCount = Math.max(0, Math.min(100, parseFloat(user.assignedTasks) or 0))
+            tasksVal = Number(parseFloat(user.closedTasks) or 0)
+            storiesVal = Number(parseFloat(user.completedUS) or 0)
+            workloadCount = Number(parseFloat(user.assignedTasks) or 0)
 
             datasets.push({
                 label: "#{user.displayName or user.username}"
-                data: [tasksPercent, storiesPercent, workloadCount]
+                data: [tasksVal, storiesVal, workloadCount]
                 backgroundColor: areaColor
                 borderColor: borderColor
                 borderWidth: 2
@@ -2236,7 +2236,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             categoryName = factor.name or factor.id
             if @metricsProvider is "internal"
                 categoryColor = @.getInternalGaugeColor(percentValue, categoryName)
-                categoryPalette = @.getInternalGaugePalette(categoryName)
+                categoryPalette = @.getInternalGaugePalette(categoryName, factor.id)
                 console.log("📊 Factor palette assigned:", categoryName, "->", categoryPalette)
             
             entry = {
@@ -2262,15 +2262,36 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
     # Returns color for internal gauges based on metric category and percentage value
     # Different colors for different metric types to improve visual organization
     # Generate palette segments for traffic light effect (red-orange-green)
-    getInternalGaugePalette: (categoryName = null) ->
-        console.log("🎨 getInternalGaugePalette called with:", categoryName)
+    getInternalGaugePalette: (categoryName = null, metricId = null) ->
+        console.log("🎨 getInternalGaugePalette called with:", categoryName, "metricId:", metricId)
         categoryLower = if categoryName then categoryName.toString().toLowerCase() else ""
+        metricIdLower = if metricId then metricId.toString().toLowerCase() else ""
+        
+        # Special case: "Assigned" metrics (tasks/stories ratio per user)
+        # Custom ranges: 0-10 Orange, 10-30 Green (ideal), 30-50 Orange, 50-100 Red
+        # Backend metric_keys: assignedtasks (Tareas asignadas), totalus (Historias asignadas)
+        isAssignedMetric = metricIdLower.indexOf('assignedtasks') isnt -1 or
+                           metricIdLower.indexOf('totalus') isnt -1 or
+                           metricIdLower.indexOf('assignedus') isnt -1 or
+                           metricIdLower.indexOf('tasksratio') isnt -1 or
+                           metricIdLower.indexOf('assigned_stories') isnt -1 or
+                           metricIdLower.indexOf('assignedstories') isnt -1 or
+                           (categoryLower.indexOf('assigned') isnt -1 and categoryLower.indexOf('unassigned') is -1)
+        
+        if isAssignedMetric
+            console.log("🎨 Assigned metric detected, using custom 4-range palette")
+            return [
+                { value: 10, color: 'rgba(251, 191, 36, 0.9)' }   # 0-10%: Orange
+                { value: 20, color: 'rgba(34, 197, 94, 0.9)' }    # 10-30%: Green (ideal)
+                { value: 20, color: 'rgba(251, 191, 36, 0.9)' }   # 30-50%: Orange
+                { value: 50, color: 'rgba(239, 68, 68, 0.9)' }    # 50-100%: Red
+            ]
         
         # Determine if "more is better" or "less is better" for this metric
         higherIsBetter = true
         
-        # For assigned/unassigned tasks, lower is better (less pending work)
-        if categoryLower.indexOf('assigned') isnt -1 or categoryLower.indexOf('unassigned') isnt -1
+        # For unassigned tasks, lower is better (less pending work)
+        if categoryLower.indexOf('unassigned') isnt -1
             if categoryLower.indexOf('closed') is -1 and categoryLower.indexOf('completed') is -1
                 higherIsBetter = false
         

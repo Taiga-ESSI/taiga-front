@@ -689,7 +689,7 @@
         return ctx.fill();
       };
       getGradientForValue = function (ctx, value, label, metricKey) {
-        var gradient, identifier, isInternal, isWorsening, normalizedIdentifier, remainderGradient;
+        var gradient, identifier, isInternal, isWorsening, normalizedIdentifier, remainderGradient, isAssignedMetric;
         identifier = metricKey || label || "";
         normalizedIdentifier = identifier.toString().toLowerCase();
 
@@ -698,8 +698,18 @@
         // "Improving" means high value is good (Red -> Green)
         isWorsening = /unassigned|deviation|commits_anonymous|pattern_check/.test(normalizedIdentifier);
         isInternal = isWorsening || /acceptance_criteria|closed_tasks_with_ae|commits_sd|commits_taskreference|tasks_sd|tasks_with_ee/.test(normalizedIdentifier);
+        isAssignedMetric = /assigned|asignad|assign|asign/i.test(normalizedIdentifier) && !/unassigned/i.test(normalizedIdentifier);
 
-        if (!isInternal) {
+        // DEBUG LOGGING
+        console.log("Gauge Check:", {
+          identifier: identifier,
+          normalized: normalizedIdentifier,
+          isAssigned: isAssignedMetric,
+          isInternal: isInternal,
+          value: value
+        });
+
+        if (!isInternal && !isAssignedMetric) {
           return {
             fill: 'rgba(37, 99, 235, 0.92)',
             remainder: 'rgba(37, 99, 235, 0.18)'
@@ -708,6 +718,39 @@
 
         gradient = ctx.createLinearGradient(0, 0, 400, 0);
         remainderGradient = ctx.createLinearGradient(0, 0, 400, 0);
+
+        if (isAssignedMetric) {
+          // Custom ranges: 0-10 Orange, 10-30 Green, 30-50 Orange, 50+ Red
+
+          // Remainder gradient (background track)
+          remainderGradient.addColorStop(0, 'rgba(251, 191, 36, 0.18)');   // 0-10
+          remainderGradient.addColorStop(0.2, 'rgba(34, 197, 94, 0.18)');  // 10-30
+          remainderGradient.addColorStop(0.4, 'rgba(251, 191, 36, 0.18)'); // 30-50
+          remainderGradient.addColorStop(1, 'rgba(239, 68, 68, 0.18)');    // 50+
+
+          if (value < 10) {
+            // 0 - 10: Orange
+            gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)');
+            gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)');
+          } else if (value < 30) {
+            // 10 - 30: Green
+            gradient.addColorStop(0, 'rgba(34, 197, 94, 0.9)');
+            gradient.addColorStop(1, 'rgba(22, 163, 74, 0.9)');
+          } else if (value < 50) {
+            // 30 - 50: Orange
+            gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)');
+            gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)');
+          } else {
+            // 50 - 100: Red
+            gradient.addColorStop(0, 'rgba(239, 68, 68, 0.9)');
+            gradient.addColorStop(1, 'rgba(220, 38, 38, 0.9)');
+          }
+
+          return {
+            fill: gradient,
+            remainder: remainderGradient
+          };
+        }
 
         if (isWorsening) {
           // Green -> Orange -> Red
