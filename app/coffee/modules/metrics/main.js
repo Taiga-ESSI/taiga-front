@@ -546,7 +546,14 @@
         return null;
       }
       classification = null;
-      if (metric.id != null) {
+      if (metric.scope) {
+        if (metric.scope === 'team') {
+          classification = 'project';
+        } else if (metric.scope === 'individual') {
+          classification = 'team';
+        }
+      }
+      if (!classification && (metric.id != null)) {
         classification = this.resolveLocalClassification(metric.id);
       }
       if (!classification && (metric.externalId != null)) {
@@ -1541,9 +1548,95 @@
       return processed;
     };
 
+    MetricsController.prototype.getProjectMemberUsernames = function() {
+      var fullNameNoSpace, fullNameNormalized, i, len, member, members, normalized, ref, ref1, username, usernames;
+      members = ((ref = this.scope.project) != null ? ref.members : void 0) || [];
+      usernames = {};
+      for (i = 0, len = members.length; i < len; i++) {
+        member = members[i];
+        if (!(member != null)) {
+          continue;
+        }
+        username = member.username || member.user || ((ref1 = member.email) != null ? ref1.split('@')[0] : void 0);
+        if (username == null) {
+          continue;
+        }
+        normalized = username.toString().trim().toLowerCase();
+        if (!normalized.length) {
+          continue;
+        }
+        usernames[normalized] = {
+          original: username,
+          fullName: member.full_name || member.full_name_display || username,
+          email: member.email
+        };
+        if (member.full_name) {
+          fullNameNormalized = member.full_name.toString().trim().toLowerCase().replace(/\s+/g, '_');
+          usernames[fullNameNormalized] = usernames[normalized];
+          fullNameNoSpace = member.full_name.toString().trim().toLowerCase().replace(/\s+/g, '');
+          usernames[fullNameNoSpace] = usernames[normalized];
+        }
+      }
+      return usernames;
+    };
+
+    MetricsController.prototype.isValidExternalUsername = function(extractedUsername) {
+      var invalidPatterns, normalized;
+      if (extractedUsername == null) {
+        return false;
+      }
+      normalized = extractedUsername.toString().trim().toLowerCase();
+      if (!normalized.length) {
+        return false;
+      }
+      invalidPatterns = ['anonymous', 'sd', 'taskreference', 'contribution', 'management', 'total', 'all', 'unassigned', 'unknown', 'system', 'team', 'project', 'average', 'mean', 'median', 'deviation', 'variance'];
+      if (invalidPatterns.indexOf(normalized) !== -1) {
+        return false;
+      }
+      if (/^\d+$/.test(normalized)) {
+        return false;
+      }
+      if (normalized.length < 2) {
+        return false;
+      }
+      return true;
+    };
+
+    MetricsController.prototype.matchUsernameToMember = function(extractedUsername, projectMembers) {
+      var memberData, memberKey, memberNoSep, noSeparators, normalized;
+      if (!((extractedUsername != null) && (projectMembers != null))) {
+        return null;
+      }
+      normalized = extractedUsername.toString().trim().toLowerCase();
+      if (!normalized.length) {
+        return null;
+      }
+      if (projectMembers[normalized]) {
+        return projectMembers[normalized];
+      }
+      noSeparators = normalized.replace(/[-_]/g, '');
+      if (projectMembers[noSeparators]) {
+        return projectMembers[noSeparators];
+      }
+      for (memberKey in projectMembers) {
+        memberData = projectMembers[memberKey];
+        if (normalized.indexOf(memberKey) !== -1 || memberKey.indexOf(normalized) !== -1) {
+          return memberData;
+        }
+        memberNoSep = memberKey.replace(/[-_]/g, '');
+        if (noSeparators.indexOf(memberNoSep) !== -1 || memberNoSep.indexOf(noSeparators) !== -1) {
+          return memberData;
+        }
+      }
+      return null;
+    };
+
     MetricsController.prototype.extractUsersFromMetrics = function(metricsArray) {
-      var base, base1, detail, existingIds, i, len, metric, metricType, normalizedValue, parts, ratio, ratioUS, rawValue, userData, userName, users;
+      var base, base1, canonicalUsername, detail, displayName, existingIds, extractedUserName, hasProjectMembers, i, len, metric, metricType, name, normalizedKey, normalizedUserMap, normalizedValue, parts, projectMembers, ratio, ratioUS, rawValue, resolvedMember, suffix, userData, userName, users;
       users = {};
+      projectMembers = this.getProjectMemberUsernames();
+      hasProjectMembers = (projectMembers != null) && Object.keys(projectMembers).length > 0;
+      normalizedUserMap = {};
       for (i = 0, len = metricsArray.length; i < len; i++) {
         metric = metricsArray[i];
         if ((metric != null ? metric.id : void 0) != null) {
@@ -1551,7 +1644,26 @@
             parts = metric.id.split("_");
             if (parts.length >= 2) {
               metricType = parts[0];
-              userName = parts.slice(1).join("_");
+              extractedUserName = parts.slice(1).join("_");
+              if (!this.isValidExternalUsername(extractedUserName)) {
+                continue;
+              }
+              resolvedMember = null;
+              if (hasProjectMembers) {
+                resolvedMember = this.matchUsernameToMember(extractedUserName, projectMembers);
+                if (resolvedMember == null) {
+                  continue;
+                }
+              }
+              normalizedKey = extractedUserName.toString().trim().toLowerCase();
+              displayName = (resolvedMember != null ? resolvedMember.fullName : void 0) || extractedUserName;
+              canonicalUsername = (resolvedMember != null ? resolvedMember.original : void 0) || extractedUserName;
+              if (normalizedUserMap[normalizedKey] != null) {
+                userName = normalizedUserMap[normalizedKey];
+              } else {
+                userName = canonicalUsername;
+                normalizedUserMap[normalizedKey] = userName;
+              }
               if (users[userName] == null) {
                 users[userName] = {
                   username: userName,
@@ -1566,7 +1678,8 @@
                   tasksPercentage: 0,
                   usPercentage: 0,
                   metricsDetails: [],
-                  rawMetrics: []
+                  rawMetrics: [],
+                  displayName: displayName
                 };
               }
               detail = this.buildMetricDetail(metric);
@@ -1616,6 +1729,28 @@
                   ratioUS = (users[userName].completedUS / users[userName].totalUS) * 100;
                 }
                 users[userName].usPercentage = Math.min(100, Math.round(ratioUS * 100) / 100);
+              }
+              if (!users[userName].displayName && metric.name) {
+                name = metric.name.toString();
+                suffix = "";
+                if (metricType === "assignedtasks") {
+                  suffix = " tasks";
+                } else if (metricType === "closedtasks") {
+                  suffix = " closed tasks";
+                } else if (metricType === "commits") {
+                  suffix = " commits";
+                } else if (metricType === "modifiedlines") {
+                  suffix = " modified lines";
+                } else if (metricType === "totalus") {
+                  suffix = " user stories";
+                } else if (metricType === "completedus") {
+                  suffix = " completed user stories";
+                }
+                if (suffix && name.toLowerCase().endsWith(suffix)) {
+                  users[userName].displayName = name.substring(0, name.length - suffix.length);
+                } else if (name.length > userName.length + 5) {
+                  users[userName].displayName = name;
+                }
               }
             }
           }
@@ -4853,6 +4988,7 @@
       overview = this.scope.metricsView.teamOverview;
       overview.baseRadar = angular.copy(data.studentsOverallRadar) || null;
       overview.baseClosedTasks = angular.copy(data.studentsClosedTasksBar) || null;
+      overview.baseTeamMetricGroups = angular.copy(data.teamMetricGroups) || [];
       usersList = data != null ? data.usersMetricsList : void 0;
       if (!(angular.isArray(usersList) && usersList.length > 0)) {
         overview.filteredRadar = angular.copy(overview.baseRadar) || null;
@@ -4921,7 +5057,7 @@
     };
 
     MetricsController.prototype.updateTeamOverviewCharts = function() {
-      var activeLabels, activeUsernames, baseBar, cloned, dataset, datasets, filteredBar, filteredDatasets, filteredLabels, filteredRadar, i, idx, include, isActive, j, k, label, len, len1, len2, len3, len4, len5, m, n, o, overview, ref, ref1, ref2, ref3, ref4, ref5, ref6, ref7, selectedIndices, user, username, usersList;
+      var activeLabels, activeUsernames, baseBar, cloned, dataset, datasets, filteredBar, filteredDatasets, filteredGroups, filteredLabels, filteredMetrics, filteredRadar, group, i, idx, include, isActive, j, k, label, len, len1, len2, len3, len4, len5, len6, len7, m, metric, n, newGroup, o, overview, ref, ref1, ref2, ref3, ref4, ref5, ref6, ref7, ref8, ref9, selectedIndices, u, user, username, usersList, v;
       overview = this.scope.metricsView.teamOverview;
       if (overview == null) {
         return;
@@ -5024,7 +5160,7 @@
           }
         }
         if (filteredLabels.length === 0) {
-          return overview.filteredClosedTasks = angular.copy(baseBar) || null;
+          overview.filteredClosedTasks = angular.copy(baseBar) || null;
         } else {
           filteredBar = angular.copy(baseBar) || {};
           filteredBar.labels = filteredLabels;
@@ -5056,10 +5192,31 @@
             filteredDatasets.push(cloned);
           }
           filteredBar.datasets = filteredDatasets;
-          return overview.filteredClosedTasks = filteredBar;
+          overview.filteredClosedTasks = filteredBar;
         }
       } else {
-        return overview.filteredClosedTasks = null;
+        overview.filteredClosedTasks = null;
+      }
+      if (overview.baseTeamMetricGroups) {
+        filteredGroups = [];
+        ref8 = overview.baseTeamMetricGroups;
+        for (u = 0, len6 = ref8.length; u < len6; u++) {
+          group = ref8[u];
+          filteredMetrics = [];
+          ref9 = group.metrics;
+          for (v = 0, len7 = ref9.length; v < len7; v++) {
+            metric = ref9[v];
+            if (!metric.user || overview.activeUsers[metric.user.toString()]) {
+              filteredMetrics.push(metric);
+            }
+          }
+          if (filteredMetrics.length > 0) {
+            newGroup = angular.copy(group);
+            newGroup.metrics = filteredMetrics;
+            filteredGroups.push(newGroup);
+          }
+        }
+        return this.scope.metricsView.data.teamMetricGroups = filteredGroups;
       }
     };
 

@@ -19,27 +19,24 @@ $metrics-color-slate-800: rgb(15, 23, 42);
 $metrics-color-slate-600: rgb(71, 85, 105);
 
 // Gradient definitions
-$metrics-gradient-accent:
-    linear-gradient(
-        90deg,
-        $metrics-color-primary-500 0%,
-        $metrics-color-primary-400 50%,
-        rgba(14, 165, 233, .8) 100%
-    );
-$metrics-gradient-accent-simple:
-    linear-gradient(
-        90deg,
-        $metrics-color-primary-500,
-        $metrics-color-primary-400,
-        rgba(14, 165, 233, .8)
-    );
-$metrics-gradient-text:
-    linear-gradient(
-        135deg,
-        $metrics-color-primary-500 0%,
-        $metrics-color-primary-400 60%,
-        rgba(14, 165, 233, .9) 100%
-    );
+$metrics-gradient-accent: linear-gradient(
+    90deg,
+    $metrics-color-primary-500 0%,
+    $metrics-color-primary-400 50%,
+    rgba(14, 165, 233, .8) 100%
+);
+$metrics-gradient-accent-simple: linear-gradient(
+    90deg,
+    $metrics-color-primary-500,
+    $metrics-color-primary-400,
+    rgba(14, 165, 233, .8)
+);
+$metrics-gradient-text: linear-gradient(
+    135deg,
+    $metrics-color-primary-500 0%,
+    $metrics-color-primary-400 60%,
+    rgba(14, 165, 233, .9) 100%
+);
 
 .metrics {
     .metrics-view-switch {
