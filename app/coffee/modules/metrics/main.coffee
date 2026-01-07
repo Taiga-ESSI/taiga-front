@@ -1521,8 +1521,12 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         for metric in metricsArray
             continue unless metric
             # Skip user-scoped metrics (they belong in Team view)
-            isUserMetric = @.isUserMetricId(metric.id) or @.isUserMetricId(metric.externalId)
-            continue if isUserMetric
+            # BUT if scope is explicitly 'team', treat it as project metric regardless of ID pattern
+            isExplicitTeamScope = (metric.scope == 'team')
+            
+            unless isExplicitTeamScope
+                isUserMetric = @.isUserMetricId(metric.id) or @.isUserMetricId(metric.externalId)
+                continue if isUserMetric
 
             if metric.externalId
                 metricsById[metric.externalId.toLowerCase()] = metric
@@ -1533,7 +1537,10 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         seenIds = {}
 
         addMetricEntry = (metric) =>
-            return if @.isUserMetricId(metric?.id) or @.isUserMetricId(metric?.externalId)
+            # Respect explicit team scope
+            isExplicitTeamScope = (metric?.scope == 'team')
+            unless isExplicitTeamScope
+                return if @.isUserMetricId(metric?.id) or @.isUserMetricId(metric?.externalId)
             entry = @.buildProjectMetricEntry(metric)
             if entry
                 collected.push(entry)
@@ -1589,8 +1596,12 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         if collected.length is 0 or Object.keys(metricsById).length > collected.length
             for metric in metricsArray when metric?
                 continue unless metric.id? or metric.externalId?
-                isUserMetric = @.isUserMetricId(metric.id) or @.isUserMetricId(metric.externalId)
-                continue if isUserMetric
+                
+                # Respect explicit team scope
+                isExplicitTeamScope = (metric.scope == 'team')
+                unless isExplicitTeamScope
+                    isUserMetric = @.isUserMetricId(metric.id) or @.isUserMetricId(metric.externalId)
+                    continue if isUserMetric
                 
                 normalizedMetricId = null
                 if metric.id?
@@ -1799,10 +1810,23 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         username ?= pickValue(metric.metadata, ["student", "user", "username"])
         displayName ?= pickValue(metric.metadata, ["student_display", "studentDisplay", "user_display", "userDisplay", "displayName"])
 
-        if !username and metric.id? and @.isUserMetricId(metric.id)
-            parts = metric.id.toString().split("_")
+        # FIX: Use externalId for username extraction since metric.id from external API is numeric (e.g., 2482)
+        # The actual identifier like "commits_claraylv4" is in externalId
+        identifierForParsing = metric.externalId or metric.id?.toString()
+        if !username and identifierForParsing? and @.isUserMetricId(identifierForParsing)
+            parts = identifierForParsing.toString().split("_")
             if parts.length > 1
                 username = parts.slice(1).join("_")
+
+        # If we have the metric name (e.g., "Clara Yiní López Vila commits"), extract the display name from it
+        if !displayName and metric.name and typeof metric.name is "string"
+            # Try to extract the name by removing the metric type suffix
+            metricName = metric.name.trim()
+            suffixes = [" commits", " closed tasks", " modified lines", " tasks", " assigned tasks"]
+            for suffix in suffixes
+                if metricName.toLowerCase().endsWith(suffix.toLowerCase())
+                    displayName = metricName.substring(0, metricName.length - suffix.length).trim()
+                    break
 
         displayName ?= username
 
@@ -1814,7 +1838,6 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         }
 
     buildMetricDisplayGroups: (rawMetrics) ->
-        console.log "[DEBUG] buildMetricDisplayGroups - provider: #{@metricsProvider}, metrics count:", rawMetrics?.length
         groups =
             project: []
             team: []
@@ -1834,7 +1857,20 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             classificationOverride = @.resolveMetricClassificationValue(metric)
             normalizedMetricId = if metric.id? then metric.id.toString().toLowerCase() else null
             normalizedExternalId = if metric.externalId? then metric.externalId.toLowerCase() else null
-            isUserMetric = @.isUserMetricId(normalizedMetricId) or @.isUserMetricId(normalizedExternalId)
+            
+            # Determine if this is a user-specific metric
+            # Key insight: if the API explicitly says scope='team', it's NOT a user metric
+            # even if the ID pattern looks like one (e.g., commits_sd, commits_anonymous)
+            isUserMetric = false
+            if metric.scope is 'individual'
+                # Explicitly marked as individual -> it's a user metric
+                isUserMetric = true
+            else if metric.scope is 'team'
+                # Explicitly marked as team -> NOT a user metric (aggregate/project metric)
+                isUserMetric = false
+            else
+                # No explicit scope, fallback to pattern matching
+                isUserMetric = @.isUserMetricId(normalizedMetricId) or @.isUserMetricId(normalizedExternalId)
             if classificationOverride is 'hidden'
                 continue
             
@@ -1866,9 +1902,11 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             teamOrderConfig = @localConfig?.teamMetricsOrder
             unless angular.isArray(teamOrderConfig) and teamOrderConfig.length
                 teamOrderConfig = @metricsConfig.teamMetricsOrder
+            
             if teamOrderConfig
                 for tMetric in teamOrderConfig
-                    if @.matchesConfiguredMetric(tMetric, metric.id, metric.externalId, true)
+                    matchResult = @.matchesConfiguredMetric(tMetric, metric.id, metric.externalId, true)
+                    if matchResult
                         isTeamConfigured = true
                         break
             
@@ -1878,6 +1916,15 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             else if classificationOverride is 'team'
                 isTeamConfigured = true
                 isProjectConfigured = false
+
+            # For external provider: if no classification was resolved, show the metric anyway
+            # User metrics go to team view, aggregate metrics go to project view
+            if @metricsProvider is "external" and !isProjectConfigured and !isTeamConfigured
+                if isUserMetric
+                    isTeamConfigured = true
+                else
+                    # Check if metric looks like a project/aggregate metric
+                    isProjectConfigured = true
 
             # Skip metrics that are not configured for any dashboard slot
             continue unless isProjectConfigured or isTeamConfigured
@@ -1946,21 +1993,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             # For internal provider: if no qualityFactors defined, use extracted category as group
             # Also, if qualityFactors are generic (like "Delivery"), replace with specific category
             effectiveQualityFactors = metric.qualityFactors
-            console.log "[DEBUG] Metric #{metric.id}: provider=#{@metricsProvider}, hasQF=#{effectiveQualityFactors?.length > 0}, category=#{categoryName}, isTeam=#{isTeamConfigured}, isUser=#{isUserMetric}, user=#{userContext?.displayName}"
             
-            if @metricsProvider is "internal" and isUserMetric and userContext?.displayName
-                # For internal user metrics, group by USER NAME instead of metric type
-                effectiveQualityFactors = [userContext.displayName]
-                console.log "[DEBUG] ✓ Auto-grouping internal user metric #{metric.id} by user: #{userContext.displayName}"
-            else if @metricsProvider is "internal" and isUserMetric and userContext?.username
-                # Fallback to username if displayName not available
-                effectiveQualityFactors = [userContext.username]
-                console.log "[DEBUG] ✓ Auto-grouping internal user metric #{metric.id} by username: #{userContext.username}"
-            else if @metricsProvider is "internal" and (!effectiveQualityFactors or effectiveQualityFactors.length is 0) and categoryName
+            if @metricsProvider is "internal" and (!effectiveQualityFactors or effectiveQualityFactors.length is 0) and categoryName
                 effectiveQualityFactors = [categoryName]
-                console.log "[DEBUG] ✓ Auto-grouping metric #{metric.id} (no QF) into category: #{categoryName}"
-            else if effectiveQualityFactors?.length > 0
-                console.log "[DEBUG] ✗ Metric #{metric.id} keeping qualityFactors:", effectiveQualityFactors
             
             if isProjectConfigured
                 if angular.isArray(effectiveQualityFactors) and effectiveQualityFactors.length > 0
@@ -3657,9 +3692,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             "commitstasksrelation": "Commits Tasks Relation"
             "commitsmanagement": "Commits Management"
             "fulfillmentoftasks": "Fulfillment of Tasks"
+            "fullfillmentoftasks": "Fulfillment of Tasks"  # Typo support
             "taskscontribution": "Tasks Contribution"
+            "taskcontribution": "Tasks Contribution"       # Singular support
             "taskseffortinformation": "Tasks Effort Information"
+            "taskeffortinformation": "Tasks Effort Information" # Singular support
             "modifiedlinescontribution": "Modified Lines Contribution"
+            "userstoriesdefinition_quality": "User Stories Definition Quality"
             "userstoriesdefinitionquality": "User Stories Definition Quality"
             "deviationmetrics": "Deviation Metrics"
             "activitydistribution": "Activity Distribution"
@@ -4265,6 +4304,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         overview.datasetLabelToUser = {}
         overview.barLabelToUser = {}
         overview.activeUsers = {}
+        overview.displayNameToUsername = {}  # Reverse mapping: displayName -> username
 
         for user in usersList when user?
             username = user.username or user.displayName or user.name or user.id
@@ -4273,6 +4313,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             displayName = user.displayName or user.name or username
             overview.userLabels[username] = displayName
             overview.activeUsers[username] = true
+            # Also add reverse mapping for display name matching
+            overview.displayNameToUsername[displayName] = username
 
             colorPalette = @.resolveUserColor(user)
             primaryColor = colorPalette?.solid or colorPalette?.fill or "rgba(79, 70, 229, 0.85)"
@@ -4396,13 +4438,26 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             overview.filteredClosedTasks = null
 
         # Filter Team Metrics Grid
+        # Filter Team Metrics Grid
         if overview.baseTeamMetricGroups
             filteredGroups = []
             for group in overview.baseTeamMetricGroups
                 filteredMetrics = []
                 for metric in group.metrics
                     # Keep metric if it has no user association or if the user is active
-                    if !metric.user or overview.activeUsers[metric.user.toString()]
+                    userKey = metric.user?.toString()
+                    displayNameKey = metric.userDisplayName?.toString()
+                    
+                    # Try to match by username first
+                    isActive = !userKey or overview.activeUsers[userKey]
+                    
+                    # If username didn't match, try to match by displayName
+                    if !isActive and displayNameKey and overview.displayNameToUsername
+                        mappedUsername = overview.displayNameToUsername[displayNameKey]
+                        if mappedUsername and overview.activeUsers[mappedUsername]
+                            isActive = true
+                    
+                    if isActive
                         filteredMetrics.push(metric)
                 
                 if filteredMetrics.length > 0
