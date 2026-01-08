@@ -2032,35 +2032,80 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 'commits': 50
                 'modified_lines': 60
 
-            # Sort metrics: first by category priority, then by label (user name)
-            sortedMetrics = metricsList.slice().sort (a, b) =>
-                # Extract category from metric ID for sorting
-                aCat = a?.categoryName or @.extractMetricCategoryFromId(a?.id) or ""
-                bCat = b?.categoryName or @.extractMetricCategoryFromId(b?.id) or ""
+            # For internal provider and team metrics, group by user first
+            if @metricsProvider is "internal" and isTeam
+                # Group metrics by user
+                userGroups = {}
+                for metric in metricsList when metric?
+                    userKey = metric.userDisplayName or metric.user or "Unknown User"
+                    userGroups[userKey] ?= []
+                    userGroups[userKey].push(metric)
                 
-                aPriority = CATEGORY_PRIORITY[aCat] or 999
-                bPriority = CATEGORY_PRIORITY[bCat] or 999
-
-                # First sort by priority
-                priorityCompare = aPriority - bPriority
-                return priorityCompare if priorityCompare isnt 0
-
-                # Then sort by category name (if priorities are equal/unknown)
-                catCompare = aCat.localeCompare(bCat)
-                return catCompare if catCompare isnt 0
+                # Sort users alphabetically
+                sortedUserKeys = Object.keys(userGroups).sort()
                 
-                # Then sort by label (usually the metric name)
-                aLabel = (a?.label or "").toString().toLowerCase()
-                bLabel = (b?.label or "").toString().toLowerCase()
-                if aLabel < bLabel then -1 else if aLabel > bLabel then 1 else 0
+                # Create a group for each user
+                for userKey in sortedUserKeys
+                    userMetrics = userGroups[userKey]
+                    
+                    # Sort metrics within each user group by category priority
+                    sortedUserMetrics = userMetrics.slice().sort (a, b) =>
+                        aCat = a?.categoryName or @.extractMetricCategoryFromId(a?.id) or ""
+                        bCat = b?.categoryName or @.extractMetricCategoryFromId(b?.id) or ""
+                        
+                        aPriority = CATEGORY_PRIORITY[aCat] or 999
+                        bPriority = CATEGORY_PRIORITY[bCat] or 999
 
-            label = @.formatMetricCategoryLabel(bucketName)
-            result.push({
-                id: "#{if isTeam then 'team' else 'project'}::#{bucketName}"
-                name: bucketName
-                label: label
-                metrics: sortedMetrics
-            })
+                        # First sort by priority
+                        priorityCompare = aPriority - bPriority
+                        return priorityCompare if priorityCompare isnt 0
+
+                        # Then sort by category name
+                        catCompare = aCat.localeCompare(bCat)
+                        return catCompare if catCompare isnt 0
+                        
+                        # Then sort by label
+                        aLabel = (a?.label or "").toString().toLowerCase()
+                        bLabel = (b?.label or "").toString().toLowerCase()
+                        if aLabel < bLabel then -1 else if aLabel > bLabel then 1 else 0
+                    
+                    result.push({
+                        id: "team::#{bucketName}::#{userKey}"
+                        name: "#{bucketName}_#{userKey}"
+                        label: userKey
+                        metrics: sortedUserMetrics
+                    })
+            else
+                # Original behavior for non-internal or non-team metrics
+                # Sort metrics: first by category priority, then by label (user name)
+                sortedMetrics = metricsList.slice().sort (a, b) =>
+                    # Extract category from metric ID for sorting
+                    aCat = a?.categoryName or @.extractMetricCategoryFromId(a?.id) or ""
+                    bCat = b?.categoryName or @.extractMetricCategoryFromId(b?.id) or ""
+                    
+                    aPriority = CATEGORY_PRIORITY[aCat] or 999
+                    bPriority = CATEGORY_PRIORITY[bCat] or 999
+
+                    # First sort by priority
+                    priorityCompare = aPriority - bPriority
+                    return priorityCompare if priorityCompare isnt 0
+
+                    # Then sort by category name (if priorities are equal/unknown)
+                    catCompare = aCat.localeCompare(bCat)
+                    return catCompare if catCompare isnt 0
+                    
+                    # Then sort by label (usually the metric name)
+                    aLabel = (a?.label or "").toString().toLowerCase()
+                    bLabel = (b?.label or "").toString().toLowerCase()
+                    if aLabel < bLabel then -1 else if aLabel > bLabel then 1 else 0
+
+                label = @.formatMetricCategoryLabel(bucketName)
+                result.push({
+                    id: "#{if isTeam then 'team' else 'project'}::#{bucketName}"
+                    name: bucketName
+                    label: label
+                    metrics: sortedMetrics
+                })
 
         result.sort (a, b) ->
             aLabel = (a?.label or "").toString().toLowerCase()
@@ -2068,22 +2113,51 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             if aLabel < bLabel then -1 else if aLabel > bLabel then 1 else 0
 
         if angular.isArray(unassignedList) and unassignedList.length > 0
-            sortedFallback = unassignedList.slice().sort (a, b) ->
-                aLabel = (a?.label or "").toString().toLowerCase()
-                bLabel = (b?.label or "").toString().toLowerCase()
-                if aLabel < bLabel then -1 else if aLabel > bLabel then 1 else 0
-
-            label = if @translate?.instant?
-                @translate.instant("METRICS.METRIC_GROUP_UNASSIGNED")
+            # For internal provider and team metrics, also group unassigned by user
+            if @metricsProvider is "internal" and isTeam
+                # Group unassigned metrics by user
+                userGroups = {}
+                for metric in unassignedList when metric?
+                    userKey = metric.userDisplayName or metric.user or "Unknown User"
+                    userGroups[userKey] ?= []
+                    userGroups[userKey].push(metric)
+                
+                # Sort users alphabetically
+                sortedUserKeys = Object.keys(userGroups).sort()
+                
+                # Create a group for each user
+                for userKey in sortedUserKeys
+                    userMetrics = userGroups[userKey]
+                    
+                    sortedUserMetrics = userMetrics.slice().sort (a, b) ->
+                        aLabel = (a?.label or "").toString().toLowerCase()
+                        bLabel = (b?.label or "").toString().toLowerCase()
+                        if aLabel < bLabel then -1 else if aLabel > bLabel then 1 else 0
+                    
+                    result.push({
+                        id: "team::uncategorized::#{userKey}"
+                        name: "__uncategorized_#{userKey}__"
+                        label: userKey
+                        metrics: sortedUserMetrics
+                    })
             else
-                "Metrics not associated to any factor"
+                # Original behavior
+                sortedFallback = unassignedList.slice().sort (a, b) ->
+                    aLabel = (a?.label or "").toString().toLowerCase()
+                    bLabel = (b?.label or "").toString().toLowerCase()
+                    if aLabel < bLabel then -1 else if aLabel > bLabel then 1 else 0
 
-            result.push({
-                id: "#{if isTeam then 'team' else 'project'}::uncategorized"
-                name: "__uncategorized__"
-                label: label
-                metrics: sortedFallback
-            })
+                label = if @translate?.instant?
+                    @translate.instant("METRICS.METRIC_GROUP_UNASSIGNED")
+                else
+                    "Metrics not associated to any factor"
+
+                result.push({
+                    id: "#{if isTeam then 'team' else 'project'}::uncategorized"
+                    name: "__uncategorized__"
+                    label: label
+                    metrics: sortedFallback
+                })
 
         result
 
