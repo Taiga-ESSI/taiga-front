@@ -71,6 +71,10 @@
 
     .see-more-projects-btn {
         display: block;
+
+        &:hover {
+            color: $color-white;
+        }
     }
 
     .title-bar {
