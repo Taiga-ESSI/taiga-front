@@ -3183,3 +3183,224 @@ tg-area-chart {
 .classification-switch input[type='radio'] {
     accent-color: $metrics-color-primary-500;
 }
+
+// ============================================
+// SKELETON LOADING STYLES
+// ============================================
+
+@keyframes skeleton-shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.skeleton-loading {
+    animation: fadeIn .3s ease-out;
+    padding: 2rem 0;
+}
+
+.skeleton-element {
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    background:
+        linear-gradient(
+            90deg,
+            rgba(226, 232, 240, .6) 0%,
+            rgba(241, 245, 249, .8) 50%,
+            rgba(226, 232, 240, .6) 100%
+        );
+    background-size: 200% 100%;
+    border-radius: 8px;
+}
+
+.skeleton-title {
+    border-radius: 12px;
+    height: 2.5rem;
+    margin: 0 auto 2rem;
+    width: 280px;
+}
+
+.skeleton-subtabs {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 2rem;
+}
+
+.skeleton-subtab {
+    border-radius: 8px;
+    height: 42px;
+    width: 120px;
+}
+
+.skeleton-description {
+    border-radius: 6px;
+    height: 1.2rem;
+    margin: 0 auto 2rem;
+    width: 60%;
+}
+
+// Project metrics skeleton
+.skeleton-metrics-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    margin: 0 auto;
+    max-width: 1200px;
+}
+
+.skeleton-metric-card {
+    background: rgba(255, 255, 255, .7);
+    border: 1px solid rgba(255, 255, 255, .8);
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(31, 38, 135, .08);
+    padding: 1.5rem;
+}
+
+.skeleton-card-header {
+    border-radius: 6px;
+    height: 1.4rem;
+    margin-bottom: 1.5rem;
+    width: 70%;
+}
+
+.skeleton-gauge {
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    background:
+        linear-gradient(
+            90deg,
+            rgba(226, 232, 240, .4) 0%,
+            rgba(241, 245, 249, .6) 50%,
+            rgba(226, 232, 240, .4) 100%
+        );
+    background-size: 200% 100%;
+    border-radius: 50%;
+    height: 180px;
+    margin: 0 auto 1rem;
+    width: 180px;
+}
+
+.skeleton-value {
+    border-radius: 8px;
+    height: 2rem;
+    margin: 0 auto;
+    width: 80px;
+}
+
+// Team metrics skeleton
+.skeleton-section-header {
+    border-radius: 8px;
+    height: 1.8rem;
+    margin-bottom: 1.5rem;
+    width: 220px;
+}
+
+.skeleton-filter-bar {
+    background: rgba(255, 255, 255, .5);
+    border-radius: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding: 1rem;
+}
+
+.skeleton-filter-chip {
+    border-radius: 18px;
+    height: 36px;
+    width: 100px;
+}
+
+.skeleton-charts-grid {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    margin-bottom: 2rem;
+}
+
+.skeleton-chart-container {
+    background: rgba(255, 255, 255, .7);
+    border: 1px solid rgba(255, 255, 255, .8);
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(31, 38, 135, .06);
+    padding: 1.5rem;
+}
+
+.skeleton-chart-title {
+    border-radius: 6px;
+    height: 1.2rem;
+    margin-bottom: 1.5rem;
+    width: 60%;
+}
+
+.skeleton-chart {
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    background:
+        linear-gradient(
+            90deg,
+            rgba(226, 232, 240, .3) 0%,
+            rgba(241, 245, 249, .5) 50%,
+            rgba(226, 232, 240, .3) 100%
+        );
+    background-size: 200% 100%;
+    border-radius: 12px;
+    height: 250px;
+}
+
+// User metric groups skeleton
+.skeleton-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.skeleton-group {
+    background: rgba(255, 255, 255, .5);
+    border-radius: 16px;
+    padding: 1.5rem;
+}
+
+.skeleton-group-title {
+    border-radius: 6px;
+    height: 1.4rem;
+    margin-bottom: 1rem;
+    width: 150px;
+}
+
+.skeleton-group-metrics {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.skeleton-mini-card {
+    background: rgba(255, 255, 255, .7);
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.skeleton-mini-gauge {
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
+    background:
+        linear-gradient(
+            90deg,
+            rgba(226, 232, 240, .4) 0%,
+            rgba(241, 245, 249, .6) 50%,
+            rgba(226, 232, 240, .4) 100%
+        );
+    background-size: 200% 100%;
+    border-radius: 50%;
+    height: 100px;
+    margin: 0 auto .75rem;
+    width: 100px;
+}
+
+.skeleton-mini-label {
+    border-radius: 4px;
+    height: 1rem;
+    margin: 0 auto;
+    width: 80%;
+}
