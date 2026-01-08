@@ -1761,7 +1761,7 @@
             "HISTORICAL": "Historical"
         },
         "TEAM_HISTORICAL_TITLE": "Historical trend analysis",
-        "TEAM_HISTORICAL_DESCRIPTION": "Explore how each student evolves across key metrics. Pick a category and focus on a single student or compare everyone at a glance.",
+        "TEAM_HISTORICAL_DESCRIPTION": "Explore how each student evolves across key metrics.",
         "TEAM_HISTORICAL_METRIC_FILTER": "Metric",
         "TEAM_HISTORICAL_USER_FILTER": "Student",
         "TEAM_HISTORICAL_METRIC_ALL": "All metrics",
