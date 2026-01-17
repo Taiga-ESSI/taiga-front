@@ -1,29 +1,40 @@
 $dropdown-width: 260px;
 
 .navbar {
-    background-color: $color-gray400;
+    backdrop-filter: blur(12px);
+    background-color: rgba(255, 255, 255, .9); // Slightly more opaque to blend
+    background-image:
+        // Original Spots (Subtler)
+        radial-gradient(circle at 15% 50%, rgba(0, 115, 207, .12) 0, transparent 25px),
+        radial-gradient(circle at 35% 20%, rgba(68, 188, 222, .15) 0, transparent 30px),
+        radial-gradient(circle at 65% 80%, rgba(0, 115, 207, .1) 0, transparent 20px),
+        radial-gradient(circle at 85% 30%, rgba(0, 115, 207, .15) 0, transparent 35px),
+        radial-gradient(circle at 50% 50%, rgba(68, 188, 222, .05) 0, transparent 60px),
+        // Extra Spots (Subtler)
+        radial-gradient(circle at 5% 80%, rgba(68, 188, 222, .12) 0, transparent 15px),
+        radial-gradient(circle at 25% 10%, rgba(0, 115, 207, .1) 0, transparent 18px),
+        radial-gradient(circle at 45% 90%, rgba(0, 115, 207, .15) 0, transparent 22px),
+        radial-gradient(circle at 75% 15%, rgba(68, 188, 222, .12) 0, transparent 28px),
+        radial-gradient(circle at 95% 60%, rgba(0, 115, 207, .08) 0, transparent 40px);
+    background-size: 100% 100%;
+    border-bottom: 1px solid rgba(0, 115, 207, .2);
     display: flex;
     height: $navbar;
     justify-content: space-between;
-    position: relative;
-    &::after {
-        background-size: 200%;
-        bottom: 0;
-        content: '';
-        height: 100%;
-        left: 0;
-        position: absolute;
-        right: 0;
-        top: 0;
-        z-index: $negative-layer;
-    }
+    position: sticky; // Sticky
+    top: 0;
+    z-index: 1000; // Ensure it's on top
+
+    // &::after removed (no need for the old shadow/gradient overlay)
     .nav-left,
     .nav-right {
         align-content: center;
         align-items: center;
         display: flex;
+
         &.center {
             justify-content: center;
+
             & a {
                 align-items: center;
                 display: flex;
@@ -31,6 +42,7 @@ $dropdown-width: 260px;
             }
         }
     }
+
     .nav-left {
         .logo {
             padding: .3rem .4rem;
@@ -42,30 +54,36 @@ $dropdown-width: 260px;
             }
         }
     }
+
     .nav-right {
         margin-left: auto;
-        > a {
+
+        >a {
             @include font-size(small);
         }
-        > a,
-        .topnav-dropdown-wrapper > a {
+
+        >a,
+        .topnav-dropdown-wrapper>a {
             height: 100%;
             margin: 0;
             padding: .5rem 1rem;
         }
+
         .active,
-        > a:hover,
-        > .topnav-dropdown-wrapper:hover > a {
+        >a:hover,
+        >.topnav-dropdown-wrapper:hover>a {
             svg {
                 fill: $color-link-tertiary;
             }
         }
+
         svg {
             @include svg-size(1.3rem);
             fill: $color-link-primary;
             margin-top: .25rem;
             transition: all .2s linear;
         }
+
         [tg-dropdown-notifications] {
             & svg {
                 fill: $color-link-primary;
@@ -76,11 +94,13 @@ $dropdown-width: 260px;
             }
         }
     }
-    .nav-right > a,
-    .topnav-dropdown-wrapper > a {
+
+    .nav-right>a,
+    .topnav-dropdown-wrapper>a {
         display: inline-block;
         transition: all .2s linear;
     }
+
     [tg-dropdown-user] {
         align-items: center;
         display: flex;
@@ -115,6 +135,7 @@ $dropdown-width: 260px;
             margin-bottom: .5rem;
             padding-bottom: .75rem;
         }
+
         .dropdown-user-data {
             padding-left: .5rem;
             padding-top: .5rem;
@@ -125,13 +146,16 @@ $dropdown-width: 260px;
                 @include font-type(medium);
                 padding: 0;
             }
+
             .profile-link {
                 margin-bottom: .5rem;
                 padding: 0;
             }
+
             p {
                 margin-bottom: .5rem;
             }
+
             .full-name {
                 @include font-type(medium);
                 color: $color-black900;
@@ -165,6 +189,7 @@ $dropdown-width: 260px;
             background-color: transparent;
         }
     }
+
     .user-avatar {
         align-items: center;
         display: flex;
@@ -179,12 +204,15 @@ $dropdown-width: 260px;
             vertical-align: middle;
         }
     }
+
     .dropdown-user-navbar {
         align-items: center;
         display: flex;
     }
+
     .topnav-dropdown-wrapper {
         position: relative;
+
         &:hover {
             .navbar-dropdown {
                 animation: dropdownFade .2s cubic-bezier(.09, 0, .99, .01) both;
@@ -192,6 +220,7 @@ $dropdown-width: 260px;
             }
         }
     }
+
     %dropdown {
         border-radius: 2px;
         display: none;
@@ -207,31 +236,37 @@ $dropdown-width: 260px;
     background: $color-gray100;
     box-shadow: 4px 4px 8px rgba(46, 52, 64, .1);
     padding: 1rem;
+
     &.navigation-help {
         tg-svg {
             margin-top: 0;
         }
     }
+
     &.dropdown-user {
         left: -200px;
         top: 2.5rem;
         width: 290px;
+
         ul {
             @include arrow('bottom', $color-gray100, $color-gray100, 1, 8, 16.4rem);
             margin-bottom: 0;
         }
     }
+
     ul {
         margin: 0;
         margin-bottom: .5rem;
         padding: 0;
     }
+
     .plugin {
         &:hover {
             .new {
                 color: $color-black600;
             }
         }
+
         .new {
             @include font-size(small);
             background: $red-light;
@@ -240,15 +275,18 @@ $dropdown-width: 260px;
             padding: .1rem .25rem;
         }
     }
+
     a {
         @include font-type(medium);
 
         display: block;
         padding: .8rem .5rem;
+
         &.create-organization-btn,
         &.create-project-btn {
             text-align: center;
         }
+
         &.create-project-btn {
             display: flex;
             flex: 1;
@@ -258,6 +296,7 @@ $dropdown-width: 260px;
                 @include svg-size(1.3rem);
             }
         }
+
         &.blocked-project {
             svg {
                 margin-left: .5rem;
@@ -266,6 +305,7 @@ $dropdown-width: 260px;
             }
         }
     }
+
     .create-options {
         display: flex;
         flex-direction: row;
@@ -283,6 +323,7 @@ $dropdown-width: 260px;
         top: -1px;
         width: 22px;
     }
+
     20% {
         font-size: .7rem;
         height: 20px;
@@ -291,6 +332,7 @@ $dropdown-width: 260px;
         top: 0;
         width: 20px;
     }
+
     100% {
         background: $primary;
     }
@@ -300,12 +342,14 @@ $dropdown-width: 260px;
 .topnav-dropdown-wrapper {
     height: 100%;
     position: relative;
+
     &:hover {
         .navbar-dropdown-notifications {
             animation: dropdownFade .2s cubic-bezier(.09, 0, .99, .01) both;
             display: block;
         }
     }
+
     .counter {
         @include font-type(bold);
         @include font-size(xsmall);
@@ -320,22 +364,26 @@ $dropdown-width: 260px;
         text-align: center;
         top: 7px;
         width: 18px;
+
         &.small {
             height: 17px;
             line-height: 17px;
             width: 17px;
         }
+
         &.large {
             height: 22px;
             line-height: 22px;
             top: 2px;
             width: 22px;
         }
+
         &.counter-active {
             animation-duration: 2s;
             animation-name: highlightFadeOut;
         }
     }
+
     .navbar-dropdown-notifications {
         $width: 400px;
         background: $color-gray100;
@@ -355,6 +403,7 @@ $dropdown-width: 260px;
             padding-left: .5rem;
             width: 100%;
         }
+
         .header {
             @include arrow('bottom', $mass-white, $mass-white, 1, 8, 95%);
             @include font-size(xsmall);
@@ -367,22 +416,27 @@ $dropdown-width: 260px;
                 text-transform: lowercase;
             }
         }
+
         .action {
             &.disabled {
                 color: $color-black600;
                 cursor: default;
             }
+
             &:not(.disabled) {
                 color: $color-link-primary;
             }
+
             &:not(.disabled):hover {
                 color: $color-black600;
             }
         }
+
         .notifications-list {
             max-height: 400px;
             overflow-y: auto;
         }
+
         .notifications-bottom {
             @include font-type(medium);
             @include font-size(small);
@@ -407,6 +461,7 @@ $dropdown-width: 260px;
     ul {
         @include arrow('bottom', $color-gray100, $color-gray100, 1, 8, 1.6rem);
         margin-bottom: 0;
+
         tg-svg {
             padding-right: 1rem;
         }

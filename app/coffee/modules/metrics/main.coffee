@@ -51,6 +51,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                   @translate, @projectService, @errorHandlingService, @http, @urls, @$timeout, metricsConfiguration,
                   metricsCustomization) ->
         @scope.sectionName = "METRICS.SECTION_NAME"
+        @scope.projectSlug = @params.pslug
         @metricsConfig = metricsConfiguration
         @metricsHooks = metricsCustomization.getMetricsHooks()
 
@@ -92,12 +93,12 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 username: ""
 
         @scope.metricsView =
-            loading: false
+            loading: true
             error: null
             isNewProject: false
             data: null
             errors: {}
-            activeTab: "team"
+            activeTab: if @location.path().indexOf('/metrics/project') != -1 then 'project' else 'team'
             showHistorical: false
             showTesting: false
             historicalExpanded: {}  # Control de acordeón para secciones históricas
@@ -109,7 +110,12 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 user: "all"
                 dateFrom: null
                 dateTo: null
+                metric: "all"
+                user: "all"
+                dateFrom: null
+                dateTo: null
                 preset: null
+                sprint: null
             teamHistoricalMetricOptions: [
                 {id: "all", label: "METRICS.TEAM_HISTORICAL_METRIC_ALL"}
                 {id: "tasks", label: "METRICS.TEAM_HISTORICAL_METRIC_TASKS"}
@@ -123,10 +129,18 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             teamHistoricalCharts: []
             teamHistoricalSource: null
             projectHistoricalCharts: []
+            teamHistoricalCharts: []
+            teamHistoricalSource: null
+            projectHistoricalCharts: []
             projectHistoricalFilters:
                 dateFrom: null
                 dateTo: null
                 preset: null
+                sprint: null
+            # Sprint options
+            sprintOptions: [
+                {id: null, name: "METRICS.SPRINT_GLOBAL", translate: true}
+            ]
             # Date presets for quick filtering
             datePresetOptions: [
                 {id: null, label: "METRICS.DATE_PRESET_CUSTOM", translate: true}
@@ -153,6 +167,11 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         @scope.setActiveTab = (tabId) =>
             @scope.metricsView.activeTab = tabId
+            projectSlug = @scope.project.slug
+            if tabId == 'project'
+                @location.path("/project/#{projectSlug}/metrics/project")
+            else
+                @location.path("/project/#{projectSlug}/metrics/team")
 
         @scope.setTeamSubTab = (tabId) =>
             return unless tabId
@@ -212,6 +231,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         @scope.applyProjectDatePreset = (presetId) =>
             @.applyDatePreset(@scope.metricsView.projectHistoricalFilters, presetId)
 
+        @scope.applySprintFilter = (targetFilters) =>
+            @.applySprintFilter(targetFilters)
+
         @scope.toggleTeamOverviewUser = (username) =>
             @.toggleTeamOverviewUser(username)
 
@@ -244,6 +266,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             })
             @appMetaService.setAll(title, description)
             @.bootstrapMetricsAccess()
+            @.loadMilestones()
 
         promise.then null, @.onInitialDataError.bind(@)
 
@@ -344,6 +367,11 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             classification = @.resolveLocalClassification(metric.id)
         if !classification and metric.externalId?
             classification = @.resolveLocalClassification(metric.externalId)
+        
+        # New fallback: check metric object itself
+        if !classification and metric.classification
+            classification = metric.classification
+
         return classification
 
     matchesConfiguredMetric: (configuredValue, metricId, metricExternalId, allowPrefix = true) ->
@@ -364,18 +392,27 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         return false
 
     loadProject: ->
-        # Ensure projectService has the project loaded
-        unless @projectService.project
+        expectedSlug = @params.pslug
+
+        if @projectService.project
+            project = @projectService.project.toJS()
+            if expectedSlug and project?.slug? and project.slug isnt expectedSlug
+                console.warn "Metrics: Project mismatch, reloading", project.slug, expectedSlug
+                return @projectService.setProjectBySlug(expectedSlug).then =>
+                    @.loadProject()
+        else if expectedSlug
             console.warn "Metrics: Project not loaded in service, attempting fallback load"
-            return @projectService.setProjectBySlug(@params.pslug).then =>
+            return @projectService.setProjectBySlug(expectedSlug).then =>
                 @.loadProject()
             .catch (err) =>
                 console.error "Metrics: Failed to load project", err
                 @scope.metricsView.error = "METRICS.LOAD_ERROR"
                 @scope.metricsView.loading = false
                 return @q.reject(err)
-
-        project = @projectService.project.toJS()
+        else
+            @scope.metricsView.error = "METRICS.LOAD_ERROR"
+            @scope.metricsView.loading = false
+            return @q.reject("Metrics: Missing project slug")
 
         @scope.projectId = project.id
         @scope.project = project
@@ -395,6 +432,59 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         @scope.metricsAuth.username = @scope.projectSlug or @scope.project?.slug
         @scope.metricsAuth.externalProjectId ?= @metricsConfig.resolveExternalProjectId(@scope.projectSlug)
         @.loadMetrics(true)
+
+    loadMilestones: ->
+        return unless @scope.projectId
+        @rs.sprints.list(@scope.projectId)
+            .then (data) =>
+                milestones = data.milestones
+                sorted = _.sortBy(milestones, "estimated_start")
+                options = [
+                    {id: null, name: "METRICS.SPRINT_GLOBAL", translate: true}
+                ]
+                
+                for sprint in sorted
+                    options.push({
+                        id: sprint.id
+                        name: sprint.name
+                        dateFrom: sprint.estimated_start
+                        dateTo: sprint.estimated_finish
+                    })
+                
+                @scope.metricsView.sprintOptions = options
+                
+                # Select last sprint by default if there are sprints
+                if sorted.length > 0
+                    lastSprint = sorted[sorted.length - 1]
+                    # Set team historical filter to last sprint
+                    @scope.metricsView.teamHistoricalFilters.sprint = lastSprint.id
+                    @.applySprintFilter(@scope.metricsView.teamHistoricalFilters)
+                    # Set project historical filter to last sprint
+                    @scope.metricsView.projectHistoricalFilters.sprint = lastSprint.id
+                    @.applySprintFilter(@scope.metricsView.projectHistoricalFilters)
+                    
+            .catch (error) =>
+                console.warn "Metrics: Unable to load milestones", error
+
+    applySprintFilter: (filters) ->
+        return unless filters
+        
+        sprintId = filters.sprint
+        
+        # Find selected sprint
+        selectedSprint = _.find(@scope.metricsView.sprintOptions, {id: sprintId})
+        
+        if selectedSprint and selectedSprint.dateFrom and selectedSprint.dateTo
+            filters.dateFrom = new Date(selectedSprint.dateFrom)
+            filters.dateTo = new Date(selectedSprint.dateTo)
+            # Reset preset if sprint is selected
+            filters.preset = null
+        else
+            # Global or custom: reset dates if switching back to global
+            if sprintId == null
+                filters.dateFrom = null
+                filters.dateTo = null
+                filters.preset = null
 
     loginMetrics: ->
         return if @scope.metricsAuth.loading
@@ -455,12 +545,18 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
     loadMetrics: (force = false) ->
         return if @scope.metricsView.loading and !force
 
-        projectSlug = @scope.projectSlug
+        projectSlug = @scope.projectSlug or @params.pslug
+        if !@scope.project and @projectService.project
+            @scope.project = @projectService.project.toJS()
+            @scope.projectId = @scope.project?.id
 
         if !projectSlug
             @scope.metricsView.error = "METRICS.LOAD_ERROR"
             @scope.metricsView.data = null
+            @scope.metricsView.loading = false
             return
+
+        @scope.projectSlug = projectSlug
 
         externalId = @scope.metricsAuth.externalProjectId or @metricsConfig.resolveExternalProjectId(projectSlug)
 
@@ -1318,6 +1414,27 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                     continue
                 addMetricEntry(metric)
 
+        # Fallback: if no metrics were collected from order, add all non-user metrics
+        # This ensures external provider metrics are shown even without explicit configuration
+        if collected.length is 0 or Object.keys(metricsById).length > collected.length
+            for metric in metricsArray when metric?
+                continue unless metric.id? or metric.externalId?
+                isUserMetric = @.isUserMetricId(metric.id) or @.isUserMetricId(metric.externalId)
+                continue if isUserMetric
+                
+                normalizedMetricId = null
+                if metric.id?
+                    normalizedMetricId = metric.id.toString().toLowerCase()
+                else if metric.externalId?
+                    normalizedMetricId = metric.externalId.toLowerCase()
+                
+                continue if normalizedMetricId and seenIds[normalizedMetricId]
+                
+                classification = @.resolveMetricClassificationValue(metric)
+                continue if classification is 'hidden'
+                continue if classification is 'team'
+                
+                addMetricEntry(metric)
 
 
         context =
@@ -1534,9 +1651,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             ratioValue = Math.max(0, Math.min(normalizedValue / 100, 1))
             userContext = @.resolveMetricUserContext(metric)
 
+            # Try to get translated label first, then fallback to backend name
+            translatedLabel = @.translateMetricId(metric.id)
+            displayLabel = translatedLabel or metric.name or @.formatMetricLabel(metric.id)
+
             entry =
                 id: metric.id or metric.name
-                label: metric.name or @.formatMetricLabel(metric.id)
+                label: displayLabel
                 ratio: ratioValue
                 formattedRatio: Number(ratioValue or 0).toFixed(2)
                 description: metric.description
@@ -1669,9 +1790,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             percentForColor = ratioValue * 100
             categoryColor = @.getInternalGaugeColor(percentForColor)
 
+        # Try to get translated name first, then fallback to backend name
+        translatedName = @.translateMetricId(metric.id)
+        displayName = translatedName or metric.name or metric.id
+
         return {
             id: metric.id
-            name: metric.name or metric.id
+            name: displayName
             description: metric.description or ""
             value: numericValue
             absoluteValue: numericValue
@@ -1995,6 +2120,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         return @q.when(@.loadProject())
             .then (project) =>
                 return @.fetchProjectConfig()
+            .then (config) =>
+                @.bootstrapMetricsAccess()
+                return config
             .catch (error) =>
                 console.error "Metrics: Error in initial data load", error
                 @scope.metricsView.loading = false
@@ -2264,6 +2392,10 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         
         for metricKey, dataPoints of metricsData
             continue unless angular.isArray(dataPoints) and dataPoints.length > 0
+
+            # Filter out user metrics from project category
+            if category is 'project' and @.isUserMetricId(metricKey)
+                continue
             
             labels = []
             values = []
@@ -3076,7 +3208,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 word
         ).join(' ')
 
-    composeTeamHistoricalChart: (collection, metricLabelKey, filteredEntries) ->
+    composeTeamHistoricalChart: (collection, metricLabelKey, filteredEntries, showUserInTitle = true) ->
         return null unless collection?
         chartData = @.buildChartDatasetFromEntries(collection.student, collection.category, filteredEntries)
         return null unless chartData
@@ -3090,10 +3222,18 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         metricLabel = translatedLabel or baseLabel
 
         titleKey = "METRICS.TEAM_HISTORICAL_CARD_TITLE"
-        title = if @translate?.instant?
-            @translate.instant(titleKey, {metric: metricLabel, user: collection.student})
+        
+        if showUserInTitle
+            title = if @translate?.instant?
+                @translate.instant(titleKey, {metric: metricLabel, user: collection.student})
+            else
+                "#{metricLabel} · #{collection.student}"
         else
-            "#{metricLabel} · #{collection.student}"
+            title = metricLabel
+
+        # Update the chart data title as well, since that's what tg-area-chart uses
+        if chartData
+            chartData.title = title
 
         {
             id: "#{collection.category}::#{collection.student}"
@@ -3354,11 +3494,14 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         metricLabelKey = if metric is "all" then null else @.metricCategoryLabelKey(metric)
         charts = []
+        
+        # If we are filtering by a specific user, we don't need to show the user name in the title
+        showUserInTitle = user is "all"
 
         processCollection = (collection) =>
             filteredEntries = @.filterHistoricalEntries(collection.entries, dateFrom, dateTo)
             return unless filteredEntries?.length
-            chart = @.composeTeamHistoricalChart(collection, metricLabelKey, filteredEntries)
+            chart = @.composeTeamHistoricalChart(collection, metricLabelKey, filteredEntries, showUserInTitle)
             charts.push(chart) if chart
 
         if user is "all"
@@ -3768,14 +3911,47 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         unless hasSelected
             @scope.metricsView.teamHistoricalFilters.user = "all"
     
+    translateMetricId: (metricId) ->
+        """
+        Attempt to translate metric ID using METRICS.INTERNAL_METRICS translations.
+        Returns the translated label if available, otherwise null.
+        """
+        return null unless metricId
+        return null unless @translate?.instant?
+
+        # Normalize metric ID (remove user suffix if present)
+        normalizedId = metricId
+        if metricId.indexOf('_') isnt -1
+            parts = metricId.split('_')
+            # Check if it's a user-scoped metric like "closedtasks_username"
+            knownPrefixes = ['closedtasks', 'assignedtasks', 'totalus', 'completedus', 'assignedissues', 'closedissues', 'commits', 'modifiedlines']
+            if knownPrefixes.indexOf(parts[0].toLowerCase()) isnt -1
+                normalizedId = parts[0].toLowerCase()
+
+        # Try to get translation from METRICS.INTERNAL_METRICS
+        translationKey = "METRICS.INTERNAL_METRICS.#{normalizedId}"
+        translated = @translate.instant(translationKey)
+
+        # If translation is the same as the key, it means no translation was found
+        if translated isnt translationKey
+            return translated
+
+        null
+
     formatMetricLabel: (metricId) ->
         """
-        Convert metric ID to a readable label
+        Convert metric ID to a readable label.
+        First attempts to use translations, then falls back to static mappings.
         Example: acceptance_criteria_check -> Acceptance Criteria Application
         """
         return metricId unless metricId
 
-        # Known metric ID to label mappings
+        # First, try to use translated label
+        translatedLabel = @.translateMetricId(metricId)
+        if translatedLabel?
+            return translatedLabel
+
+        # Known metric ID to label mappings (fallback for external provider metrics)
         labelMap = {
             'acceptance_criteria_check': 'Acceptance Criteria Application'
             'closed_tasks_with_ae': 'Closed Tasks with Actual Effort Information'

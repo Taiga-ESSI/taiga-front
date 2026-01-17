@@ -102,12 +102,12 @@ angular.module("taigaComponents").directive "tgMetricsMenu", [
             updateActiveState = ->
                 return unless teamMetricsItem && projectMetricsItem
                 
-                currentPath = window.location.pathname
+                currentPath = $location.path()
                 console.log("[MetricsMenu] Actualizando estado activo, path actual:", currentPath)
                 
                 # Determinar cuál debe estar activo
-                isTeamActive = currentPath.includes("/metrics/team")
-                isProjectActive = currentPath.includes("/metrics/project")
+                isTeamActive = currentPath.indexOf("/metrics/team") != -1
+                isProjectActive = currentPath.indexOf("/metrics/project") != -1
                 
                 # Actualizar Team Metrics
                 if isTeamActive

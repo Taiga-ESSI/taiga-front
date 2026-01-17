@@ -1,56 +1,88 @@
 .home-wrapper {
     display: flex;
+
     @include until($desktop) {
         flex-direction: column;
     }
+
     .duty-summary {
         flex: 1;
+
         @include until($widescreen) {
             flex-direction: column;
         }
+
+        // Target ONLY the direct child H1 (The main Dashboard Title)
+        >h1 {
+            background-color: $color-solid-primary;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, .05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, .05) 1px, transparent 1px); // Reduced opacity to 0.05
+            background-position: center center;
+            background-size: 30px 30px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, .1);
+            color: $white;
+            font-weight: 600;
+            margin: 0 0 2rem 0;
+            padding: 1.5rem 2rem;
+        }
     }
+
     .dashboard-container {
         display: flex;
         flex-direction: row;
         margin-right: 1.5rem;
+
         @include until ($desktop) {
             margin-right: 0;
         }
+
         @include mobile {
             flex-direction: column;
         }
     }
+
     .watching-container,
     .working-on-container {
         flex: 1;
     }
+
     .working-on-container {
         margin-right: 2rem;
+
         @include mobile {
             margin-right: 0;
         }
     }
+
     .toggle-hidden {
         border-top: 1px solid $gray-lighter;
         margin: 2rem 0;
         padding-top: .5rem;
         text-align: center;
     }
+
     .project-list {
         flex-basis: 300px;
         flex-grow: 0;
         flex-shrink: 0;
     }
+
     .see-more-projects-btn {
         display: block;
     }
+
     .title-bar {
         @include font-type(regular);
         @include font-size(large);
         align-content: center;
-        background: $mass-white;
+        background: $white; // Changed from $mass-white
+        border-bottom: 2px solid $color-solid-primary; // UPC accent
+        color: $color-solid-primary;
         display: flex;
-        margin: 0 0 .5rem;
+        font-weight: bold;
+        margin: 0 0 1rem;
         padding: .5rem 1rem;
     }
 }

@@ -1,8 +1,10 @@
 .login-form-container {
     padding-top: 1rem;
+
     .login-password {
         position: relative;
     }
+
     input {
         &:focus {
             +.forgot-pass {
@@ -24,6 +26,7 @@
         right: 1rem;
         top: .6rem;
         transition: all .3s linear;
+
         &:hover {
             color: $color-black800;
             transition: color .3s linear;
@@ -56,7 +59,7 @@
 
         &__hint {
             @include font-size(small);
-            color: rgba($color-black600, .7);
+            color: $color-solid-primary;
             margin-top: .5rem;
         }
     }

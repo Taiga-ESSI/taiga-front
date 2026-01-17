@@ -6,7 +6,7 @@
 
 doctype html
 
-div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-project'")
+div.wrapper
     tg-project-menu
 
     main.main.metrics
@@ -38,6 +38,7 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-project
 
                     div.project-tab-panels(ng-switch="metricsView.projectSubTab")
                         div.project-overview-panel(ng-switch-when="overview")
+                            p.section-description(translate="METRICS.PROJECT_OVERVIEW_DESCRIPTION", style="text-align: center;")
                             div.project-metrics-grid(ng-if="metricsView.data.projectMetrics && metricsView.data.projectMetrics.length > 0")
                                 div.project-metric-card(ng-repeat="metric in metricsView.data.projectMetrics track by metric.id")
                                     div.project-metric-header
@@ -70,13 +71,13 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-project
                                 p.description(translate="METRICS.PROJECT_HISTORICAL_DESCRIPTION")
 
                             div.project-historical-filters.team-historical-filters
-                                //- Date preset selector
-                                div.filter-group.preset-group
-                                    label.filter-label(for="projectHistoricalPreset", translate="METRICS.DATE_PRESET_LABEL")
-                                    select#projectHistoricalPreset(
-                                        ng-model="metricsView.projectHistoricalFilters.preset"
-                                        ng-change="applyProjectDatePreset(metricsView.projectHistoricalFilters.preset)"
-                                        ng-options="preset.id as (preset.translate ? (preset.label | translate) : preset.label) for preset in metricsView.datePresetOptions track by preset.id"
+                                //- Sprint filter
+                                div.filter-group.sprint-filter
+                                    label.filter-label(for="projectHistoricalSprint", translate="METRICS.SPRINT_FILTER_LABEL")
+                                    select#projectHistoricalSprint(
+                                        ng-model="metricsView.projectHistoricalFilters.sprint"
+                                        ng-change="applySprintFilter(metricsView.projectHistoricalFilters)"
+                                        ng-options="option.id as (option.translate ? (option.name | translate) : option.name) for option in metricsView.sprintOptions track by option.id"
                                     )
                                 //- Custom date range
                                 div.filter-group.date-group

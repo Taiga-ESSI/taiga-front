@@ -11,7 +11,7 @@ module.factory "tgMetricsConfiguration", ["$log", ($log) ->
     # Description: Builds the default configuration object and merges external overrides.
     ###
     defaultConfig =
-        provider: "external"
+        provider: "internal"
         externalProjectIds: [
             "AMEP11Beats",
             "AMEP11ChopChop",
@@ -86,10 +86,10 @@ module.factory "tgMetricsConfiguration", ["$log", ($log) ->
         return slug
 
     resolveProvider = ->
-        provider = configuration.provider or "external"
+        provider = configuration.provider or "internal"
         provider = provider.toString().trim().toLowerCase()
         if provider not in ["internal", "external"]
-            provider = "external"
+            provider = "internal"
         return provider
 
     configuration.normalizeId = normalizeId

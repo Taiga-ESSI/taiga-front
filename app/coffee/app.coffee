@@ -311,6 +311,7 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
             templateUrl: "metrics/metrics-team.html",
             loader: true,
             section: "metrics"
+            controller: "MetricsController"
         }
     )
 
@@ -320,6 +321,7 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
             templateUrl: "metrics/metrics-project.html",
             loader: true,
             section: "metrics"
+            controller: "MetricsController"
         }
     )
 
@@ -553,15 +555,11 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
             controller: "LoginPage",
         }
     )
-    if window.taigaConfig.publicRegisterEnabled
-        $routeProvider.when("/register",
-            {
-                templateUrl: "auth/register.html",
-                title: "REGISTER.PAGE_TITLE",
-                description: "REGISTER.PAGE_DESCRIPTION",
-                disableHeader: true
-            }
-        )
+    $routeProvider.when("/register",
+        {
+            redirectTo: "/login"
+        }
+    )
     $routeProvider.when("/forgot-password",
         {
             templateUrl: "auth/forgot-password.html",
