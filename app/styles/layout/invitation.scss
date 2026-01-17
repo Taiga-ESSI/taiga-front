@@ -131,4 +131,35 @@
             color: $color-black900;
         }
     }
+
+    .google-auth {
+        margin-top: 1.5rem;
+        text-align: center;
+
+        &__button {
+            display: flex;
+            justify-content: center;
+
+            &--loading .google-signin-placeholder {
+                opacity: .6;
+                pointer-events: none;
+            }
+        }
+
+        &__placeholder {
+            display: inline-flex;
+        }
+
+        &__loading {
+            @include font-size(small);
+            color: $color-black600;
+            margin-top: .75rem;
+        }
+
+        &__hint {
+            @include font-size(small);
+            color: rgba($color-black600, .7);
+            margin-top: .5rem;
+        }
+    }
 }

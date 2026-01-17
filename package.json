@@ -22,6 +22,9 @@
     "start": "npx gulp",
     "ci:test": "npx gulp deploy && ./node_modules/karma/bin/karma start --single-run --browsers=ChromeHeadlessCI"
   },
+  "_comments": {
+    "metrics": "Pol Alcoverro: las métricas dependen de chart.js y chartjs-plugin-datalabels; mantenerlos instalados y empaquetados en libs."
+  },
   "devDependencies": {
     "angular-mocks": "1.5.5",
     "babel-cli": "^6.23.0",
@@ -84,7 +87,7 @@
     "merge-stream": "^1.0.0",
     "minimist": "^1.1.1",
     "mocha": "^2.2.4",
-    "node-sass": "8.0.0",
+    "sass": "^1.69.0",
     "photoswipe": "^4.1.0",
     "pre-commit": "^1.0.5",
     "readable-stream": "~2.1.2",
@@ -115,6 +118,8 @@
     "autolinker": "^1.4.2",
     "awesomplete": "^1.0.0",
     "bourbon": "git+https://github.com/thoughtbot/bourbon.git",
+    "chart.js": "^4.5.0",
+    "chartjs-plugin-datalabels": "^2.2.0",
     "checksley": "git+https://github.com/jespino/checksley-bower.git",
     "dom-autoscroller": "^2.3.4",
     "dragula": "^3.7.2",

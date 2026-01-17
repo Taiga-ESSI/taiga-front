@@ -1,7 +1,8 @@
 // scss-lint:disable SelectorFormat, QualifyingElement
 
 .introjs-overlay {
-    background: radial-gradient(center, ellipse cover, rgba($white, .2) 0, rgba($whitish, .2) 100%);
+    // Pol Alcoverro: ajustamos el gradiente para mejorar compatibilidad con navegadores modernos
+    background: radial-gradient(ellipse farthest-corner at center, rgba($white, .2) 0, rgba($whitish, .2) 100%);
     background-color: $whitish;
 }
 .introjs-helperLayer {

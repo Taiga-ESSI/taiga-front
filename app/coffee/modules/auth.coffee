@@ -11,8 +11,138 @@ debounce = @.taiga.debounce
 
 module = angular.module("taigaAuth", ["taigaResources"])
 
+googleClientPromise = null
+
+waitForGoogleClient = ($window) ->
+    return googleClientPromise if googleClientPromise
+
+    googleClientPromise = new Promise (resolve, reject) ->
+        attempts = 0
+        maxAttempts = 40
+        delay = 250
+
+        check = ->
+            if $window.google? and $window.google.accounts? and $window.google.accounts.id?
+                resolve($window.google.accounts.id)
+            else if attempts >= maxAttempts
+                reject(new Error("GOOGLE_CLIENT_TIMEOUT"))
+            else
+                attempts += 1
+                $window.setTimeout(check, delay)
+
+        check()
+
+    return googleClientPromise
+
+
+# Pol Alcoverro: helper para adjuntar el nuevo flujo de login con Google.
+attachGoogleLogin = (options={}) ->
+    scope = options.scope
+    element = options.element
+    auth = options.auth
+    config = options.config
+    confirm = options.confirm
+    translate = options.translate
+    $window = options.$window
+    onSuccess = options.onSuccess
+    onError = options.onError
+    buildPayload = options.buildPayload
+    loginType = options.loginType or "google"
+    placeholderSelector = options.placeholderSelector or ".google-signin-placeholder"
+
+    googleSettings = config.get("googleAuth") or {}
+    enabled = Boolean(googleSettings.enabled and googleSettings.clientId)
+
+    scope.googleAuthEnabled = enabled
+    scope.googleLoading = false
+
+    allowedDomains = googleSettings.allowedDomains or []
+    formattedDomains = allowedDomains.map (domain) ->
+        value = (domain or "").toString().trim()
+        if value and value.charAt(0) == '@'
+            return value
+        return "@#{value}"
+
+    formattedDomains = formattedDomains.filter (domain) -> domain.length > 1
+
+    scope.googleAllowedDomains = formattedDomains
+
+    domainsLabel = ""
+    if formattedDomains.length > 0
+        if formattedDomains.length == 1
+            domainsLabel = formattedDomains[0]
+        else
+            head = formattedDomains.slice(0, formattedDomains.length - 1)
+            tail = formattedDomains[formattedDomains.length - 1]
+            orWord = translate.instant("COMMON.OR") or "or"
+            if head.length == 1
+                domainsLabel = "#{head[0]} #{orWord} #{tail}"
+            else
+                domainsLabel = "#{head.join(', ')} #{orWord} #{tail}"
+    scope.googleDomainsLabel = domainsLabel
+
+    return unless enabled
+
+    buttonRendered = false
+
+    onCredential = (googleResponse) ->
+        credential = googleResponse?.credential
+        return unless credential
+
+        payload = null
+        if buildPayload
+            payload = buildPayload(credential, googleSettings) or {}
+        else
+            payload = {
+                credential: credential
+                client_id: googleSettings.clientId
+            }
+
+        payload.client_id ?= googleSettings.clientId
+
+        scope.googleLoading = true
+        scope.$applyAsync()
+
+        auth.login(payload, loginType).then(onSuccess, (response) ->
+            scope.googleLoading = false
+            scope.$applyAsync()
+            onError(response)
+        )
+
+    waitForGoogleClient($window).then (googleId) ->
+        placeholder = element[0].querySelector(placeholderSelector)
+        return unless placeholder
+        return if buttonRendered
+
+        googleId.initialize({
+            client_id: googleSettings.clientId,
+            callback: onCredential,
+            cancel_on_tap_outside: true,
+            auto_select: false
+        })
+
+        placeholder.innerHTML = ""
+        googleId.renderButton(placeholder, {
+            type: "standard",
+            theme: "outline",
+            size: "large",
+            text: "signin_with",
+            shape: "rectangular",
+            logo_alignment: "center",
+            width: 260,
+            locale: translate.use() or "en"
+        })
+
+        buttonRendered = true
+    , (err) ->
+        scope.googleAuthEnabled = false
+        scope.$applyAsync()
+        confirm.notify("light-error", translate.instant("LOGIN_FORM.ERROR_GOOGLE_INIT"))
+
 class LoginPage
     @.$inject = [
+        '$scope',
+        '$translate',
         'tgCurrentUserService',
         '$location',
         '$tgNavUrls',
@@ -20,7 +150,11 @@ class LoginPage
         '$tgAuth'
     ]
 
-    constructor: (currentUserService, $location, $navUrls, $routeParams, $auth) ->
+    constructor: ($scope, $translate, currentUserService, $location, $navUrls, $routeParams, $auth) ->
+        $scope.getAccessProblemsUrl = ->
+            lang = $translate.use()
+            return "https://identitatdigital.upc.edu/gcredencials/?lang=#{lang}"
+
         if currentUserService.isAuthenticated()
             if not $routeParams['force_login']
                 url = $navUrls.resolve("home")
@@ -259,7 +393,7 @@ PublicRegisterMessageDirective = ($config, $navUrls, $routeParams, templates) ->
         if not publicRegisterEnabled
             return ""
 
-        url = $navUrls.resolve("register")
+        url = $navUrls.resolve("login")
 
         if $routeParams['force_next']
             nextUrl = encodeURIComponent($routeParams['force_next'])
@@ -279,7 +413,10 @@ module.directive("tgPublicRegisterMessage", ["$tgConfig", "$tgNavUrls", "$routeP
 
 LoginDirective = ($auth, $confirm, $location, $config, $routeParams, $navUrls, $events, $translate, $window, $analytics) ->
     link = ($scope, $el, $attrs) ->
-        form = new checksley.Form($el.find("form.login-form"))
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el flujo de validacion del login clasico.
+        # form = new checksley.Form($el.find("form.login-form"))
+        ###
         $scope.defaultLoginEnabled = $config.get("defaultLoginEnabled", true)
 
         # ignore next param if is the login or discover page
@@ -301,7 +438,9 @@ LoginDirective = ($auth, $confirm, $location, $config, $routeParams, $navUrls, $
                 $location.url($scope.nextUrl)
 
         onError = (response) ->
-            $confirm.notify("light-error", $translate.instant("LOGIN_FORM.ERROR_AUTH_INCORRECT"))
+            message = response?.data?._error_message or response?.data?.detail
+            message = message or $translate.instant("LOGIN_FORM.ERROR_AUTH_INCORRECT")
+            $confirm.notify("light-error", message)
 
         $scope.onKeyUp = (event) ->
             target = angular.element(event.currentTarget)
@@ -310,25 +449,46 @@ LoginDirective = ($auth, $confirm, $location, $config, $routeParams, $navUrls, $
             if value != value.toLowerCase()
                 $scope.iscapsLockActivated = true
 
-        submit = debounce 2000, (event) =>
-            event.preventDefault()
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el submit del login clasico.
+        # submit = debounce 2000, (event) =>
+        #     event.preventDefault()
+        #
+        #     if not form.validate()
+        #         return
+        #
+        #     data = {
+        #         "username": $el.find("form.login-form input[name=username]").val(),
+        #         "password": $el.find("form.login-form input[name=password]").val()
+        #     }
+        #
+        #     loginFormType = $config.get("loginFormType", "normal")
+        #
+        #     promise = $auth.login(data, loginFormType)
+        #     return promise.then(onSuccess, onError)
+        ###
 
-            if not form.validate()
-                return
+        attachGoogleLogin({
+            scope: $scope,
+            element: $el,
+            auth: $auth,
+            config: $config,
+            confirm: $confirm,
+            translate: $translate,
+            $window: $window,
+            onSuccess: onSuccess,
+            onError: onError
+        })
 
-            data = {
-                "username": $el.find("form.login-form input[name=username]").val(),
-                "password": $el.find("form.login-form input[name=password]").val()
-            }
-
-            loginFormType = $config.get("loginFormType", "normal")
-
-            promise = $auth.login(data, loginFormType)
-            return promise.then(onSuccess, onError)
-
-        $el.on "submit", "form", submit
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el binding del formulario clasico.
+        # $el.on "submit", "form", submit
+        ###
 
         window.prerenderReady = true
+
+        $scope.changeLanguage = (lang) ->
+            $translate.use(lang)
 
         $scope.$on "$destroy", ->
             $el.off()
@@ -350,7 +510,10 @@ RegisterDirective = ($auth, $confirm, $location, $navUrls, $config, $routeParams
             $location.replace()
 
         $scope.data = {}
-        form = $el.find("form").checksley({onlyOneErrorElement: true})
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el flujo de validacion del registro clasico.
+        # form = $el.find("form").checksley({onlyOneErrorElement: true})
+        ###
 
         if $routeParams['next'] and $routeParams['next'] != $navUrls.resolve("login")
             $scope.nextUrl = decodeURIComponent($routeParams['next'])
@@ -370,18 +533,27 @@ RegisterDirective = ($auth, $confirm, $location, $navUrls, $config, $routeParams
                 text = $translate.instant("COMMON.GENERIC_ERROR", {error: response.data._error_message})
                 $confirm.notify("light-error", text)
 
-            form.setErrors(response.data)
+            ###
+            # Pol Alcoverro: comentado codigo por deshabilitar el marcado de errores del registro clasico.
+            # form.setErrors(response.data)
+            ###
 
-        submit = debounce 2000, (event) =>
-            event.preventDefault()
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el submit del registro clasico.
+        # submit = debounce 2000, (event) =>
+        #     event.preventDefault()
+        #
+        #     if not form.validate()
+        #         return
+        #
+        #     promise = $auth.register($scope.data)
+        #     promise.then(onSuccessSubmit, onErrorSubmit)
+        ###
 
-            if not form.validate()
-                return
-
-            promise = $auth.register($scope.data)
-            promise.then(onSuccessSubmit, onErrorSubmit)
-
-        $el.on "submit", "form", submit
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el binding del registro clasico.
+        # $el.on "submit", "form", submit
+        ###
 
         $scope.$on "$destroy", ->
             $el.off()
@@ -508,7 +680,7 @@ module.directive("tgChangePasswordFromRecovery", ["$tgAuth", "$tgConfirm", "$tgL
 ## Invitation
 #############################################################################
 
-InvitationDirective = ($auth, $confirm, $location, $config, $params, $navUrls, $analytics, $translate, config) ->
+InvitationDirective = ($auth, $confirm, $location, $config, $params, $navUrls, $analytics, $translate, $window, config) ->
     link = ($scope, $el, $attrs) ->
         token = $params.token
 
@@ -525,7 +697,10 @@ InvitationDirective = ($auth, $confirm, $location, $config, $params, $navUrls, $
 
         # Login form
         $scope.dataLogin = {token: token}
-        loginForm = $el.find("form.login-form").checksley({onlyOneErrorElement: true})
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar la validacion del login clasico en invitaciones.
+        # loginForm = $el.find("form.login-form").checksley({onlyOneErrorElement: true})
+        ###
 
         onSuccessSubmitLogin = (response) ->
             $analytics.trackEvent("auth", "invitationAccept", "invitation accept with existing user", 1)
@@ -537,30 +712,59 @@ InvitationDirective = ($auth, $confirm, $location, $config, $params, $navUrls, $
             $confirm.notify("success", text)
 
         onErrorSubmitLogin = (response) ->
-            $confirm.notify("light-error", response.data._error_message)
+            message = response?.data?._error_message or response?.data?.detail
+            message = message or $translate.instant("LOGIN_FORM.ERROR_AUTH_INCORRECT")
+            $confirm.notify("light-error", message)
 
-        submitLogin = debounce 2000, (event) =>
-            event.preventDefault()
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el submit del login clasico en invitaciones.
+        # submitLogin = debounce 2000, (event) =>
+        #     event.preventDefault()
+        #
+        #     if not loginForm.validate()
+        #         return
+        #
+        #     loginFormType = $config.get("loginFormType", "normal")
+        #     data = $scope.dataLogin
+        #
+        #     promise = $auth.login({
+        #         username: data.username,
+        #         password: data.password,
+        #         invitation_token: data.token
+        #     }, loginFormType)
+        #     promise.then(onSuccessSubmitLogin, onErrorSubmitLogin)
+        ###
 
-            if not loginForm.validate()
-                return
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el binding del login clasico en invitaciones.
+        # $el.on "submit", "form.login-form", submitLogin
+        # $el.on "click", ".button-login", submitLogin
+        ###
 
-            loginFormType = $config.get("loginFormType", "normal")
-            data = $scope.dataLogin
-
-            promise = $auth.login({
-                username: data.username,
-                password: data.password,
-                invitation_token: data.token
-            }, loginFormType)
-            promise.then(onSuccessSubmitLogin, onErrorSubmitLogin)
-
-        $el.on "submit", "form.login-form", submitLogin
-        $el.on "click", ".button-login", submitLogin
+        attachGoogleLogin({
+            scope: $scope,
+            element: $el,
+            auth: $auth,
+            config: $config,
+            confirm: $confirm,
+            translate: $translate,
+            $window: $window,
+            onSuccess: onSuccessSubmitLogin,
+            onError: onErrorSubmitLogin,
+            buildPayload: (credential, googleSettings) ->
+                {
+                    credential: credential
+                    client_id: googleSettings.clientId
+                    invitation_token: token
+                }
+        })
 
         # Register form
         $scope.dataRegister = {token: token}
-        registerForm = $el.find("form.register-form").checksley({onlyOneErrorElement: true})
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar la validacion del registro clasico en invitaciones.
+        # registerForm = $el.find("form.register-form").checksley({onlyOneErrorElement: true})
+        ###
 
         onSuccessSubmitRegister = (response) ->
             $analytics.trackEvent("auth", "invitationAccept", "invitation accept with new user", 1)
@@ -576,19 +780,28 @@ InvitationDirective = ($auth, $confirm, $location, $config, $params, $navUrls, $
                 text = $translate.instant("COMMON.GENERIC_ERROR", {error: response.data._error_message})
                 $confirm.notify("light-error", text)
 
-            registerForm.setErrors(response.data)
+            ###
+            # Pol Alcoverro: comentado codigo por deshabilitar el marcado de errores del registro clasico en invitaciones.
+            # registerForm.setErrors(response.data)
+            ###
 
-        submitRegister = debounce 2000, (event) =>
-            event.preventDefault()
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el submit del registro clasico en invitaciones.
+        # submitRegister = debounce 2000, (event) =>
+        #     event.preventDefault()
+        #
+        #     if not registerForm.validate()
+        #         return
+        #
+        #     promise = $auth.acceptInvitiationWithNewUser($scope.dataRegister)
+        #     promise.then(onSuccessSubmitRegister, onErrorSubmitRegister)
+        ###
 
-            if not registerForm.validate()
-                return
-
-            promise = $auth.acceptInvitiationWithNewUser($scope.dataRegister)
-            promise.then(onSuccessSubmitRegister, onErrorSubmitRegister)
-
-        $el.on "submit", "form.register-form", submitRegister
-        $el.on "click", ".button-register", submitRegister
+        ###
+        # Pol Alcoverro: comentado codigo por deshabilitar el binding del registro clasico en invitaciones.
+        # $el.on "submit", "form.register-form", submitRegister
+        # $el.on "click", ".button-register", submitRegister
+        ###
 
         $scope.$on "$destroy", ->
             $el.off()
@@ -596,7 +809,7 @@ InvitationDirective = ($auth, $confirm, $location, $config, $params, $navUrls, $
     return {link:link}
 
 module.directive("tgInvitation", ["$tgAuth", "$tgConfirm", "$tgLocation", "$tgConfig", "$routeParams",
-                                  "$tgNavUrls", "$tgAnalytics", "$translate", "$tgConfig", InvitationDirective])
+                                  "$tgNavUrls", "$tgAnalytics", "$translate", "$window", "$tgConfig", InvitationDirective])
 
 
 #############################################################################

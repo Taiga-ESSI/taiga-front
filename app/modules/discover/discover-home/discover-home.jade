@@ -11,6 +11,13 @@ section.discover
     header
         tg-discover-search-bar(on-change="vm.onSubmit(q)")
 
+    section.welcome-message
+        div.welcome-inner
+            h2(translate="DISCOVER.HOME.TITLE")
+            p(translate="DISCOVER.HOME.SUBTITLE_1")
+            p(translate="DISCOVER.HOME.SUBTITLE_2")
+            a.button-cta(href="/login", translate="DISCOVER.HOME.ACCESS_BUTTON")
+
     tg-featured-projects
 
     section.highlighted

@@ -18,6 +18,7 @@ class SectionsService extends taiga.Service
         4: {id: 4, title: 'KANBAN', path:'kanban', enabled: 'is_kanban_activated'}
         5: {id: 5, title: 'ISSUES', path:'issues', enabled: 'is_issues_activated'}
         6: {id: 6, title: 'WIKI', path:'wiki', enabled: 'is_wiki_activated'}
+        7: {id: 7, title: 'METRICS', path:'metrics', enabled: ''}
     }
 
     constructor: (@translate, @currentUserService) ->

@@ -122,11 +122,13 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
     # Project
     $routeProvider.when("/project/new",
         {
-            title: "PROJECT.CREATE.TITLE",
-            templateUrl: "projects/create/create-project.html",
-            loader: true,
-            controller: "CreateProjectCtrl",
-            controllerAs: "vm"
+            # Pol Alcoverro performed the change: redirect the project creation flow to Scrum by default.
+            redirectTo: "/project/new/scrum"
+            # title: "PROJECT.CREATE.TITLE",
+            # templateUrl: "projects/create/create-project.html",
+            # loader: true,
+            # controller: "CreateProjectCtrl",
+            # controllerAs: "vm"
         }
     )
 
@@ -292,6 +294,34 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
             templateUrl: "team/team.html",
             loader: true,
             section: "team"
+        }
+    )
+
+
+
+    $routeProvider.when("/project/:pslug/metrics",
+        {
+            redirectTo: (params) -> "/project/#{params.pslug}/metrics/team"
+        }
+    )
+
+    # Metrics - Team
+    $routeProvider.when("/project/:pslug/metrics/team",
+        {
+            templateUrl: "metrics/metrics-team.html",
+            loader: false,
+            section: "metrics"
+            controller: "MetricsController"
+        }
+    )
+
+    # Metrics - Project
+    $routeProvider.when("/project/:pslug/metrics/project",
+        {
+            templateUrl: "metrics/metrics-project.html",
+            loader: false,
+            section: "metrics"
+            controller: "MetricsController"
         }
     )
 
@@ -525,15 +555,11 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
             controller: "LoginPage",
         }
     )
-    if window.taigaConfig.publicRegisterEnabled
-        $routeProvider.when("/register",
-            {
-                templateUrl: "auth/register.html",
-                title: "REGISTER.PAGE_TITLE",
-                description: "REGISTER.PAGE_DESCRIPTION",
-                disableHeader: true
-            }
-        )
+    $routeProvider.when("/register",
+        {
+            redirectTo: "/login"
+        }
+    )
     $routeProvider.when("/forgot-password",
         {
             templateUrl: "auth/forgot-password.html",
@@ -1066,6 +1092,8 @@ modules = [
     "taigaIssues",
     "taigaUserStories",
     "taigaTasks",
+    # Pol Alcoverro: registramos el módulo de personalización usado por métricas
+    "taigaCustomization",
     "taigaTeam",
     "taigaWiki",
     "taigaSearch",
@@ -1076,6 +1104,8 @@ modules = [
     "taigaPlugins",
     "taigaIntegrations",
     "taigaComponents",
+    # Pol Alcoverro added - Metrics module
+    "taigaMetrics",
 
     # new modules
     "taigaProfile",

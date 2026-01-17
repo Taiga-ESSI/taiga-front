@@ -56,22 +56,29 @@ class ProjectMenuController
             backlog: false,
             kanban: false,
             issues: false,
+            metrics: false,
             wiki: false
         })
 
-        if @.project.get("is_epics_activated") && @.project.get("my_permissions").indexOf("view_epics") != -1
+        permissions = @.project.get("my_permissions")
+        
+        if permissions && @.project.get("is_epics_activated") && permissions.indexOf("view_epics") != -1
             @.menu = @.menu.set("epics", true)
 
-        if @.project.get("is_backlog_activated") && @.project.get("my_permissions").indexOf("view_us") != -1
+        if permissions && @.project.get("is_backlog_activated") && permissions.indexOf("view_us") != -1
             @.menu = @.menu.set("backlog", true)
 
-        if @.project.get("is_kanban_activated") && @.project.get("my_permissions").indexOf("view_us") != -1
+        if permissions && @.project.get("is_kanban_activated") && permissions.indexOf("view_us") != -1
             @.menu = @.menu.set("kanban", true)
 
-        if @.project.get("is_issues_activated") && @.project.get("my_permissions").indexOf("view_issues") != -1
+        if permissions && @.project.get("is_issues_activated") && permissions.indexOf("view_issues") != -1
             @.menu = @.menu.set("issues", true)
 
-        if @.project.get("is_wiki_activated") && @.project.get("my_permissions").indexOf("view_wiki_pages") != -1
+        # Pol Alcoverro: activa la pestaña de métricas cuando el usuario posee el permiso view_metrics
+        if permissions && permissions.indexOf("view_metrics") != -1
+            @.menu = @.menu.set("metrics", true)
+
+        if permissions && @.project.get("is_wiki_activated") && permissions.indexOf("view_wiki_pages") != -1
             @.menu = @.menu.set("wiki", true)
 
     _getActiveSection: () ->

@@ -1,0 +1,145 @@
+//- This source code is licensed under the terms of the
+//- GNU Affero General Public License found in the LICENSE file in
+//- the root directory of this source tree.
+//-
+//- Copyright (c) 2021-present Kaleidos INC
+
+doctype html
+
+div.wrapper
+    tg-project-menu
+
+    main.main.metrics
+
+        section.metrics-content
+
+            //- Metrics dashboard - Project
+            div.metrics-dashboard
+
+                //- Skeleton loading
+                div.skeleton-loading(ng-if="metricsView.loading")
+                    //- Título real
+                    h2.section-title
+                        span.skeleton-element(style="display: inline-block; width: 200px; height: 1.8rem;")
+                    
+                    //- Pestañas reales
+                    div.project-subtabs
+                        button.project-subtab.skeleton-element(style="width: 100px;")
+                        button.project-subtab.skeleton-element(style="width: 100px;")
+                    
+                    //- Descripción
+                    p.section-description(style="text-align: center;")
+                        span.skeleton-element(style="display: inline-block; width: 70%; height: 1rem;")
+                    
+                    //- Grid de tarjetas de métricas
+                    div.project-metrics-grid
+                        div.project-metric-card(ng-repeat="i in [1,2,3,4,5,6,7,8]")
+                            div.project-metric-header
+                                h3.metric-name
+                                    span.skeleton-element(style="display: inline-block; width: 80%; height: 1.2rem;")
+                            div.project-metric-gauge
+                                div.project-metric-body
+                                    div.project-metric-chart
+                                        div.skeleton-gauge
+                                    div.project-metric-insights
+                                        div.metric-value-wrapper
+                                            span.skeleton-element(style="display: inline-block; width: 60px; height: 1.5rem;")
+                                        p.skeleton-element(style="width: 90%; height: 0.9rem; margin-top: 0.5rem;")
+
+                div.error-message(ng-if="metricsView.error && !metricsView.loading")
+                    div.alert.alert-error
+                        i.icon.icon-error
+                        p(translate="{{ metricsView.error }}")
+                        button.button.small(ng-click="reloadMetrics()", translate="METRICS.RETRY")
+
+                div.metrics-body(ng-if="metricsView.data && !metricsView.loading")
+
+                    h2.section-title(translate="METRICS.PROJECT_METRICS_TITLE")
+
+                    div.project-subtabs
+                        button.project-subtab(type="button", ng-class="{'active': metricsView.projectSubTab === 'overview'}", ng-click="setProjectSubTab('overview')")
+                            span(translate="METRICS.PROJECT_TABS.OVERVIEW")
+                        button.project-subtab(type="button", ng-class="{'active': metricsView.projectSubTab === 'historical'}", ng-click="setProjectSubTab('historical')")
+                            span(translate="METRICS.PROJECT_TABS.HISTORICAL")
+
+                    div.project-tab-panels(ng-switch="metricsView.projectSubTab")
+                        div.project-overview-panel(ng-switch-when="overview")
+                            p.section-description(translate="METRICS.PROJECT_OVERVIEW_DESCRIPTION", style="text-align: center;")
+                            div.project-metrics-grid(ng-if="metricsView.data.projectMetrics && metricsView.data.projectMetrics.length > 0")
+                                div.project-metric-card(ng-repeat="metric in metricsView.data.projectMetrics track by metric.id")
+                                    div.project-metric-header
+                                        h3.metric-name {{ metric.name }}
+                                    div.project-metric-gauge
+                                        div.project-metric-body
+                                            div.project-metric-chart
+                                                tg-speedometer-chart(
+                                                    value="metric.ratioValue || (metric.absoluteValue / 100)"
+                                                    raw-value="metric.ratioValue || (metric.absoluteValue / 100)"
+                                                    max-value="1"
+                                                    label="{{ metric.name }}"
+                                                    metric-key="{{ metric.id }}"
+                                                    color="metric.categoryColor"
+                                                    palette="metric.categorySegments || metric.categoryPalette"
+                                                )
+                                            div.project-metric-insights
+                                                div.metric-value-wrapper
+                                                    span.metric-value {{ metric.ratioDisplayValuePrecise || metric.ratioValue }}
+                                                p.metric-description(ng-if="metric.description") {{ metric.description }}
+
+                            div.no-data(ng-if="!metricsView.data.projectMetrics || metricsView.data.projectMetrics.length === 0")
+                                div.empty-state
+                                    i.icon.icon-info
+                                    p(translate="METRICS.NO_DATA")
+
+                        div.project-historical-panel(ng-switch-when="historical")
+                            div.project-historical-header
+                                h3(translate="METRICS.PROJECT_HISTORICAL_TITLE")
+                                p.description(translate="METRICS.PROJECT_HISTORICAL_DESCRIPTION")
+
+                            div.project-historical-filters.team-historical-filters
+                                //- Sprint filter
+                                div.filter-group.sprint-filter
+                                    label.filter-label(for="projectHistoricalSprint", translate="METRICS.SPRINT_FILTER_LABEL")
+                                    select#projectHistoricalSprint(
+                                        ng-model="metricsView.projectHistoricalFilters.sprint"
+                                        ng-change="applySprintFilter(metricsView.projectHistoricalFilters)"
+                                        ng-options="option.id as (option.translate ? (option.name | translate) : option.name) for option in metricsView.sprintOptions"
+                                    )
+                                //- Custom date range
+                                div.filter-group.date-group
+                                    label.filter-label(for="projectHistoricalDateFrom", translate="METRICS.PROJECT_HISTORICAL_DATE_FROM")
+                                    input#projectHistoricalDateFrom(
+                                        type="date"
+                                        ng-model="metricsView.projectHistoricalFilters.dateFrom"
+                                        ng-change="metricsView.projectHistoricalFilters.preset = null"
+                                    )
+                                div.filter-group.date-group
+                                    label.filter-label(for="projectHistoricalDateTo", translate="METRICS.PROJECT_HISTORICAL_DATE_TO")
+                                    input#projectHistoricalDateTo(
+                                        type="date"
+                                        ng-model="metricsView.projectHistoricalFilters.dateTo"
+                                        ng-change="metricsView.projectHistoricalFilters.preset = null"
+                                    )
+                                div.filter-group.metric-filter
+                                    label.filter-label(for="projectHistoricalMetric", translate="METRICS.TEAM_HISTORICAL_METRIC_FILTER")
+                                    select#projectHistoricalMetric(
+                                        ng-model="metricsView.projectHistoricalFilters.metric"
+                                        ng-change="applyProjectHistoricalFilters()"
+                                        ng-options="metric.id as (metric.label | translate) for metric in metricsView.projectHistoricalMetricOptions"
+                                    )
+                                div.filter-group.filter-actions
+                                    button.filter-action(
+                                        type="button"
+                                        ng-click="clearProjectHistoricalDates()"
+                                        ng-disabled="!metricsView.projectHistoricalFilters.dateFrom && !metricsView.projectHistoricalFilters.dateTo && !metricsView.projectHistoricalFilters.preset"
+                                        translate="METRICS.PROJECT_HISTORICAL_CLEAR_DATES"
+                                    )
+
+                            div.project-historical-grid(ng-if="metricsView.projectHistoricalCharts.length > 0")
+                                div.project-historical-card(ng-repeat="chart in metricsView.projectHistoricalCharts track by chart.id")
+                                    tg-area-chart(data="chart.chartData")
+
+                            div.project-historical-empty(ng-if="metricsView.projectHistoricalCharts.length === 0")
+                                div.empty-state
+                                    i.icon.icon-info
+                                    p(translate="METRICS.PROJECT_HISTORICAL_NO_DATA")

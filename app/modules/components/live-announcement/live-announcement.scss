@@ -35,6 +35,8 @@
     max-width: 1200px;
     .announcement-decoration {
         align-self: flex-end;
+        // Pol Alcoverro: ocultar decoración para evitar parpadeos al cargar la notificación
+        display: none;
         margin-right: 1rem;
     }
     .text {

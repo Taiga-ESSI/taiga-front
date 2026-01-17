@@ -1,0 +1,22 @@
+
+//- This source code is licensed under the terms of the
+//- GNU Affero General Public License found in the LICENSE file in
+//- the root directory of this source tree.
+//-
+//- Copyright (c) 2021-present Kaleidos INC
+
+//- Pol Alcoverro: bloque UI para el acceso mediante Google.
+fieldset.google-auth(ng-if="googleAuthEnabled")
+    div.google-auth__button(ng-class="{'google-auth__button--loading': googleLoading}")
+        div.google-auth__placeholder
+            div.google-signin-placeholder(
+                aria-label="{{'LOGIN_COMMON.ALT_LOGIN' | translate}}"
+                role="button"
+            )
+
+    p.google-auth__loading(ng-if="googleLoading", translate="LOGIN_FORM.GOOGLE_LOADING")
+    p.google-auth__hint(
+        ng-if="googleDomainsLabel"
+        translate="LOGIN_FORM.GOOGLE_DOMAIN_HINT"
+        translate-values="{domains: googleDomainsLabel}"
+    )

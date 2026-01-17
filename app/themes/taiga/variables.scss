@@ -2,11 +2,11 @@
 //** COLORS
 //************************
 
-$primary: #25A28C;
-$primary-75: #5CBAA9;
-$primary-50: #92D1C5;
-$primary-25: #C9E8E2;
-$primary-10: #E9F6F3;
+$primary: #0073CF;
+$primary-75: lighten($primary, 10%);
+$primary-50: lighten($primary, 20%);
+$primary-25: lighten($primary, 35%);
+$primary-10: lighten($primary, 45%);
 
 $secondary: #A7CB23;
 $secondary-75: #BDD65A;
@@ -76,7 +76,7 @@ $highlight: #E5F390;
 // TAIGA 6
 
 // Primary colors
-$color-solid-primary: #83EEDE;
+$color-solid-primary: #0075C9;
 $color-link-primary: #008AA8;
 $color-link-tertiary: #70728F;
 

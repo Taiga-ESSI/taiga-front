@@ -46,8 +46,39 @@
             <path class="path1" d="M512 618.112l-362.040 362.040 45.256 45.256 316.785-316.785 316.785 316.785 45.256-45.256zM195.215-1.408l-45.256 45.256 362.040 362.040 362.040-362.040-45.256-45.256-316.785 316.785z"></path>
         </symbol>
         <symbol id="icon-graph" viewBox="0 0 1024 1024">
-            <title>graph</title>
+<!--  -->            <title>graph</title>
             <path class="path1" d="M960 0v1024h64v-1024h-64zM652.8 292.57v731.43h64v-731.43h-64zM335.36 577.83v446.17h64v-446.17h-64zM0 789.944v234.056h64v-234.056h-64z"></path>
+        </symbol>
+        <!-- Placeholder for the custom metrics icon used only in the lateral menu -->
+        <symbol id="icon-metrics" viewBox="0 0 1024 1024">
+            <title>metrics</title>
+            <path class="path1" d="M960 0v1024h64v-1024h-64zM652.8 292.57v731.43h64v-731.43h-64zM335.36 577.83v446.17h64v-446.17h-64zM0 789.944v234.056h64v-234.056h-64z"></path>
+        </symbol>
+        <!-- Team Metrics icon - group of people with chart bars -->
+        <symbol id="icon-team-metrics" viewBox="0 0 400 400">
+            <title>team-metrics</title>
+            <!-- Person 1 (left) - head -->
+            <circle cx="120" cy="100" r="45"/>
+            <!-- Person 1 (left) - body -->
+            <path d="M120 155c-50 0-90 35-90 80v45h180v-45c0-45-40-80-90-80z"/>
+            <!-- Person 2 (right) - head -->
+            <circle cx="280" cy="100" r="35"/>
+            <!-- Person 2 (right) - body partial -->
+            <path d="M280 145c-35 0-65 25-75 55h150v-20c0-35-35-35-75-35z"/>
+            <!-- Chart bars at bottom right -->
+            <rect x="300" y="280" width="30" height="100"/>
+            <rect x="340" y="320" width="30" height="60"/>
+            <rect x="260" y="340" width="30" height="40"/>
+        </symbol>
+        <!-- Project Metrics icon - folder with chart bars -->
+        <symbol id="icon-project-metrics" viewBox="0 0 400 400">
+            <title>project-metrics</title>
+            <!-- Folder shape -->
+            <path d="M40 80h100l40 40h180c15 0 25 10 25 25v200c0 15-10 25-25 25H40c-15 0-25-10-25-25V105c0-15 10-25 25-25z"/>
+            <!-- Chart bars inside folder (cut out / negative space) -->
+            <rect x="100" y="200" width="40" height="120" fill="#fff"/>
+            <rect x="180" y="160" width="40" height="160" fill="#fff"/>
+            <rect x="260" y="220" width="40" height="100" fill="#fff"/>
         </symbol>
         <symbol id="icon-kanban" viewBox="0 0 400 400">
             <title>kanban</title>
