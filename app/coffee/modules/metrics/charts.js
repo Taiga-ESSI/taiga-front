@@ -2,11 +2,12 @@
 
 /*
  * CREADOR POR: POL ALCOVERRO
- * Descripción: Directivas de métricas compiladas a JS para gráficos Chart.js en la integración con Learning Dashboard.
+ * Descripción: Directivas Chart.js para visualizar métricas de Learning Dashboard (radar, gauge, pie, líneas).
+ *              Versión ajustada para registrar Chart.js dinámicamente en Taiga Front.
  */
 
 (function() {
-  var BarChartDirective, LineChartDirective, PieChartDirective, RadarChartDirective, SpeedometerChartDirective, chartReadyPromise, ensureChartReady, getChartMajorVersion, module, taiga;
+  var AreaChartDirective, BarChartDirective, LineChartDirective, PieChartDirective, RadarChartDirective, SpeedometerChartDirective, chartReadyPromise, ensureChartReady, getChartMajorVersion, module, taiga;
 
   taiga = this.taiga;
 
@@ -108,7 +109,7 @@
         return ensureChartReady().then(function(ChartLib) {
           console.log("Chart.js ready, rendering radar chart for:", canvasId);
           return $timeout(function() {
-            var baseConfig, ctx, error, majorVersion, ref, ref1;
+            var baseConfig, ctx, error, majorVersion;
             try {
               ctx = canvas.getContext('2d');
               if (!ctx) {
@@ -138,27 +139,64 @@
                     max: 100,
                     ticks: {
                       stepSize: 20,
+                      color: '#1e293b',
                       callback: function(value) {
                         return value + "%";
                       }
+                    },
+                    pointLabels: {
+                      color: '#0f172a',
+                      font: {
+                        size: 12,
+                        weight: 600
+                      },
+                      callback: function(label) {
+                        var currentLine, j, len, lines, word, words;
+                        if (!label || typeof label !== 'string') {
+                          return label;
+                        }
+                        if (label.length > 15) {
+                          words = label.split(' ');
+                          lines = [];
+                          currentLine = '';
+                          for (j = 0, len = words.length; j < len; j++) {
+                            word = words[j];
+                            if (currentLine.length + word.length + 1 <= 15) {
+                              currentLine = currentLine ? currentLine + " " + word : word;
+                            } else {
+                              if (currentLine) {
+                                lines.push(currentLine);
+                              }
+                              currentLine = word;
+                            }
+                          }
+                          if (currentLine) {
+                            lines.push(currentLine);
+                          }
+                          return lines;
+                        }
+                        return label;
+                      }
+                    },
+                    grid: {
+                      color: 'rgba(30, 41, 59, 0.15)'
                     }
                   }
                 };
                 baseConfig.options.plugins = {
                   legend: {
-                    display: ((ref = data.datasets) != null ? ref : []).length > 1,
-                    position: 'bottom'
+                    display: false
                   },
                   tooltip: {
                     callbacks: {
                       label: function(context) {
-                        var label, parts, ref1, ref2, value;
-                        label = ((ref1 = context.dataset) != null ? ref1.label : void 0) || '';
+                        var label, parts, ref, ref1, value;
+                        label = ((ref = context.dataset) != null ? ref.label : void 0) || '';
                         parts = [];
                         if (label) {
                           parts.push(label + ":");
                         }
-                        value = (ref2 = context.parsed) != null ? ref2.r : void 0;
+                        value = (ref1 = context.parsed) != null ? ref1.r : void 0;
                         parts.push((Number(value || 0).toFixed(2)) + "%");
                         return parts.join(' ');
                       }
@@ -171,22 +209,56 @@
                     beginAtZero: true,
                     max: 100,
                     stepSize: 20,
+                    fontColor: '#1e293b',
                     callback: function(value) {
                       return value + "%";
                     }
+                  },
+                  pointLabels: {
+                    fontColor: '#0f172a',
+                    fontSize: 12,
+                    callback: function(label) {
+                      var currentLine, j, len, lines, word, words;
+                      if (!label || typeof label !== 'string') {
+                        return label;
+                      }
+                      if (label.length > 15) {
+                        words = label.split(' ');
+                        lines = [];
+                        currentLine = '';
+                        for (j = 0, len = words.length; j < len; j++) {
+                          word = words[j];
+                          if (currentLine.length + word.length + 1 <= 15) {
+                            currentLine = currentLine ? currentLine + " " + word : word;
+                          } else {
+                            if (currentLine) {
+                              lines.push(currentLine);
+                            }
+                            currentLine = word;
+                          }
+                        }
+                        if (currentLine) {
+                          lines.push(currentLine);
+                        }
+                        return lines;
+                      }
+                      return label;
+                    }
+                  },
+                  gridLines: {
+                    color: 'rgba(30, 41, 59, 0.15)'
                   }
                 };
                 baseConfig.options.legend = {
-                  display: ((ref1 = data.datasets) != null ? ref1 : []).length > 1,
-                  position: 'bottom'
+                  display: false
                 };
                 baseConfig.options.tooltips = {
                   callbacks: {
                     label: function(tooltipItem, chartData) {
-                      var dataset, label, ref2, ref3, ref4, value, valueNumber;
-                      dataset = chartData != null ? (ref2 = chartData.datasets) != null ? ref2[tooltipItem.datasetIndex] : void 0 : void 0;
+                      var dataset, label, ref, ref1, ref2, value, valueNumber;
+                      dataset = chartData != null ? (ref = chartData.datasets) != null ? ref[tooltipItem.datasetIndex] : void 0 : void 0;
                       label = (dataset != null ? dataset.label : void 0) || '';
-                      value = (ref3 = (ref4 = tooltipItem != null ? tooltipItem.yLabel : void 0) != null ? ref4 : tooltipItem != null ? tooltipItem.value : void 0) != null ? ref3 : tooltipItem != null ? tooltipItem.parsed : void 0;
+                      value = (ref1 = (ref2 = tooltipItem != null ? tooltipItem.yLabel : void 0) != null ? ref2 : tooltipItem != null ? tooltipItem.value : void 0) != null ? ref1 : tooltipItem != null ? tooltipItem.parsed : void 0;
                       valueNumber = Number(value || 0);
                       return label + ": " + (valueNumber.toFixed(2)) + "%";
                     }
@@ -202,20 +274,29 @@
             } finally {
               isRendering = false;
             }
-          }, 100);
+          }, 250);
         })["catch"](function(error) {
           console.error("Chart.js not available:", error);
           return isRendering = false;
         });
       };
+      $timeout(function() {
+        if (scope.data && scope.data.datasets && scope.data.datasets.length > 0) {
+          console.log("RadarChart initial render with:", scope.data);
+          return renderChart(scope.data);
+        }
+      }, 0);
       scope.$watch('data', function(newVal, oldVal) {
-        console.log("RadarChart data changed:", newVal);
-        if (newVal) {
+        if (newVal === oldVal && (chart != null)) {
+          return;
+        }
+        if (newVal && newVal.datasets && newVal.datasets.length > 0) {
+          console.log("RadarChart data changed, re-rendering");
           return renderChart(newVal);
-        } else {
+        } else if (!newVal) {
           return destroyChart();
         }
-      }, true);
+      }, false);
       return scope.$on('$destroy', function() {
         console.log("RadarChart directive destroyed:", canvasId);
         return destroyChart();
@@ -235,7 +316,7 @@
   SpeedometerChartDirective = function($parse, $timeout) {
     var link;
     link = function(scope, element, attrs) {
-      var canvas, canvasId, chart, destroyChart, getColorForValue, isRendering, renderChart;
+      var buildPaletteDataset, canvas, canvasId, chart, deriveRemainderColor, destroyChart, drawCenterText, drawPointer, drawScaleMarks, formatScaleValue, getGradientForValue, isRendering, renderChart, scheduleRender;
       console.log("Speedometer directive linking");
       canvasId = "speedometer-" + (Date.now()) + "-" + (Math.random().toString(36).substr(2, 9));
       canvas = document.createElement('canvas');
@@ -257,15 +338,112 @@
           return chart = null;
         }
       };
-      renderChart = function(value, label) {
-        console.log("Speedometer renderChart:", value, label);
+      formatScaleValue = function(value, unit) {
+        var absValue, decimals, formatted;
+        if (!isFinite(value)) {
+          return "";
+        }
+        absValue = Math.abs(value);
+        decimals = absValue >= 100 ? 0 : absValue >= 10 ? 1 : 2;
+        formatted = value.toFixed(decimals);
+        formatted = formatted.replace(/\.0+$/, '');
+        formatted = formatted.replace(/(\.\d*[1-9])0+$/, '$1');
+        if ((unit != null) && unit.length > 0) {
+          return "" + formatted + unit;
+        } else {
+          return formatted;
+        }
+      };
+      deriveRemainderColor = function(color) {
+        var b, base, g, hex, hexMatch, parts, r, rgbMatch;
+        base = typeof color === "string" ? color.trim() : "";
+        if (!base.length) {
+          return 'rgba(148, 163, 184, 0.25)';
+        }
+        hexMatch = base.match(/^#([0-9a-f]{6})$/i);
+        if (hexMatch) {
+          hex = hexMatch[1];
+          r = parseInt(hex.substr(0, 2), 16);
+          g = parseInt(hex.substr(2, 2), 16);
+          b = parseInt(hex.substr(4, 2), 16);
+          return "rgba(" + r + ", " + g + ", " + b + ", 0.18)";
+        }
+        rgbMatch = base.match(/^rgba?\(([^)]+)\)$/i);
+        if (rgbMatch) {
+          parts = rgbMatch[1].split(',').map(function(part) {
+            return part.trim();
+          });
+          r = parseInt(parts[0], 10) || 148;
+          g = parseInt(parts[1], 10) || 163;
+          b = parseInt(parts[2], 10) || 184;
+          return "rgba(" + r + ", " + g + ", " + b + ", 0.18)";
+        }
+        return 'rgba(148, 163, 184, 0.25)';
+      };
+      buildPaletteDataset = function(segments, fallbackColor, maxRangeRatio) {
+        var colorValue, colors, data, entries, j, len, rangeRatio, scaleFactor, segment, segmentValue, totalRatio;
+        if (maxRangeRatio == null) {
+          maxRangeRatio = 1;
+        }
+        if (!(Array.isArray(segments) && segments.length > 0)) {
+          return null;
+        }
+        entries = [];
+        totalRatio = 0;
+        for (j = 0, len = segments.length; j < len; j++) {
+          segment = segments[j];
+          if (!(segment != null)) {
+            continue;
+          }
+          segmentValue = Number(segment.value);
+          if (!(isFinite(segmentValue) && segmentValue > 0)) {
+            continue;
+          }
+          colorValue = typeof segment.color === "string" && segment.color.trim().length > 0 ? segment.color.trim() : fallbackColor;
+          entries.push({
+            ratio: segmentValue,
+            color: colorValue
+          });
+          totalRatio += segmentValue;
+        }
+        if (!entries.length) {
+          return null;
+        }
+        rangeRatio = isFinite(maxRangeRatio) && maxRangeRatio > 0 ? maxRangeRatio : totalRatio;
+        if (rangeRatio > totalRatio) {
+          entries.push({
+            ratio: rangeRatio - totalRatio,
+            color: fallbackColor || 'rgba(148, 163, 184, 0.25)'
+          });
+          totalRatio = rangeRatio;
+        }
+        if (rangeRatio < totalRatio) {
+          totalRatio = rangeRatio;
+        }
+        if (totalRatio <= 0) {
+          totalRatio = 1;
+        }
+        scaleFactor = 100 / totalRatio;
+        data = entries.map(function(entry) {
+          return Math.max(0, entry.ratio * scaleFactor);
+        });
+        colors = entries.map(function(entry) {
+          return entry.color;
+        });
+        return {
+          data: data,
+          colors: colors
+        };
+      };
+      renderChart = function(value, label, maxValue, rawValue, unit, metricKey, customColor, paletteSegments) {
+        console.log("Speedometer renderChart:", value, label, maxValue, rawValue);
         if (isRendering) {
           return;
         }
         isRendering = true;
         return ensureChartReady().then(function(ChartLib) {
           return $timeout(function() {
-            var config, ctx, error, val;
+            var absoluteRatio, config, ctx, datasetColors, datasetData, datasetObject, error, gaugeBaseColor, gaugeFillStyle, gaugeRemainderColor, hasCustomScale, inputRatio, maxRefRatio, normalized, paletteDataset, providedColor, ratioClamped;
             try {
               ctx = canvas.getContext('2d');
               if (!ctx) {
@@ -273,22 +451,69 @@
                 isRendering = false;
                 return;
               }
-              val = parseFloat(value) || 0;
-              val = Math.max(0, Math.min(100, val));
               destroyChart();
+              maxRefRatio = parseFloat(maxValue);
+              if (!isFinite(maxRefRatio) || maxRefRatio <= 0) {
+                maxRefRatio = 1;
+              }
+              hasCustomScale = true;
+              inputRatio = parseFloat(value);
+              if (!isFinite(inputRatio)) {
+                inputRatio = 0;
+              }
+              ratioClamped = Math.max(0, Math.min(inputRatio, maxRefRatio));
+              normalized = maxRefRatio > 0 ? (ratioClamped / maxRefRatio) * 100 : 0;
+              absoluteRatio = parseFloat(rawValue);
+              if (!isFinite(absoluteRatio)) {
+                absoluteRatio = ratioClamped;
+              }
+              absoluteRatio = Math.max(0, absoluteRatio);
+              gaugeFillStyle = getGradientForValue(ctx, normalized, label, metricKey);
+              providedColor = typeof customColor === "string" && customColor.trim().length > 0 ? customColor.trim() : null;
+              if (providedColor) {
+                gaugeBaseColor = providedColor;
+                gaugeRemainderColor = deriveRemainderColor(providedColor);
+              } else {
+                gaugeBaseColor = (gaugeFillStyle != null ? gaugeFillStyle.fill : void 0) || gaugeFillStyle;
+                gaugeRemainderColor = (gaugeFillStyle != null ? gaugeFillStyle.remainder : void 0) || 'rgba(220, 220, 220, 0.15)';
+              }
+              paletteDataset = buildPaletteDataset(paletteSegments, gaugeRemainderColor, maxRefRatio);
+              datasetData = [];
+              datasetColors = [];
+              if (paletteDataset != null) {
+                datasetData = paletteDataset.data;
+                datasetColors = paletteDataset.colors;
+              } else {
+                datasetData = [normalized, Math.max(100 - normalized, 0)];
+                datasetColors = [gaugeBaseColor, gaugeRemainderColor];
+              }
+              datasetObject = {
+                data: datasetData,
+                backgroundColor: datasetColors,
+                hoverBackgroundColor: datasetColors,
+                borderWidth: 0,
+                hoverBorderWidth: 0,
+                hoverOffset: 0,
+                circumference: 180,
+                rotation: 270,
+                cutout: '75%',
+                borderRadius: 0
+              };
+              datasetObject._taigaContext = {
+                normalized: normalized,
+                hasCustomScale: hasCustomScale,
+                maxRef: maxRefRatio,
+                unit: unit,
+                absolute: absoluteRatio,
+                label: label,
+                pointerColor: '#000000',
+                displayAsRatio: true,
+                ratioValue: ratioClamped
+              };
               config = {
                 type: 'doughnut',
                 data: {
-                  datasets: [
-                    {
-                      data: [val, 100 - val],
-                      backgroundColor: [getColorForValue(val), 'rgba(200, 200, 200, 0.2)'],
-                      borderWidth: 0,
-                      circumference: Math.PI,
-                      rotation: Math.PI,
-                      cutout: '72%'
-                    }
-                  ]
+                  datasets: [datasetObject]
                 },
                 options: {
                   responsive: true,
@@ -310,45 +535,60 @@
                 },
                 plugins: [
                   {
-                    id: 'gaugePointer',
-                    afterDatasetDraw: function(chart) {
-                      var arc, endX, endY, headLength, innerRadius, meta, outerRadius, pointerAngle, pointerRadius;
-                      meta = chart.getDatasetMeta(0);
-                      arc = meta != null ? meta.data != null ? meta.data[0] : void 0 : void 0;
-                      if (!((arc != null ? arc.startAngle : void 0) != null)) {
-                        return;
-                      }
-                      pointerAngle = arc.endAngle;
-                      if (!isFinite(pointerAngle)) {
-                        pointerAngle = arc.startAngle;
-                      }
-                      ctx = chart.ctx;
-                      outerRadius = arc.outerRadius || 0;
-                      innerRadius = arc.innerRadius || 0;
-                      pointerRadius = Math.max(innerRadius + (outerRadius - innerRadius) * 0.85, innerRadius + 12);
-                      headLength = 12;
-                      endX = arc.x + pointerRadius * Math.cos(pointerAngle);
-                      endY = arc.y + pointerRadius * Math.sin(pointerAngle);
-                      ctx.save();
-                      ctx.lineWidth = 3;
-                      ctx.lineCap = 'round';
-                      ctx.strokeStyle = '#111827';
-                      ctx.fillStyle = '#111827';
-                      ctx.beginPath();
-                      ctx.moveTo(arc.x, arc.y);
-                      ctx.lineTo(endX, endY);
-                      ctx.stroke();
-                      ctx.beginPath();
-                      ctx.moveTo(endX, endY);
-                      ctx.lineTo(endX - headLength * Math.cos(pointerAngle - Math.PI / 12), endY - headLength * Math.sin(pointerAngle - Math.PI / 12));
-                      ctx.lineTo(endX - headLength * Math.cos(pointerAngle + Math.PI / 12), endY - headLength * Math.sin(pointerAngle + Math.PI / 12));
-                      ctx.closePath();
-                      ctx.fill();
-                      ctx.beginPath();
-                      ctx.arc(arc.x, arc.y, 6, 0, Math.PI * 2);
-                      ctx.fill();
-                      return ctx.restore();
-                    }
+                    id: 'gaugeEnhancements',
+                    afterDatasetDraw: (function(_this) {
+                      return function(chart) {
+                        var arcItem, circumferenceDeg, contextInfo, cx, cy, dataset, endAngle, firstArc, gaugeEnd, gaugeStart, innerRadius, j, len, meta, normalizedValue, outerRadius, pointerAngle, ref, ref1, ref2, ref3, ref4, rotationDeg, span, startAngle;
+                        meta = chart.getDatasetMeta(0);
+                        firstArc = meta != null ? (ref = meta.data) != null ? ref[0] : void 0 : void 0;
+                        dataset = (ref1 = chart.config) != null ? (ref2 = ref1.data) != null ? (ref3 = ref2.datasets) != null ? ref3[0] : void 0 : void 0 : void 0;
+                        contextInfo = (dataset != null ? dataset._taigaContext : void 0) || {};
+                        if (firstArc == null) {
+                          return;
+                        }
+                        ctx = chart.ctx;
+                        cx = firstArc.x;
+                        cy = firstArc.y;
+                        outerRadius = firstArc.outerRadius || 0;
+                        innerRadius = firstArc.innerRadius || 0;
+                        gaugeStart = null;
+                        gaugeEnd = null;
+                        if ((meta != null ? meta.data : void 0) && meta.data.length > 0) {
+                          ref4 = meta.data;
+                          for (j = 0, len = ref4.length; j < len; j++) {
+                            arcItem = ref4[j];
+                            if (!(arcItem != null)) {
+                              continue;
+                            }
+                            startAngle = arcItem.startAngle;
+                            endAngle = arcItem.endAngle;
+                            if (!(isFinite(startAngle) && isFinite(endAngle))) {
+                              continue;
+                            }
+                            if (gaugeStart === null || startAngle < gaugeStart) {
+                              gaugeStart = startAngle;
+                            }
+                            if (gaugeEnd === null || endAngle > gaugeEnd) {
+                              gaugeEnd = endAngle;
+                            }
+                          }
+                        }
+                        if (!((gaugeStart != null) && (gaugeEnd != null))) {
+                          rotationDeg = (dataset != null ? dataset.rotation : void 0) || 270;
+                          circumferenceDeg = (dataset != null ? dataset.circumference : void 0) || 180;
+                          gaugeStart = rotationDeg * Math.PI / 180;
+                          gaugeEnd = gaugeStart + (circumferenceDeg * Math.PI / 180);
+                        }
+                        normalizedValue = contextInfo.normalized || 0;
+                        span = gaugeEnd - gaugeStart;
+                        pointerAngle = gaugeStart + (Math.max(0, Math.min(100, normalizedValue)) / 100) * span;
+                        ctx.save();
+                        drawScaleMarks(ctx, cx, cy, outerRadius, innerRadius, contextInfo.hasCustomScale, contextInfo.maxRef, contextInfo.unit, contextInfo.displayAsRatio);
+                        drawCenterText(ctx, cx, cy, normalizedValue, contextInfo.label, contextInfo.absolute, contextInfo.unit, contextInfo.hasCustomScale, contextInfo.maxRef);
+                        drawPointer(ctx, cx, cy, pointerAngle, innerRadius, outerRadius, contextInfo.pointerColor);
+                        return ctx.restore();
+                      };
+                    })(this)
                   }
                 ]
               };
@@ -360,27 +600,133 @@
             } finally {
               isRendering = false;
             }
-          }, 100);
+          }, 250);
         });
       };
-      getColorForValue = function(value) {
-        if (value < 33) {
-          return 'rgba(239, 68, 68, 0.8)';
-        } else if (value < 66) {
-          return 'rgba(251, 191, 36, 0.8)';
-        } else {
-          return 'rgba(34, 197, 94, 0.8)';
+      drawScaleMarks = function(ctx, cx, cy, outerRadius, innerRadius, hasCustomScale, maxRef, unit, displayAsRatio) {
+        var angle, endRadius, i, j, labelRadius, labelText, labelValue, labelX, labelY, len, ref, results, startRadius, x1, x2, y1, y2;
+        if (displayAsRatio == null) {
+          displayAsRatio = false;
         }
+        ctx.strokeStyle = 'rgba(30, 41, 59, 0.4)';
+        ctx.lineWidth = 2;
+        ref = [0, 2, 4];
+        results = [];
+        for (j = 0, len = ref.length; j < len; j++) {
+          i = ref[j];
+          angle = Math.PI + (i * Math.PI / 4);
+          startRadius = outerRadius + 5;
+          endRadius = outerRadius + 15;
+          x1 = cx + startRadius * Math.cos(angle);
+          y1 = cy + startRadius * Math.sin(angle);
+          x2 = cx + endRadius * Math.cos(angle);
+          y2 = cy + endRadius * Math.sin(angle);
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+          labelRadius = outerRadius + 28;
+          labelX = cx + labelRadius * Math.cos(angle);
+          labelY = cy + labelRadius * Math.sin(angle);
+          if (hasCustomScale) {
+            labelValue = (maxRef || 0) * (i / 4);
+          } else {
+            labelValue = i * 25;
+          }
+          if (displayAsRatio) {
+            labelText = Number(labelValue || 0).toFixed(2);
+          } else {
+            labelText = formatScaleValue(labelValue, hasCustomScale ? unit : "%");
+          }
+          ctx.fillStyle = '#1e293b';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          results.push(ctx.fillText(labelText, labelX, labelY));
+        }
+        return results;
       };
-      scope.$watch('value', function(newVal) {
-        if (newVal != null) {
-          return renderChart(newVal, scope.label);
+      drawCenterText = function(ctx, cx, cy, normalized, label, absolute, unit, hasCustomScale, maxRef) {};
+      drawPointer = function(ctx, cx, cy, angle, innerRadius, outerRadius, pointerColor) {
+        var endX, endY, headLength, pointerRadius, pointerWidth;
+        pointerRadius = innerRadius + (outerRadius - innerRadius) * 0.8;
+        pointerWidth = 6;
+        headLength = 10;
+        endX = cx + pointerRadius * Math.cos(angle);
+        endY = cy + pointerRadius * Math.sin(angle);
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+        ctx.lineWidth = pointerWidth;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = pointerColor || '#000000';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.fillStyle = pointerColor || '#000000';
+        ctx.beginPath();
+        ctx.moveTo(endX, endY);
+        ctx.lineTo(endX - headLength * Math.cos(angle - Math.PI / 8), endY - headLength * Math.sin(angle - Math.PI / 8));
+        ctx.lineTo(endX - headLength * Math.cos(angle + Math.PI / 8), endY - headLength * Math.sin(angle + Math.PI / 8));
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+        ctx.shadowBlur = 4;
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowColor = 'transparent';
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+        return ctx.fill();
+      };
+      getGradientForValue = function(ctx, value, label, metricKey) {
+        var gradient, identifier, normalizedIdentifier, remainderGradient, treatAsUnassigned;
+        identifier = metricKey || label || "";
+        normalizedIdentifier = identifier.toString().toLowerCase();
+        treatAsUnassigned = normalizedIdentifier.indexOf("unassigned") !== -1;
+        if (!treatAsUnassigned) {
+          return {
+            fill: 'rgba(37, 99, 235, 0.92)',
+            remainder: 'rgba(37, 99, 235, 0.18)'
+          };
         }
-      });
-      scope.$watch('label', function(newVal) {
-        if (scope.value != null) {
-          return renderChart(scope.value, newVal);
+        gradient = ctx.createLinearGradient(0, 0, 400, 0);
+        remainderGradient = ctx.createLinearGradient(0, 0, 400, 0);
+        remainderGradient.addColorStop(0, 'rgba(34, 197, 94, 0.18)');
+        remainderGradient.addColorStop(0.5, 'rgba(251, 191, 36, 0.18)');
+        remainderGradient.addColorStop(1, 'rgba(239, 68, 68, 0.18)');
+        if (value < 33) {
+          gradient.addColorStop(0, 'rgba(34, 197, 94, 0.9)');
+          gradient.addColorStop(1, 'rgba(22, 163, 74, 0.9)');
+        } else if (value < 66) {
+          gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)');
+          gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)');
+        } else {
+          gradient.addColorStop(0, 'rgba(239, 68, 68, 0.9)');
+          gradient.addColorStop(1, 'rgba(220, 38, 38, 0.9)');
         }
+        return {
+          fill: gradient,
+          remainder: remainderGradient
+        };
+      };
+      scheduleRender = function() {
+        if (!((scope.value != null) || (scope.rawValue != null))) {
+          return;
+        }
+        return renderChart(scope.value, scope.label, scope.maxValue, scope.rawValue, scope.unit, scope.metricKey, scope.color, scope.palette);
+      };
+      scope.$watchGroup(['value', 'label', 'maxValue', 'rawValue', 'unit', 'metricKey', 'color', 'palette'], function() {
+        return scheduleRender();
       });
       return scope.$on('$destroy', function() {
         return destroyChart();
@@ -391,7 +737,13 @@
       link: link,
       scope: {
         value: '=',
-        label: '@'
+        label: '@',
+        maxValue: '=?',
+        rawValue: '=?',
+        unit: '@?',
+        metricKey: '@?',
+        color: '=?',
+        palette: '=?'
       }
     };
   };
@@ -463,18 +815,25 @@
                   plugins: {
                     legend: {
                       display: true,
-                      position: 'bottom'
+                      position: 'bottom',
+                      labels: {
+                        color: '#1e293b',
+                        font: {
+                          size: 12,
+                          weight: 500
+                        }
+                      }
                     },
                     tooltip: {
                       callbacks: {
                         label: function(context) {
-                          var i, label, len, percentage, point, ref1, ref2, total, value;
+                          var j, label, len, percentage, point, ref1, ref2, total, value;
                           label = context.label || '';
                           value = context.parsed || 0;
                           total = 0;
                           ref2 = ((ref1 = context.dataset) != null ? ref1.data : void 0) || [];
-                          for (i = 0, len = ref2.length; i < len; i++) {
-                            point = ref2[i];
+                          for (j = 0, len = ref2.length; j < len; j++) {
+                            point = ref2[j];
                             total += point || 0;
                           }
                           percentage = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
@@ -549,9 +908,8 @@
         }
       };
       renderChart = function(data) {
-        var config, ctx, error, ref;
         console.log("BarChart renderChart:", data);
-        if (!((data != null) && data.datasets && data.datasets.length > 0)) {
+        if (!data || !(data.datasets && data.datasets.length > 0)) {
           destroyChart();
           return;
         }
@@ -561,6 +919,7 @@
         isRendering = true;
         return ensureChartReady().then(function(ChartLib) {
           return $timeout(function() {
+            var config, ctx, customOptions, error;
             try {
               ctx = canvas.getContext('2d');
               if (!ctx) {
@@ -630,7 +989,7 @@
                       callbacks: {
                         label: function(context) {
                           var label, parts, ref, ref1, value;
-                          label = (ref = context.dataset) != null ? ref.label : void 0;
+                          label = ((ref = context.dataset) != null ? ref.label : void 0) || '';
                           value = (ref1 = context.parsed) != null ? ref1.y : void 0;
                           parts = [];
                           if (label) {
@@ -644,6 +1003,14 @@
                   }
                 }
               };
+              if ((data != null ? data.options : void 0) != null) {
+                customOptions = angular.copy(data.options);
+                if (angular.merge != null) {
+                  config.options = angular.merge({}, config.options, customOptions);
+                } else {
+                  config.options = angular.extend({}, config.options, customOptions);
+                }
+              }
               chart = new ChartLib(ctx, config);
               return console.log("✓ Bar chart created");
             } catch (error1) {
@@ -652,7 +1019,7 @@
             } finally {
               isRendering = false;
             }
-          }, 100);
+          }, 150);
         })["catch"](function(error) {
           console.error("Chart.js not available for bar chart:", error);
           return isRendering = false;
@@ -744,22 +1111,39 @@
                       min: 0,
                       max: data.maxValue || 100,
                       ticks: {
+                        color: '#1e293b',
                         callback: function(value) {
                           if (data.isPercentage) {
                             return value + '%';
                           }
                           return value;
                         }
+                      },
+                      grid: {
+                        color: 'rgba(30, 41, 59, 0.1)'
                       }
                     },
                     x: {
-                      display: true
+                      display: true,
+                      ticks: {
+                        color: '#1e293b'
+                      },
+                      grid: {
+                        color: 'rgba(30, 41, 59, 0.1)'
+                      }
                     }
                   },
                   plugins: {
                     legend: {
                       display: ((ref = data.datasets) != null ? ref.length : void 0) > 1,
-                      position: 'bottom'
+                      position: 'bottom',
+                      labels: {
+                        color: '#1e293b',
+                        font: {
+                          size: 12,
+                          weight: 500
+                        }
+                      }
                     }
                   }
                 }
@@ -796,5 +1180,233 @@
   };
 
   module.directive("tgLineChart", ["$parse", "$timeout", LineChartDirective]);
+
+  AreaChartDirective = function($parse, $timeout) {
+    var link;
+    link = function(scope, element, attrs) {
+      var canvas, canvasId, chart, destroyChart, isRendering, renderChart;
+      canvasId = "area-chart-" + (Date.now()) + "-" + (Math.random().toString(36).substr(2, 9));
+      canvas = document.createElement('canvas');
+      canvas.id = canvasId;
+      canvas.width = 600;
+      canvas.height = 400;
+      element.append(canvas);
+      chart = null;
+      isRendering = false;
+      destroyChart = function() {
+        var e;
+        if (chart != null) {
+          try {
+            chart.destroy();
+          } catch (error1) {
+            e = error1;
+            console.error("Error destroying area chart:", e);
+          }
+          return chart = null;
+        }
+      };
+      renderChart = function(data) {
+        if (!data || !data.labels || !data.datasets || data.datasets.length === 0) {
+          console.warn("No valid data for area chart");
+          destroyChart();
+          return;
+        }
+        if (isRendering) {
+          return;
+        }
+        isRendering = true;
+        return ensureChartReady().then(function(ChartLib) {
+          return $timeout(function() {
+            var areaColor, config, ctx, error, ref, ref1, ref2;
+            try {
+              ctx = canvas.getContext('2d');
+              if (!ctx) {
+                console.error("Failed to get canvas context");
+                isRendering = false;
+                return;
+              }
+              destroyChart();
+              areaColor = data.color || '#44C2C2';
+              config = {
+                type: 'line',
+                data: {
+                  labels: data.labels,
+                  datasets: data.datasets.map(function(dataset) {
+                    return {
+                      label: dataset.label || '',
+                      data: dataset.data,
+                      borderColor: dataset.borderColor || areaColor,
+                      backgroundColor: dataset.backgroundColor || (areaColor + '40'),
+                      borderWidth: dataset.borderWidth || 2,
+                      fill: true,
+                      tension: dataset.tension || 0.35,
+                      pointRadius: dataset.pointRadius || 3,
+                      pointHoverRadius: dataset.pointHoverRadius || 5,
+                      pointBackgroundColor: dataset.pointBackgroundColor || areaColor,
+                      pointBorderColor: dataset.pointBorderColor || '#ffffff',
+                      pointBorderWidth: dataset.pointBorderWidth || 1.5,
+                      pointHoverBackgroundColor: dataset.pointHoverBackgroundColor || areaColor,
+                      pointHoverBorderColor: dataset.pointHoverBorderColor || '#ffffff'
+                    };
+                  })
+                },
+                options: {
+                  responsive: true,
+                  maintainAspectRatio: true,
+                  aspectRatio: 1.5,
+                  scales: {
+                    x: {
+                      type: 'category',
+                      grid: {
+                        display: false,
+                        drawBorder: true,
+                        borderColor: '#cbd5e1'
+                      },
+                      ticks: {
+                        color: '#475569',
+                        font: {
+                          size: 11
+                        },
+                        maxRotation: 45,
+                        minRotation: 45
+                      },
+                      title: {
+                        display: !!data.xAxisLabel,
+                        text: data.xAxisLabel || '',
+                        color: '#1e293b',
+                        font: {
+                          size: 12,
+                          weight: 600
+                        }
+                      }
+                    },
+                    y: {
+                      beginAtZero: true,
+                      max: (ref = data.yAxisMax) != null ? ref : void 0,
+                      grid: {
+                        display: true,
+                        color: '#e2e8f0',
+                        drawBorder: true,
+                        borderColor: '#cbd5e1'
+                      },
+                      ticks: {
+                        color: '#475569',
+                        font: {
+                          size: 11
+                        },
+                        stepSize: (ref1 = data.yAxisStep) != null ? ref1 : void 0,
+                        callback: function(value) {
+                          var numericValue;
+                          if (typeof value !== 'number') {
+                            return value;
+                          }
+                          numericValue = Number(value);
+                          if (!isFinite(numericValue)) {
+                            return value;
+                          }
+                          if (data.isPercentage) {
+                            return (numericValue.toFixed(1)) + "%";
+                          }
+                          return numericValue.toFixed(2);
+                        }
+                      },
+                      title: {
+                        display: !!data.yAxisLabel,
+                        text: data.yAxisLabel || '',
+                        color: '#1e293b',
+                        font: {
+                          size: 12,
+                          weight: 600
+                        }
+                      }
+                    }
+                  },
+                  plugins: {
+                    legend: {
+                      display: (ref2 = data.showLegend) != null ? ref2 : true,
+                      position: 'top',
+                      labels: {
+                        color: '#1e293b',
+                        font: {
+                          size: 12,
+                          weight: 500
+                        },
+                        usePointStyle: true,
+                        padding: 15
+                      }
+                    },
+                    title: {
+                      display: !!data.title,
+                      text: data.title || '',
+                      color: '#1e293b',
+                      font: {
+                        size: 14,
+                        weight: 600
+                      },
+                      padding: {
+                        top: 10,
+                        bottom: 20
+                      }
+                    },
+                    tooltip: {
+                      mode: 'index',
+                      intersect: false,
+                      backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                      titleColor: '#fff',
+                      bodyColor: '#fff',
+                      borderColor: '#cbd5e1',
+                      borderWidth: 1,
+                      padding: 10,
+                      displayColors: true,
+                      callbacks: {
+                        label: function(context) {
+                          var formatted, label, numericValue, value;
+                          label = context.dataset.label || '';
+                          value = context.parsed.y;
+                          if (value != null) {
+                            numericValue = Number(value);
+                            if (isFinite(numericValue)) {
+                              formatted = data.isPercentage ? (numericValue.toFixed(2)) + "%" : numericValue.toFixed(3);
+                              return (label + ": " + formatted).trim();
+                            }
+                          }
+                          return label;
+                        }
+                      }
+                    }
+                  }
+                }
+              };
+              return chart = new ChartLib(ctx, config);
+            } catch (error1) {
+              error = error1;
+              return console.error("Error creating area chart:", error);
+            } finally {
+              isRendering = false;
+            }
+          }, 100);
+        });
+      };
+      scope.$watch('data', function(newVal, oldVal) {
+        if (newVal) {
+          return renderChart(newVal);
+        } else {
+          return destroyChart();
+        }
+      }, true);
+      return scope.$on('$destroy', function() {
+        return destroyChart();
+      });
+    };
+    return {
+      restrict: 'E',
+      link: link,
+      scope: {
+        data: '='
+      }
+    };
+  };
+
+  module.directive("tgAreaChart", ["$parse", "$timeout", AreaChartDirective]);
 
 }).call(this);

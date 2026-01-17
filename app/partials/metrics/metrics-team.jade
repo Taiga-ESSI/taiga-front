@@ -13,41 +13,8 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-team'")
 
         section.metrics-content
 
-            //- Authentication status check
-            div.metrics-auth-status(ng-if="metricsAuth.checking")
-                div.loading-container
-                    div.spinner
-                    p(translate="METRICS.AUTH_LOADING")
-
-            //- Login form
-            div.metrics-login(ng-if="!metricsAuth.authenticated && !metricsAuth.checking")
-                form.metrics-login-form(ng-submit="loginMetrics()", novalidate)
-                    h2(translate="METRICS.LOGIN_TITLE")
-                    p.description(translate="METRICS.LOGIN_DESCRIPTION")
-
-                    label(for="metrics-username", translate="METRICS.LOGIN_USERNAME")
-                    input#metrics-username(type="text", ng-model="metricsAuth.form.username", required, autocomplete="username")
-
-                    div.error-message(ng-if="metricsAuth.error")
-                        div.alert.alert-error
-                            i.icon.icon-error
-                            span(translate="{{ metricsAuth.error }}")
-
-                    button.button(type="submit", ng-disabled="metricsAuth.loading")
-                        span(ng-if="!metricsAuth.loading", translate="METRICS.LOGIN_SUBMIT")
-                        span(ng-if="metricsAuth.loading", translate="METRICS.LOGIN_LOADING")
-
             //- Metrics dashboard - Team
-            div.metrics-dashboard(ng-if="metricsAuth.authenticated && !metricsAuth.checking")
-                div.metrics-auth-bar
-                    div.status
-                        span(translate="METRICS.AUTH_STATUS")
-                        strong {{ metricsAuth.username }}
-                        span.separator •
-                        span(translate="METRICS.AUTH_PROJECT", translate-values="{project: metricsAuth.externalProjectId}")
-                    div.controls
-                        button.button.secondary(ng-click="logoutMetrics()", ng-disabled="metricsAuth.loading")
-                            span(translate="METRICS.LOGOUT")
+            div.metrics-dashboard
 
                 div.loading-container(ng-if="metricsView.loading")
                     div.spinner
@@ -95,6 +62,32 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-team'")
                                             span {{ user.displayName }}
 
                             
+                            div.team-section(ng-if="metricsView.data.teamMetricGroups && metricsView.data.teamMetricGroups.length > 0")
+                                h3(translate="METRICS.TEAM_METRICS_TITLE")
+                                div.team-metrics-groups
+                                    div.metric-group(ng-repeat="group in metricsView.data.teamMetricGroups")
+                                        h4.group-title {{ group.label }}
+                                        div.project-metrics-grid
+                                            div.project-metric-card(ng-repeat="metric in group.metrics track by metric.id")
+                                                div.project-metric-header
+                                                    h3.metric-name {{ metric.label }}
+                                                div.project-metric-gauge
+                                                    div.project-metric-body
+                                                        div.project-metric-chart
+                                                            tg-speedometer-chart(
+                                                                value="metric.ratio"
+                                                                raw-value="metric.ratio"
+                                                                max-value="1"
+                                                                label="{{ metric.label }}"
+                                                                metric-id="{{ metric.id }}"
+                                                                color="metric.categoryColor"
+                                                                palette="metric.categorySegments"
+                                                            )
+                                                        div.project-metric-insights
+                                                            div.metric-value-wrapper
+                                                                span.metric-value {{ metric.formattedRatio }}
+                                                            p.metric-description(ng-if="metric.description") {{ metric.description }}
+
                             div.team-section(ng-if="metricsView.data.metricsCategories && Object.keys(metricsView.data.metricsCategories).length > 0")
                                 h3(translate="METRICS.METRICS_CATEGORIES")
                                 ul.key-value-list
@@ -124,12 +117,29 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-team'")
                                 p.description(translate="METRICS.TEAM_HISTORICAL_DESCRIPTION")
 
                             div.team-historical-filters
+                                //- Date preset selector
+                                div.filter-group.preset-group
+                                    label.filter-label(for="teamHistoricalPreset", translate="METRICS.DATE_PRESET_LABEL")
+                                    select#teamHistoricalPreset(
+                                        ng-model="metricsView.teamHistoricalFilters.preset"
+                                        ng-change="applyTeamDatePreset(metricsView.teamHistoricalFilters.preset)"
+                                        ng-options="preset.id as (preset.translate ? (preset.label | translate) : preset.label) for preset in metricsView.datePresetOptions track by preset.id"
+                                    )
+                                //- Custom date range
                                 div.filter-group.date-group
                                     label.filter-label(for="teamHistoricalDateFrom", translate="METRICS.TEAM_HISTORICAL_DATE_FROM")
-                                    input#teamHistoricalDateFrom(type="date", ng-model="metricsView.teamHistoricalFilters.dateFrom")
+                                    input#teamHistoricalDateFrom(
+                                        type="date"
+                                        ng-model="metricsView.teamHistoricalFilters.dateFrom"
+                                        ng-change="metricsView.teamHistoricalFilters.preset = null"
+                                    )
                                 div.filter-group.date-group
                                     label.filter-label(for="teamHistoricalDateTo", translate="METRICS.TEAM_HISTORICAL_DATE_TO")
-                                    input#teamHistoricalDateTo(type="date", ng-model="metricsView.teamHistoricalFilters.dateTo")
+                                    input#teamHistoricalDateTo(
+                                        type="date"
+                                        ng-model="metricsView.teamHistoricalFilters.dateTo"
+                                        ng-change="metricsView.teamHistoricalFilters.preset = null"
+                                    )
                                 div.filter-group.user-filter
                                     label.filter-label(for="teamHistoricalUser", translate="METRICS.TEAM_HISTORICAL_USER_FILTER")
                                     select#teamHistoricalUser(
@@ -145,7 +155,12 @@ div.wrapper(ng-controller="MetricsController", ng-init="section='metrics-team'")
                                         ng-options="metric.id as (metric.label | translate) for metric in metricsView.teamHistoricalMetricOptions track by metric.id"
                                     )
                                 div.filter-group.filter-actions
-                                    button.filter-action(type="button", ng-click="clearTeamHistoricalDates()", ng-disabled="!metricsView.teamHistoricalFilters.dateFrom && !metricsView.teamHistoricalFilters.dateTo", translate="METRICS.TEAM_HISTORICAL_CLEAR_DATES")
+                                    button.filter-action(
+                                        type="button"
+                                        ng-click="clearTeamHistoricalDates()"
+                                        ng-disabled="!metricsView.teamHistoricalFilters.dateFrom && !metricsView.teamHistoricalFilters.dateTo && !metricsView.teamHistoricalFilters.preset"
+                                        translate="METRICS.TEAM_HISTORICAL_CLEAR_DATES"
+                                    )
 
                             div.team-historical-grid(ng-if="metricsView.teamHistoricalCharts.length > 0")
                                 div.team-historical-card(ng-repeat="historicalChart in metricsView.teamHistoricalCharts track by historicalChart.id")

@@ -76,12 +76,17 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         else
             @metricsProvider = "external"
 
+        @legacyLocalConfig = @.loadLocalConfig()
+        @localConfig = null
+        if @legacyLocalConfig?.provider
+            @metricsProvider = @legacyLocalConfig.provider
+
         @scope.metricsAuth =
-            authenticated: false
+            authenticated: true
             username: null
             externalProjectId: null
             loading: false
-            checking: true
+            checking: false
             error: null
             form:
                 username: ""
@@ -104,6 +109,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 user: "all"
                 dateFrom: null
                 dateTo: null
+                preset: null
             teamHistoricalMetricOptions: [
                 {id: "all", label: "METRICS.TEAM_HISTORICAL_METRIC_ALL"}
                 {id: "tasks", label: "METRICS.TEAM_HISTORICAL_METRIC_TASKS"}
@@ -120,9 +126,24 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             projectHistoricalFilters:
                 dateFrom: null
                 dateTo: null
+                preset: null
+            # Date presets for quick filtering
+            datePresetOptions: [
+                {id: null, label: "METRICS.DATE_PRESET_CUSTOM", translate: true}
+                {id: "last_7_days", label: "METRICS.DATE_PRESET_LAST_7_DAYS", translate: true}
+                {id: "last_14_days", label: "METRICS.DATE_PRESET_LAST_14_DAYS", translate: true}
+                {id: "last_30_days", label: "METRICS.DATE_PRESET_LAST_30_DAYS", translate: true}
+                {id: "last_90_days", label: "METRICS.DATE_PRESET_LAST_90_DAYS", translate: true}
+                {id: "current_month", label: "METRICS.DATE_PRESET_CURRENT_MONTH", translate: true}
+                {id: "current_semester", label: "METRICS.DATE_PRESET_CURRENT_SEMESTER", translate: true}
+                {id: "last_semester", label: "METRICS.DATE_PRESET_LAST_SEMESTER", translate: true}
+                {id: "last_year", label: "METRICS.DATE_PRESET_LAST_YEAR", translate: true}
+                {id: "all_time", label: "METRICS.DATE_PRESET_ALL_TIME", translate: true}
+            ]
 
         @userColorPalette = @.buildUserColorPalette()
         @metricsCategoryPalettes = {}
+        @qualityFactorNamesMap = {}
         @resetUserColorAssignments()
 
         @scope.availableTabs = [
@@ -175,12 +196,21 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             return unless filters?
             filters.dateFrom = null
             filters.dateTo = null
+            filters.preset = null
 
         @scope.clearProjectHistoricalDates = =>
             filters = @scope.metricsView.projectHistoricalFilters
             return unless filters?
             filters.dateFrom = null
             filters.dateTo = null
+            filters.preset = null
+
+        # Apply date preset and calculate actual dates
+        @scope.applyTeamDatePreset = (presetId) =>
+            @.applyDatePreset(@scope.metricsView.teamHistoricalFilters, presetId)
+        
+        @scope.applyProjectDatePreset = (presetId) =>
+            @.applyDatePreset(@scope.metricsView.projectHistoricalFilters, presetId)
 
         @scope.toggleTeamOverviewUser = (username) =>
             @.toggleTeamOverviewUser(username)
@@ -213,11 +243,138 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 projectDescription: @scope.project.description
             })
             @appMetaService.setAll(title, description)
-            @.loadAuthStatus()
+            @.bootstrapMetricsAccess()
 
         promise.then null, @.onInitialDataError.bind(@)
 
+    loadLocalConfig: ->
+        try
+            slug = @params.pslug
+            saved = localStorage.getItem("taigaMetricsConfig_#{slug}")
+            return JSON.parse(saved) if saved
+        catch e
+            console.error "Error loading local config", e
+        return null
+
+    fetchProjectConfig: ->
+        slug = @params.pslug
+        return @q.when(@legacyLocalConfig) unless slug
+
+        url = @urls.resolve("metrics-config")
+        params = {project: slug}
+
+        return @http.get(url, params, {withCredentials: true})
+            .then (response) =>
+                config = @.normalizeConfigPayload(response?.data)
+                if config
+                    console.log "Metrics: Loaded configuration from SERVER for project #{slug}", config
+                    @localConfig = config
+                    if config.provider
+                        @metricsProvider = config.provider
+                    if config.externalProjectId
+                        @scope.metricsAuth.externalProjectId = config.externalProjectId
+                else
+                    console.log "Metrics: No configuration from server, using defaults/legacy"
+                    @localConfig = null
+                return @localConfig
+            .catch (error) =>
+                console.error "Metrics: unable to load persisted config", error
+                if @legacyLocalConfig
+                    console.log "Metrics: Using LEGACY local config", @legacyLocalConfig
+                    @localConfig = @legacyLocalConfig
+                    if @localConfig.provider
+                        @metricsProvider = @localConfig.provider
+                    if @localConfig.externalProjectId and !@scope.metricsAuth.externalProjectId
+                        @scope.metricsAuth.externalProjectId = @localConfig.externalProjectId
+                else
+                    console.log "Metrics: Using DEFAULT hardcoded config"
+                return @localConfig
+
+    normalizeConfigPayload: (data) ->
+        return null unless data and angular.isObject(data)
+
+        normalized =
+            provider: null
+            classification: data.classification or {}
+            externalProjectId: data.external_project_id or data.externalProjectId or null
+            projectMetricsOrder: data.project_metrics_order or data.projectMetricsOrder or []
+            teamMetricsOrder: data.team_metrics_order or data.teamMetricsOrder or []
+
+        providerValue = data.provider or data.metrics_provider
+        if angular.isString(providerValue)
+            normalized.provider = providerValue.toLowerCase()
+
+        defaultProjectOrder = if angular.isArray(@metricsConfig?.projectMetricsOrder) then @metricsConfig.projectMetricsOrder.slice() else []
+        defaultTeamOrder = if angular.isArray(@metricsConfig?.teamMetricsOrder) then @metricsConfig.teamMetricsOrder.slice() else []
+
+        if angular.isString(normalized.externalProjectId)
+            normalized.externalProjectId = normalized.externalProjectId.trim()
+        else
+            normalized.externalProjectId = null
+
+        if !angular.isObject(normalized.classification)
+            normalized.classification = {}
+
+        if !angular.isArray(normalized.projectMetricsOrder)
+            normalized.projectMetricsOrder = []
+        if normalized.projectMetricsOrder.length is 0 and defaultProjectOrder.length > 0
+            normalized.projectMetricsOrder = defaultProjectOrder
+
+        if !angular.isArray(normalized.teamMetricsOrder)
+            normalized.teamMetricsOrder = []
+        if normalized.teamMetricsOrder.length is 0 and defaultTeamOrder.length > 0
+            normalized.teamMetricsOrder = defaultTeamOrder
+
+        return normalized
+
+    resolveLocalClassification: (metricId) ->
+        return null unless metricId?
+        return null unless @localConfig?.classification
+        classification = @localConfig.classification[metricId]
+        if classification?
+            return classification
+        lower = metricId.toString().toLowerCase()
+        return @localConfig.classification[lower] if lower isnt metricId and @localConfig.classification[lower]?
+        return null
+
+    resolveMetricClassificationValue: (metric) ->
+        return null unless metric?
+        classification = null
+        if metric.id?
+            classification = @.resolveLocalClassification(metric.id)
+        if !classification and metric.externalId?
+            classification = @.resolveLocalClassification(metric.externalId)
+        return classification
+
+    matchesConfiguredMetric: (configuredValue, metricId, metricExternalId, allowPrefix = true) ->
+        return false unless configuredValue?
+        normalizedConfig = configuredValue.toString().toLowerCase()
+        normalizedMetricId = if metricId? then metricId.toString().toLowerCase() else null
+        normalizedExternalId = if metricExternalId? then metricExternalId.toString().toLowerCase() else null
+
+        matchesExact = (value) ->
+            value? and value == normalizedConfig
+
+        matchesPrefix = (value) ->
+            return false unless allowPrefix and value?
+            value.indexOf("#{normalizedConfig}_") is 0
+
+        return true if matchesExact(normalizedMetricId) or matchesExact(normalizedExternalId)
+        return true if matchesPrefix(normalizedMetricId) or matchesPrefix(normalizedExternalId)
+        return false
+
     loadProject: ->
+        # Ensure projectService has the project loaded
+        unless @projectService.project
+            console.warn "Metrics: Project not loaded in service, attempting fallback load"
+            return @projectService.setProjectBySlug(@params.pslug).then =>
+                @.loadProject()
+            .catch (err) =>
+                console.error "Metrics: Failed to load project", err
+                @scope.metricsView.error = "METRICS.LOAD_ERROR"
+                @scope.metricsView.loading = false
+                return @q.reject(err)
+
         project = @projectService.project.toJS()
 
         @scope.projectId = project.id
@@ -231,29 +388,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         return project
 
-    loadAuthStatus: ->
-        @scope.metricsAuth.checking = true
-        @scope.metricsAuth.error = null
-
-        url = @urls.resolve("metrics-status")
-        params =
-            source: @metricsProvider
-
-        @http.get(url, params, {withCredentials: true})
-            .then (response) =>
-                data = response?.data || {}
-                if data.authenticated
-                    @scope.metricsAuth.authenticated = true
-                    @scope.metricsAuth.username = data.username
-                    @scope.metricsAuth.externalProjectId = data.external_project_id or @metricsConfig.resolveExternalProjectId(@scope.projectSlug)
-                    @scope.metricsAuth.form.username = data.username or @scope.metricsAuth.form.username
-            .catch (error) =>
-                console.error "Error checking metrics auth status:", error
-                @scope.metricsAuth.error = "METRICS.STATUS_ERROR"
-            .finally =>
-                @scope.metricsAuth.checking = false
-                if @scope.metricsAuth.authenticated
-                    @.loadMetrics()
+    bootstrapMetricsAccess: ->
+        # No auth flow required: use project config to resolve IDs/provider
+        @scope.metricsAuth.authenticated = true
+        @scope.metricsAuth.checking = false
+        @scope.metricsAuth.username = @scope.projectSlug or @scope.project?.slug
+        @scope.metricsAuth.externalProjectId ?= @metricsConfig.resolveExternalProjectId(@scope.projectSlug)
+        @.loadMetrics(true)
 
     loginMetrics: ->
         return if @scope.metricsAuth.loading
@@ -312,8 +453,6 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 @scope.metricsAuth.error = @.resolveErrorKey(error?.data?.error, "METRICS.LOGOUT_ERROR")
 
     loadMetrics: (force = false) ->
-        # Don't load metrics if not authenticated in metrics system
-        return unless @scope.metricsAuth.authenticated
         return if @scope.metricsView.loading and !force
 
         projectSlug = @scope.projectSlug
@@ -360,6 +499,12 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
                 metricsCategoriesData = data.metrics_categories or data.metricsCategories or {}
                 @metricsCategoryPalettes = @.buildMetricCategoryPalettes(metricsCategoriesData)
+
+                # Build quality factor id->name map for display purposes
+                # The main metrics array contains quality factors with their names
+                # Each quality factor has id (e.g., "modifiedlinescontribution") and name (e.g., "Modified Lines Contribution")
+                allMetricsData = data.metrics or []
+                @qualityFactorNamesMap = @.buildQualityFactorNamesMap(allMetricsData)
 
                 processedMetrics = @.processGessiMetrics(data.metrics or [])
                 displayMetricGroups = @.buildMetricDisplayGroups(data.metrics or [])
@@ -824,22 +969,44 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 metricValue = detail?.value
                 metricValue ?= @.normalizeMetricValue(metric.value)
 
-                if metricId.indexOf("assignedtasks") isnt -1
-                    entry.assignedTasks = metricValue
-                    entry.totalTasks = Math.max(entry.totalTasks, metricValue)
-                else if metricId.indexOf("closedtasks") isnt -1 or metricId.indexOf("completedtasks") isnt -1
-                    entry.closedTasks = metricValue
-                    entry.completedTasks = metricValue
-                    entry.tasksPercentage = metricValue
-                else if metricId.indexOf("commits") isnt -1
-                    entry.commits = metricValue
-                else if metricId.indexOf("modifiedlines") isnt -1 or metricId.indexOf("linesmodified") isnt -1
-                    entry.modifiedLines = metricValue
-                else if metricId.indexOf("totalus") isnt -1
-                    entry.totalUS = metricValue
-                else if metricId.indexOf("completedus") isnt -1 or metricId.indexOf("closedus") isnt -1
-                    entry.completedUS = metricValue
-                    entry.usPercentage = metricValue
+                metricId = metricKey.toLowerCase()
+                metricValue = detail?.value
+                metricValue ?= @.normalizeMetricValue(metric.value)
+
+                configuredKeys = @metricsConfig.teamMetricsOrder or []
+                if !angular.isArray(configuredKeys) or configuredKeys.length is 0
+                    configuredKeys = [
+                        "assignedtasks"
+                        "closedtasks"
+                        "completedtasks"
+                        "commits"
+                        "modifiedlines"
+                        "linesmodified"
+                        "totalus"
+                        "completedus"
+                        "closedus"
+                    ]
+
+                for rawKey in configuredKeys when rawKey?
+                    configuredKey = rawKey.toString().toLowerCase()
+                    continue unless metricId.indexOf(configuredKey) isnt -1
+
+                    if configuredKey is "assignedtasks"
+                        entry.assignedTasks = metricValue
+                        entry.totalTasks = Math.max(entry.totalTasks, metricValue)
+                    else if configuredKey is "closedtasks" or configuredKey is "completedtasks"
+                        entry.closedTasks = metricValue
+                        entry.completedTasks = metricValue
+                        entry.tasksPercentage = metricValue
+                    else if configuredKey is "commits"
+                        entry.commits = metricValue
+                    else if configuredKey is "modifiedlines" or configuredKey is "linesmodified"
+                        entry.modifiedLines = metricValue
+                    else if configuredKey is "totalus"
+                        entry.totalUS = metricValue
+                    else if configuredKey is "completedus" or configuredKey is "closedus"
+                        entry.completedUS = metricValue
+                        entry.usPercentage = metricValue
 
             # Calcular porcentajes
             if entry.totalTasks > 0 and entry.completedTasks > 0
@@ -1085,35 +1252,73 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         return [] unless angular.isArray(metricsArray)
 
         metricsById = {}
-        for metric in metricsArray when metric?.id?
-            metricsById[metric.id.toLowerCase()] = metric
+        for metric in metricsArray
+            continue unless metric
+            # Skip user-scoped metrics (they belong in Team view)
+            isUserMetric = @.isUserMetricId(metric.id) or @.isUserMetricId(metric.externalId)
+            continue if isUserMetric
+
+            if metric.externalId
+                metricsById[metric.externalId.toLowerCase()] = metric
+            if metric.id
+                metricsById[metric.id.toString().toLowerCase()] = metric
 
         collected = []
+        seenIds = {}
 
-        for metricId in @metricsConfig.projectMetricsOrder
-            normalizedId = metricId.toLowerCase()
-            metric = metricsById[normalizedId]
-            continue unless metric
-
+        addMetricEntry = (metric) =>
+            return if @.isUserMetricId(metric?.id) or @.isUserMetricId(metric?.externalId)
             entry = @.buildProjectMetricEntry(metric)
             if entry
                 collected.push(entry)
+                if metric.id?
+                    seenIds[metric.id.toString().toLowerCase()] = true
+                if metric.externalId?
+                    seenIds[metric.externalId.toLowerCase()] = true
 
-        # Si no hay coincidencias en el orden predefinido, usamos métricos globales evitando los de usuario/equipo.
-        if collected.length is 0
-            seen = {}
-            userMetricPrefixes = ["assignedtasks_", "closedtasks_", "totalus_", "completedus_"]
-            for metric in metricsArray when metric?.id?
-                idLower = metric.id.toString().toLowerCase()
-                # Descarta métricos per-usuario (Team) para no duplicar en Project
-                isUserMetric = userMetricPrefixes.some (prefix) -> idLower.indexOf(prefix) is 0
-                if isUserMetric or (angular.isArray(metric.qualityFactors) and metric.qualityFactors.indexOf("Team") isnt -1)
+        projectOrder = @localConfig?.projectMetricsOrder
+        unless angular.isArray(projectOrder) and projectOrder.length
+            projectOrder = @metricsConfig.projectMetricsOrder or []
+        for metricId in projectOrder
+            normalizedId = metricId.toLowerCase()
+            metric = metricsById[normalizedId]
+            unless metric
+                metric = _.find metricsArray, (candidate) =>
+                    @.matchesConfiguredMetric(metricId, candidate.id, candidate.externalId, false)
+                unless metric
                     continue
-                continue if seen[metric.id]
-                entry = @.buildProjectMetricEntry(metric)
-                if entry
-                    collected.push(entry)
-                    seen[metric.id] = true
+
+            classification = @.resolveMetricClassificationValue(metric)
+            if classification is 'hidden'
+                continue
+            if classification is 'team'
+                continue
+
+            globalHidden = false
+            if @metricsConfig.metricClassifications?[normalizedId] is 'hidden'
+                globalHidden = true
+            else if metric.externalId and @metricsConfig.metricClassifications?[metric.externalId.toLowerCase()] is 'hidden'
+                globalHidden = true
+
+            if globalHidden and classification isnt 'project'
+                continue
+
+            addMetricEntry(metric)
+
+        if @localConfig?.classification
+            for metric in metricsArray when metric?
+                classification = @.resolveMetricClassificationValue(metric)
+                continue unless classification is 'project'
+                normalizedMetricId = null
+                if metric.id?
+                    normalizedMetricId = metric.id.toString().toLowerCase()
+                else if metric.externalId?
+                    normalizedMetricId = metric.externalId.toLowerCase()
+                if normalizedMetricId and seenIds[normalizedMetricId]
+                    continue
+                addMetricEntry(metric)
+
+
 
         context =
             metrics: collected
@@ -1193,7 +1398,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
     isUserMetricId: (metricId) ->
         return false unless metricId?
+
         lowerId = metricId.toString().toLowerCase()
+        classification = @.resolveLocalClassification(metricId)
         prefixes = [
             "assignedtasks_"
             "closedtasks_"
@@ -1204,7 +1411,52 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             "totalus_"
             "tasksratio_"
         ]
-        prefixes.some (prefix) -> lowerId.indexOf(prefix) is 0
+        isUserPattern = prefixes.some (prefix) -> lowerId.indexOf(prefix) is 0
+
+        # Allow explicit overrides: a metric explicitly classified as project should
+        # never be treated as a user-scoped metric. For team classification, only
+        # mark it as user-scoped when it matches one of the known user patterns.
+        if classification is 'project'
+            return false
+
+        if classification is 'team'
+            return isUserPattern
+
+        return isUserPattern
+    
+    resolveMetricUserContext: (metric) ->
+        return null unless metric?
+
+        pickValue = (obj, keys) ->
+            return null unless obj?
+            for key in keys when obj[key]?
+                value = obj[key]
+                if typeof value is "string"
+                    trimmed = value.trim()
+                    return trimmed if trimmed.length
+                else if value?
+                    return value
+            null
+
+        username = pickValue(metric, ["student", "user", "username", "owner"])
+        displayName = pickValue(metric, ["student_display", "studentDisplay", "user_display", "userDisplay", "displayName"])
+
+        username ?= pickValue(metric.metadata, ["student", "user", "username"])
+        displayName ?= pickValue(metric.metadata, ["student_display", "studentDisplay", "user_display", "userDisplay", "displayName"])
+
+        if !username and metric.id? and @.isUserMetricId(metric.id)
+            parts = metric.id.toString().split("_")
+            if parts.length > 1
+                username = parts.slice(1).join("_")
+
+        displayName ?= username
+
+        return null unless username or displayName
+
+        {
+            username: username
+            displayName: displayName
+        }
 
     buildMetricDisplayGroups: (rawMetrics) ->
         groups =
@@ -1223,8 +1475,64 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             bucket[name].push(angular.copy(entry))
 
         for metric in rawMetrics when metric?
+            classificationOverride = @.resolveMetricClassificationValue(metric)
+            normalizedMetricId = if metric.id? then metric.id.toString().toLowerCase() else null
+            normalizedExternalId = if metric.externalId? then metric.externalId.toLowerCase() else null
+            isUserMetric = @.isUserMetricId(normalizedMetricId) or @.isUserMetricId(normalizedExternalId)
+            if classificationOverride is 'hidden'
+                continue
+            
+            # Check global configuration classification
+            globalHidden = false
+            if normalizedMetricId and @metricsConfig.metricClassifications?[normalizedMetricId] is 'hidden'
+                globalHidden = true
+            if normalizedExternalId and @metricsConfig.metricClassifications?[normalizedExternalId] is 'hidden'
+                globalHidden = true
+            if globalHidden and classificationOverride not in ['project', 'team']
+                continue
+
+            # Determine classification based on configuration
+            isProjectConfigured = false
+            isTeamConfigured = false
+
+            # Check Project Config
+            projectOrderConfig = @localConfig?.projectMetricsOrder
+            unless angular.isArray(projectOrderConfig) and projectOrderConfig.length
+                projectOrderConfig = @metricsConfig.projectMetricsOrder
+
+            if projectOrderConfig
+                for pMetric in projectOrderConfig
+                    if @.matchesConfiguredMetric(pMetric, metric.id, metric.externalId, false)
+                        isProjectConfigured = true
+                        break
+
+            # Check Team Config
+            teamOrderConfig = @localConfig?.teamMetricsOrder
+            unless angular.isArray(teamOrderConfig) and teamOrderConfig.length
+                teamOrderConfig = @metricsConfig.teamMetricsOrder
+            if teamOrderConfig
+                for tMetric in teamOrderConfig
+                    if @.matchesConfiguredMetric(tMetric, metric.id, metric.externalId, true)
+                        isTeamConfigured = true
+                        break
+            
+            if classificationOverride is 'project'
+                isProjectConfigured = true
+                isTeamConfigured = false
+            else if classificationOverride is 'team'
+                isTeamConfigured = true
+                isProjectConfigured = false
+
+            # Skip metrics that are not configured for any dashboard slot
+            continue unless isProjectConfigured or isTeamConfigured
+
+            # Only keep user-scoped metrics when they are explicitly enabled for the team dashboard
+            if isUserMetric and !isTeamConfigured
+                continue
+
             normalizedValue = @.normalizeMetricValue(metric.value)
             ratioValue = Math.max(0, Math.min(normalizedValue / 100, 1))
+            userContext = @.resolveMetricUserContext(metric)
 
             entry =
                 id: metric.id or metric.name
@@ -1234,16 +1542,51 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 description: metric.description
                 rawValue: normalizedValue
                 raw: metric
+                user: userContext?.username
+                userDisplayName: userContext?.displayName
 
-            isUserMetric = @.isUserMetricId(metric.id)
-            targetBuckets = if isUserMetric then teamBuckets else projectBuckets
-            targetUnassigned = if isUserMetric then teamUnassigned else projectUnassigned
+            # For user metrics, prefer the metric name which typically contains the full user name
+            # Example: "Clara Yiní López Vila modified lines" instead of "claraylv4 · Clara..."
+            if @.isUserMetricId(entry.id) and userContext?
+                # If metric.name exists, use it directly as it already contains the full name
+                if metric.name and typeof metric.name is "string" and metric.name.trim().length > 0
+                    entry.label = metric.name
+                else
+                    # Fallback: use displayName if available, otherwise format the metric id
+                    displayLabel = userContext.displayName
+                    if displayLabel and typeof displayLabel is "string" and displayLabel.trim().length > 0
+                        entry.label = displayLabel
+                    else
+                        entry.label = @.formatMetricLabel(metric.id)
 
-            if angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
-                for factorName in metric.qualityFactors when factorName
-                    pushMetric(targetBuckets, factorName, entry)
-            else
-                targetUnassigned.push(angular.copy(entry))
+            # Pol Alcoverro added: Resolve colors for gauges
+            categoryName = metric.categoryName or metric.category_name or metric.category?.name or metric.category
+            # If no explicit category name, try to use the first quality factor if available
+            if !categoryName and angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
+                categoryName = metric.qualityFactors[0]
+
+            entry.categoryColor = @.resolveMetricCategoryColor(categoryName, normalizedValue)
+            entry.categorySegments = @.buildMetricCategorySegments(categoryName)
+            
+            # For internal provider, if no category color was resolved, use value-based color
+            # Use ratioValue * 100 to get the percentage for color calculation
+            if @metricsProvider is "internal" and not entry.categoryColor
+                percentForColor = ratioValue * 100
+                entry.categoryColor = @.getInternalGaugeColor(percentForColor)
+            
+            if isProjectConfigured
+                if angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
+                    for factorName in metric.qualityFactors when factorName
+                        pushMetric(projectBuckets, factorName, entry)
+                else
+                    projectUnassigned.push(angular.copy(entry))
+
+            if isTeamConfigured
+                if angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
+                    for factorName in metric.qualityFactors when factorName
+                        pushMetric(teamBuckets, factorName, entry)
+                else
+                    teamUnassigned.push(angular.copy(entry))
 
         groups.project = @.convertMetricBucketsToGroups(projectBuckets, projectUnassigned, false)
         groups.team = @.convertMetricBucketsToGroups(teamBuckets, teamUnassigned, true)
@@ -1313,8 +1656,18 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         formattedPrecise = Number(preciseValue or 0).toFixed(2)
 
         categoryName = metric.categoryName or metric.category_name or metric.category?.name or metric.category
+        # If no explicit category name, try to use the first quality factor if available
+        if !categoryName and angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
+            categoryName = metric.qualityFactors[0]
+        
         categoryColor = @.resolveMetricCategoryColor(categoryName, preciseValue or numericValue)
         categorySegments = @.buildMetricCategorySegments(categoryName)
+        
+        # For internal provider, if no category color was resolved, use value-based color
+        # Use ratioValue * 100 to get the percentage for color calculation
+        if @metricsProvider is "internal" and not categoryColor
+            percentForColor = ratioValue * 100
+            categoryColor = @.getInternalGaugeColor(percentForColor)
 
         return {
             id: metric.id
@@ -1422,10 +1775,14 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
     buildStudentsOverallRadar: (usersList) ->
         return null unless usersList and usersList.length > 0
+
+        # Para el proveedor interno usamos métricas que realmente existen (tareas/US)
+        if @metricsProvider is "internal"
+            return @.buildInternalStudentsRadar(usersList)
         
         assignedLabel = @translate?.instant?("METRICS.RADAR_LABEL_ASSIGNED_TASKS") or "Assigned Tasks"
         commitsLabel = @translate?.instant?("METRICS.RADAR_LABEL_COMMITS") or "Commits"
-        modifiedLabel = @translate?.instant?("METRICS.RADAR_LABEL_MODIFIED_LINES") or "Modified Lines"
+        closedLabel = @translate?.instant?("METRICS.CLOSED_TASKS_LABEL") or "Closed Tasks"
         
         datasets = []
         @.registerUserColors(usersList)
@@ -1437,11 +1794,11 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             
             assignedTasks = Math.max(0, Math.min(100, parseFloat(user.assignedTasks) or 0))
             commits = Math.max(0, Math.min(100, parseFloat(user.commits) or 0))
-            modifiedLines = Math.max(0, Math.min(100, parseFloat(user.modifiedLines) or 0))
+            closedTasks = Math.max(0, Math.min(100, parseFloat(user.closedTasks) or 0))
             
             dataset = {
                 label: "#{user.displayName or user.username}"
-                data: [assignedTasks, commits, modifiedLines]
+                data: [assignedTasks, commits, closedTasks]
                 backgroundColor: areaColor
                 borderColor: borderColor
                 borderWidth: 2
@@ -1456,14 +1813,52 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             datasets.push(dataset)
         
         return {
-            labels: [assignedLabel, commitsLabel, modifiedLabel]
+            labels: [assignedLabel, commitsLabel, closedLabel]
+            datasets: datasets
+        }
+
+    buildInternalStudentsRadar: (usersList) ->
+        return null unless usersList and usersList.length > 0
+
+        tasksLabel = @translate?.instant?("METRICS.CLOSED_TASKS_LABEL") or "Closed Tasks"
+        storiesLabel = @translate?.instant?("METRICS.RADAR_LABEL_COMPLETED_STORIES") or "Completed Stories"
+        workloadLabel = @translate?.instant?("METRICS.RADAR_LABEL_ASSIGNED_TASKS") or "Assigned Tasks"
+
+        datasets = []
+        @.registerUserColors(usersList)
+
+        for user in usersList
+            colorPalette = @.resolveUserColor(user)
+            borderColor = colorPalette?.border or '#3B82F6'
+            areaColor = colorPalette?.fill or 'rgba(59, 130, 246, 0.26)'
+
+            tasksPercent = Math.max(0, Math.min(100, parseFloat(user.tasksPercentage) or parseFloat(user.closedTasks) or 0))
+            storiesPercent = Math.max(0, Math.min(100, parseFloat(user.usPercentage) or parseFloat(user.completedUS) or 0))
+            workloadCount = Math.max(0, Math.min(100, parseFloat(user.assignedTasks) or 0))
+
+            datasets.push({
+                label: "#{user.displayName or user.username}"
+                data: [tasksPercent, storiesPercent, workloadCount]
+                backgroundColor: areaColor
+                borderColor: borderColor
+                borderWidth: 2
+                pointBackgroundColor: borderColor
+                pointBorderColor: '#fff'
+                pointHoverBackgroundColor: '#fff'
+                pointHoverBorderColor: borderColor
+                pointRadius: 4
+                pointHoverRadius: 6
+            })
+
+        {
+            labels: [tasksLabel, storiesLabel, workloadLabel]
             datasets: datasets
         }
 
     buildClosedTasksComparison: (usersList) ->
         return null unless usersList and usersList.length > 0
         
-        label = @translate?.instant?("METRICS.CLOSED_TASKS_LABEL") or "Closed Tasks (%)"
+        label = @translate?.instant?("METRICS.CLOSED_TASKS_LABEL") or "Closed Tasks"
         labels = []
         values = []
         barColors = []
@@ -1559,6 +1954,11 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             percentValue = value * 100
             percentValue = Math.max(0, Math.min(100, percentValue))
             
+            # Assign color based on value for internal provider
+            categoryColor = null
+            if @metricsProvider is "internal"
+                categoryColor = @.getInternalGaugeColor(percentValue)
+            
             entry = {
                 id: factor.id
                 name: factor.name or factor.id
@@ -1571,18 +1971,35 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 type: factor.type
                 metrics: factor.metrics or []
                 missingMetrics: factor.missingMetrics or []
+                categoryColor: categoryColor
             }
             
             processed.push(entry)
         
         return processed
+    
+    # Returns color for internal gauges based on percentage value
+    # Red (0-33%), Orange (34-66%), Green (67-100%)
+    getInternalGaugeColor: (percentValue) ->
+        if percentValue < 33
+            return 'rgba(239, 68, 68, 0.9)'  # Red
+        else if percentValue < 66
+            return 'rgba(251, 191, 36, 0.9)'  # Orange
+        else
+            return 'rgba(34, 197, 94, 0.9)'   # Green
 
     loadInitialData: ->
-        project = @.loadProject()
-
-        return @q.all([
-            project
-        ])
+        @scope.metricsView.loading = true
+        
+        # Wrap in a promise to handle both synchronous and asynchronous project loading
+        return @q.when(@.loadProject())
+            .then (project) =>
+                return @.fetchProjectConfig()
+            .catch (error) =>
+                console.error "Metrics: Error in initial data load", error
+                @scope.metricsView.loading = false
+                @scope.metricsView.error = "METRICS.LOAD_ERROR"
+                return @q.reject(error)
 
     resolveErrorKey: (value, defaultKey) ->
         return defaultKey unless value
@@ -2556,15 +2973,108 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             when "commits" then "METRICS.TEAM_HISTORICAL_METRIC_COMMITS"
             else null
 
+    buildQualityFactorNamesMap: (metricsData) ->
+        ###
+        # Build a map from quality factor id to its display name
+        # This allows showing "Modified Lines Contribution" instead of "modifiedlinescontribution"
+        # 
+        # The API returns data where each item in the main array is a quality factor with:
+        # - id: "modifiedlinescontribution"
+        # - name: "Modified Lines Contribution"
+        # - metrics: [...] (nested individual metrics)
+        #
+        # Individual metrics have qualityFactors: ["modifiedlinescontribution"] (just the id)
+        ###
+        map = {}
+        return map unless angular.isArray(metricsData)
+        
+        for item in metricsData when item?.id?
+            itemId = item.id.toString().toLowerCase()
+            hasName = item.name and typeof item.name is "string" and item.name.trim().length > 0
+            
+            # An item is a quality factor (parent) if:
+            # 1. It has a 'metrics' property (array of child metrics), OR
+            # 2. It does NOT have a 'qualityFactors' property (child metrics have this)
+            hasMetricsArray = item.hasOwnProperty("metrics")
+            hasQualityFactorsArray = angular.isArray(item.qualityFactors) and item.qualityFactors.length > 0
+            isQualityFactor = hasMetricsArray or !hasQualityFactorsArray
+            
+            if hasName and isQualityFactor
+                map[itemId] = item.name.trim()
+                
+            # Also process nested metrics to find any additional quality factor references
+            if angular.isArray(item.metrics)
+                for childMetric in item.metrics when childMetric?.qualityFactors?
+                    # The qualityFactors array contains IDs, and the parent has the name
+                    for factorId in childMetric.qualityFactors when factorId
+                        normalizedFactorId = factorId.toString().toLowerCase()
+                        # If we haven't mapped this factor yet, and the current item is the parent
+                        if !map[normalizedFactorId] and itemId is normalizedFactorId and hasName
+                            map[normalizedFactorId] = item.name.trim()
+        
+        return map
+
     formatMetricCategoryLabel: (category) ->
         return "" unless category?
-        parts = category.toString().split(/[_\s]+/)
-        parts.map((part) ->
-            if part.length > 0
-                part.charAt(0).toUpperCase() + part.slice(1)
+        categoryStr = category.toString()
+        
+        # First, check if we have a known name from the quality factors map
+        normalizedCategory = categoryStr.toLowerCase()
+        
+        if @qualityFactorNamesMap? and @qualityFactorNamesMap[normalizedCategory]?
+            return @qualityFactorNamesMap[normalizedCategory]
+        
+        # Known quality factor ID to readable name mappings
+        knownQualityFactors = 
+            "commitscontribution": "Commits Contribution"
+            "commitstasksrelation": "Commits Tasks Relation"
+            "commitsmanagement": "Commits Management"
+            "fulfillmentoftasks": "Fulfillment of Tasks"
+            "taskscontribution": "Tasks Contribution"
+            "taskseffortinformation": "Tasks Effort Information"
+            "modifiedlinescontribution": "Modified Lines Contribution"
+            "userstoriesdefinitionquality": "User Stories Definition Quality"
+            "deviationmetrics": "Deviation Metrics"
+            "activitydistribution": "Activity Distribution"
+            "unassignedtasks": "Unassigned Tasks"
+            "closed_tasks": "Closed Tasks"
+            "commits": "Commits"
+            "modified_lines": "Modified Lines"
+            "tasks": "Tasks"
+        
+        if knownQualityFactors[normalizedCategory]?
+            return knownQualityFactors[normalizedCategory]
+        
+        # Fallback: Split camelCase and lowercase words, then title case
+        # "commitscontribution" -> "Commits Contribution"
+        # First try to split by common patterns
+        formatted = categoryStr
+            # Insert space before uppercase letters (for camelCase)
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            # Split by underscores
+            .replace(/_/g, ' ')
+            # Split common concatenated words
+            .replace(/contribution/gi, ' Contribution')
+            .replace(/relation/gi, ' Relation')
+            .replace(/management/gi, ' Management')
+            .replace(/information/gi, ' Information')
+            .replace(/distribution/gi, ' Distribution')
+            .replace(/fulfillment/gi, 'Fulfillment ')
+            .replace(/deviation/gi, 'Deviation ')
+            .replace(/modified/gi, 'Modified ')
+            .replace(/quality/gi, ' Quality')
+            # Clean up multiple spaces
+            .replace(/\s+/g, ' ')
+            .trim()
+        
+        # Title case each word
+        words = formatted.split(' ')
+        words.map((word) ->
+            if word.length > 0
+                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
             else
-                part
-        ).join(" ")
+                word
+        ).join(' ')
 
     composeTeamHistoricalChart: (collection, metricLabelKey, filteredEntries) ->
         return null unless collection?
@@ -2730,6 +3240,85 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             title: title
             chartData: chartData
         }
+
+    ###
+    # Apply a date preset to the given filters object.
+    # Calculates actual from/to dates based on the preset.
+    # @param filters {Object} The filters object to modify
+    # @param presetId {String} The preset identifier
+    ###
+    applyDatePreset: (filters, presetId) ->
+        return unless filters?
+        
+        today = new Date()
+        toDate = @.formatDateForInput(today)
+        fromDate = null
+        
+        switch presetId
+            when "last_7_days"
+                fromDate = @.formatDateForInput(new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000))
+            when "last_14_days"
+                fromDate = @.formatDateForInput(new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000))
+            when "last_30_days"
+                fromDate = @.formatDateForInput(new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000))
+            when "last_90_days"
+                fromDate = @.formatDateForInput(new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000))
+            when "last_semester"
+                fromDate = @.formatDateForInput(new Date(today.getTime() - 180 * 24 * 60 * 60 * 1000))
+            when "last_year"
+                fromDate = @.formatDateForInput(new Date(today.getTime() - 365 * 24 * 60 * 60 * 1000))
+            when "current_month"
+                firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+                fromDate = @.formatDateForInput(firstOfMonth)
+            when "current_semester"
+                # Academic semester: Sep-Jan or Feb-Jul
+                month = today.getMonth() + 1  # JS months are 0-indexed
+                if month >= 9  # Fall semester (Sep-Jan)
+                    fromDate = @.formatDateForInput(new Date(today.getFullYear(), 8, 1))
+                else if month >= 2  # Spring semester (Feb-Jul)
+                    fromDate = @.formatDateForInput(new Date(today.getFullYear(), 1, 1))
+                else  # January (fall semester of previous year)
+                    fromDate = @.formatDateForInput(new Date(today.getFullYear() - 1, 8, 1))
+            when "all_time"
+                fromDate = "2020-01-01"
+            else
+                # Custom or null - clear preset but keep existing dates
+                filters.preset = null
+                return
+        
+        filters.preset = presetId
+        filters.dateFrom = fromDate
+        filters.dateTo = toDate
+
+    ###
+    # Format a Date object to YYYY-MM-DD string for date input
+    ###
+    formatDateForInput: (date) ->
+        return null unless date?
+        year = date.getFullYear()
+        month = String(date.getMonth() + 1).padStart(2, '0')
+        day = String(date.getDate()).padStart(2, '0')
+        "#{year}-#{month}-#{day}"
+
+    ###
+    # Get human-readable label for the current date range
+    ###
+    getDateRangeLabel: (filters) ->
+        return "" unless filters?
+        
+        if filters.preset
+            presetOption = @scope.metricsView.datePresetOptions?.find (opt) -> opt.id is filters.preset
+            if presetOption?.label and @translate?.instant?
+                return @translate.instant(presetOption.label)
+        
+        if filters.dateFrom and filters.dateTo
+            return "#{filters.dateFrom} - #{filters.dateTo}"
+        else if filters.dateFrom
+            return "From #{filters.dateFrom}"
+        else if filters.dateTo
+            return "Until #{filters.dateTo}"
+        
+        return ""
 
     applyTeamHistoricalFilters: ->
         filters = @scope.metricsView.teamHistoricalFilters or {}

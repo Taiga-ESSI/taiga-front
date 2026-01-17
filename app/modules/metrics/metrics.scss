@@ -437,7 +437,6 @@ $metrics-color-slate-600: rgb(71, 85, 105);
     gap: 1rem;
     padding: 2rem;
     position: relative;
-    transition: transform .3s ease, box-shadow .3s ease, background .3s ease, border-color .3s ease;
 }
 
 .metrics-gauge-card--project {
@@ -445,22 +444,10 @@ $metrics-color-slate-600: rgb(71, 85, 105);
     box-shadow: 0 12px 28px rgba(15, 23, 42, .16);
 }
 
-.metrics-gauge-card--project:hover {
-    box-shadow: 0 18px 38px rgba(15, 23, 42, .22);
-    transform: translateY(-6px);
-}
-
 .metrics-gauge-card--dark {
     background: rgba(255, 255, 255, .05);
     border: 1px solid rgba(255, 255, 255, .12);
     overflow: visible;
-}
-
-.metrics-gauge-card--dark:hover {
-    background: rgba(255, 255, 255, .05);
-    border-color: rgba(255, 255, 255, .15);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, .3);
-    transform: translateY(-2px);
 }
 
 .metrics-gauge-header {
@@ -546,12 +533,7 @@ $metrics-color-slate-600: rgb(71, 85, 105);
     filter: drop-shadow(0 4px 12px rgba(31, 38, 135, .08));
     height: auto;
     max-width: 100%;
-    transition: filter .3s ease;
     width: 100%;
-}
-
-.metrics-gauge-chart canvas:hover {
-    filter: drop-shadow(0 6px 16px rgba(31, 38, 135, .12));
 }
 
 .metrics-gauge-chart tg-speedometer-chart {
@@ -1004,6 +986,58 @@ $metrics-color-slate-600: rgb(71, 85, 105);
     }
 }
 
+.team-metrics-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 1.35rem;
+}
+
+.metric-group {
+    backdrop-filter: blur(14px) saturate(170%);
+    background: rgba(255, 255, 255, .88);
+    border: 1px solid rgba(255, 255, 255, .9);
+    border-radius: 20px;
+    box-shadow:
+        0 12px 30px rgba(15, 23, 42, .12),
+        0 0 0 1px rgba(255, 255, 255, .65) inset;
+    overflow: hidden;
+    padding: 1.25rem 1.5rem 1rem;
+    position: relative;
+}
+
+.metric-group::before {
+    background: linear-gradient(135deg, rgba(72, 52, 212, .12) 0%, rgba(14, 165, 233, .12) 100%);
+    content: '';
+    height: 4px;
+    inset: 0 0 auto 0;
+    position: absolute;
+}
+
+.metric-group .group-title {
+    align-items: center;
+    color: $metrics-color-slate-900;
+    display: inline-flex;
+    font-size: 1.05rem;
+    font-weight: 800;
+    gap: .65rem;
+    letter-spacing: -.01em;
+    margin: 0 0 1rem 0;
+}
+
+.metric-group .group-title::before {
+    background: linear-gradient(135deg, $metrics-color-primary-500 0%, rgba(14, 165, 233, .7) 100%);
+    border-radius: 50%;
+    box-shadow: 0 0 0 6px rgba(79, 70, 229, .12);
+    content: '';
+    display: block;
+    height: 12px;
+    width: 12px;
+}
+
+.metric-group .project-metrics-grid {
+    margin-top: .5rem;
+}
+
 .team-comparison-grid {
     align-items: stretch;
     display: grid;
@@ -1317,7 +1351,7 @@ $metrics-color-slate-600: rgb(71, 85, 105);
     align-items: end;
     display: grid;
     gap: 1.5rem;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     margin-bottom: 2.5rem;
 }
 
@@ -1325,6 +1359,14 @@ $metrics-color-slate-600: rgb(71, 85, 105);
     display: flex;
     flex-direction: column;
     gap: .5rem;
+
+    &.preset-group {
+        min-width: 200px;
+    }
+
+    &.date-group {
+        min-width: 150px;
+    }
 }
 
 .team-historical-filters input[type='date'] {
@@ -2547,3 +2589,332 @@ tg-area-chart {
 }
 
 /* Metrics Sidebar Styles */
+
+/* Metrics Config Page */
+.metrics-config-page {
+    background: linear-gradient(135deg, rgba(248, 250, 252, 1) 0%, rgba(226, 232, 240, 1) 100%);
+    border-radius: 18px;
+    margin: 1.5rem auto;
+    max-width: 1200px;
+    padding: 2rem;
+    position: relative;
+    z-index: 0;
+}
+
+.metrics-config-page::before {
+    background:
+        radial-gradient(circle at 20% 20%, rgba(79, 70, 229, .14), transparent 55%),
+        radial-gradient(circle at 80% 0%, rgba(14, 165, 233, .12), transparent 45%);
+    content: '';
+    inset: 0;
+    opacity: .7;
+    position: absolute;
+    z-index: -1;
+}
+
+.metrics-config-header {
+    align-items: flex-start;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.metrics-config-header .titles h1 {
+    color: $metrics-color-slate-900;
+    font-size: 1.9rem;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    margin: .1rem 0 .35rem 0;
+}
+
+.metrics-config-header .titles .overline {
+    color: $metrics-color-slate-600;
+    font-size: .85rem;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+}
+
+.metrics-config-header .help-text {
+    color: $metrics-color-slate-600;
+    margin: 0;
+}
+
+.metrics-config-header .header-actions {
+    display: flex;
+    gap: .75rem;
+}
+
+.metrics-config-page .button {
+    align-items: center;
+    display: inline-flex;
+    gap: .4rem;
+}
+
+.config-panels {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    margin-bottom: 1rem;
+}
+
+.config-card {
+    background: rgba(255, 255, 255, .9);
+    border: 1px solid rgba(255, 255, 255, .85);
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .08);
+    padding: 1.25rem 1.5rem;
+}
+
+.config-card .card-head {
+    margin-bottom: .75rem;
+}
+
+.config-card .kicker {
+    color: $metrics-color-slate-600;
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .14em;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.config-card h3 {
+    color: $metrics-color-slate-900;
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin: .2rem 0;
+}
+
+.config-card .description {
+    color: $metrics-color-slate-600;
+    margin: 0;
+}
+
+.status-grid {
+    display: grid;
+    gap: .6rem;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    margin: .5rem 0;
+}
+
+.status-item {
+    background: rgba(248, 250, 252, .9);
+    border: 1px solid rgba(226, 232, 240, .9);
+    border-radius: 10px;
+    padding: .6rem .75rem;
+}
+
+.status-item .label {
+    color: $metrics-color-slate-600;
+    display: block;
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.status-item .value {
+    color: $metrics-color-slate-900;
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.text-success {
+    color: rgb(22, 163, 74);
+}
+
+.text-warn {
+    color: rgb(217, 119, 6);
+}
+
+.helper-text {
+    color: $metrics-color-slate-600;
+    font-size: .9rem;
+    margin-top: .35rem;
+}
+
+.mapping-card .input-group {
+    display: flex;
+    gap: .5rem;
+    margin-top: .4rem;
+}
+
+.mapping-card input {
+    border: 1px solid rgba(148, 163, 184, .6);
+    border-radius: 10px;
+    padding: .65rem .85rem;
+    width: 100%;
+}
+
+.mapping-card .label-inline {
+    color: $metrics-color-slate-800;
+    display: block;
+    font-weight: 700;
+    margin-bottom: .2rem;
+}
+
+.provider-card .toggle-row {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+}
+
+.feedback-area {
+    margin: 1rem 0;
+}
+
+.classification-board {
+    background: rgba(255, 255, 255, .95);
+    border: 1px solid rgba(226, 232, 240, .9);
+    border-radius: 16px;
+    box-shadow: 0 16px 32px rgba(15, 23, 42, .08);
+    padding: 1.25rem 1.5rem;
+}
+
+.board-head {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.board-head h3 {
+    color: $metrics-color-slate-900;
+    font-size: 1.3rem;
+    font-weight: 800;
+    margin: 0;
+}
+
+.board-head .kicker {
+    color: $metrics-color-slate-600;
+    font-size: .85rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    margin: 0 0 .15rem 0;
+    text-transform: uppercase;
+}
+
+.filter-row {
+    align-items: center;
+    display: flex;
+    gap: .5rem;
+}
+
+.filter-row input {
+    border: 1px solid rgba(148, 163, 184, .6);
+    border-radius: 10px;
+    padding: .65rem .85rem;
+}
+
+.filter-row .hint {
+    color: $metrics-color-slate-600;
+    font-size: .9rem;
+}
+
+.config-metric-groups {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.config-metric-group {
+    background: rgba(248, 250, 252, .9);
+    border: 1px solid rgba(226, 232, 240, .9);
+    border-radius: 14px;
+    padding: 1rem;
+}
+
+.config-metric-group .group-head {
+    align-items: center;
+    display: flex;
+    gap: .5rem;
+    justify-content: space-between;
+    margin-bottom: .75rem;
+}
+
+.config-metric-group .group-head h4 {
+    color: $metrics-color-slate-900;
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin: 0;
+}
+
+.config-metric-group .count {
+    background: rgba(99, 102, 241, .12);
+    border: 1px solid rgba(99, 102, 241, .18);
+    border-radius: 10px;
+    color: $metrics-color-primary-500;
+    font-weight: 700;
+    padding: .25rem .6rem;
+}
+
+.config-metric-grid {
+    display: grid;
+    gap: .75rem;
+}
+
+.config-metric-card {
+    background: $white;
+    border: 1px solid rgba(226, 232, 240, .9);
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .06);
+    padding: .85rem 1rem;
+}
+
+.config-metric-card .metric-header {
+    align-items: center;
+    display: flex;
+    gap: .5rem;
+    justify-content: space-between;
+    margin-bottom: .35rem;
+}
+
+.config-metric-card .metric-id {
+    color: $metrics-color-slate-600;
+    font-family: 'Source Code Pro', monospace;
+    font-size: .85rem;
+}
+
+.config-metric-card .badge {
+    background: rgba(14, 165, 233, .12);
+    border: 1px solid rgba(14, 165, 233, .24);
+    border-radius: 10px;
+    color: rgb(14, 165, 233);
+    font-size: .8rem;
+    font-weight: 700;
+    padding: .2rem .5rem;
+}
+
+.config-metric-card .metric-name {
+    color: $metrics-color-slate-900;
+    font-size: 1rem;
+    font-weight: 800;
+    margin: 0 0 .25rem 0;
+}
+
+.config-metric-card .metric-description {
+    color: $metrics-color-slate-600;
+    font-size: .9rem;
+    margin: 0 0 .5rem 0;
+}
+
+.config-metric-card .classification-switch {
+    display: grid;
+    gap: .35rem;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.classification-switch label {
+    align-items: center;
+    color: $metrics-color-slate-800;
+    display: flex;
+    font-weight: 700;
+    gap: .4rem;
+}
+
+.classification-switch input[type='radio'] {
+    accent-color: $metrics-color-primary-500;
+}

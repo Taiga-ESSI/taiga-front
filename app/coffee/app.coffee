@@ -297,7 +297,8 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
         }
     )
 
-    # Pol Alcoverro added - Metrics
+
+
     $routeProvider.when("/project/:pslug/metrics",
         {
             redirectTo: (params) -> "/project/#{params.pslug}/metrics/team"

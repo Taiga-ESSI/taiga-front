@@ -31,26 +31,23 @@ module.factory "tgMetricsConfiguration", ["$log", ($log) ->
             "it12c",
             "it12d"
         ]
+        # Simplified setup: start with a single clear metric per scope
         projectMetricsOrder: [
-            "acceptance_criteria_check",
-            "closed_tasks_with_ae",
-            "commits_anonymous",
-            "commits_sd",
-            "commits_taskreference",
-            "deviation_effort_estimation_simple",
-            "learn_hours",
-            "pattern_check",
-            "tasks_sd",
-            "tasks_with_ee",
-            "unassignedtasks"
+            "acceptance_criteria_check"  # % de historias con criterios de aceptación
         ]
+        metricClassifications: {}
         projectHistoricalMetricsOrder: [
-            "acceptance_criteria_check",
-            "deviation_effort_estimation_simple",
-            "learn_hours",
-            "tasks_sd",
-            "tasks_with_ee",
-            "unassignedtasks"
+            "acceptance_criteria_check"
+        ]
+        teamMetricsOrder: [
+            # Mapeos básicos para radar y barras de equipo
+            "assignedtasks"
+            "closedtasks"
+            "commits"
+            "modifiedlines"
+        ]
+        teamHistoricalMetricsOrder: [
+            "closed_tasks"
         ]
 
     externalOverrides = window.taigaMetricsConfig or {}

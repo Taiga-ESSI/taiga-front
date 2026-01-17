@@ -130,8 +130,26 @@ RadarChartDirective = ($parse, $timeout) ->
                                     pointLabels:
                                         color: '#0f172a'
                                         font:
-                                            size: 13
+                                            size: 12
                                             weight: 600
+                                        # Split long labels into multiple lines for better readability
+                                        callback: (label) ->
+                                            if not label or typeof label isnt 'string'
+                                                return label
+                                            # Split labels longer than 15 characters
+                                            if label.length > 15
+                                                words = label.split(' ')
+                                                lines = []
+                                                currentLine = ''
+                                                for word in words
+                                                    if currentLine.length + word.length + 1 <= 15
+                                                        currentLine = if currentLine then "#{currentLine} #{word}" else word
+                                                    else
+                                                        lines.push(currentLine) if currentLine
+                                                        currentLine = word
+                                                lines.push(currentLine) if currentLine
+                                                return lines
+                                            return label
                                     grid:
                                         color: 'rgba(30, 41, 59, 0.15)'
                             baseConfig.options.plugins =
@@ -164,7 +182,24 @@ RadarChartDirective = ($parse, $timeout) ->
                                     callback: (value) -> "#{value}%"
                                 pointLabels:
                                     fontColor: '#0f172a'
-                                    fontSize: 13
+                                    fontSize: 12
+                                    # Split long labels for better readability
+                                    callback: (label) ->
+                                        if not label or typeof label isnt 'string'
+                                            return label
+                                        if label.length > 15
+                                            words = label.split(' ')
+                                            lines = []
+                                            currentLine = ''
+                                            for word in words
+                                                if currentLine.length + word.length + 1 <= 15
+                                                    currentLine = if currentLine then "#{currentLine} #{word}" else word
+                                                else
+                                                    lines.push(currentLine) if currentLine
+                                                    currentLine = word
+                                            lines.push(currentLine) if currentLine
+                                            return lines
+                                        return label
                                 gridLines:
                                     color: 'rgba(30, 41, 59, 0.15)'
                             baseConfig.options.legend =
@@ -402,7 +437,10 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                         datasetObject = {
                             data: datasetData
                             backgroundColor: datasetColors
+                            hoverBackgroundColor: datasetColors
                             borderWidth: 0
+                            hoverBorderWidth: 0
+                            hoverOffset: 0
                             circumference: 180
                             rotation: 270
                             cutout: '75%'
@@ -519,8 +557,8 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             ctx.strokeStyle = 'rgba(30, 41, 59, 0.4)'
             ctx.lineWidth = 2
             
-            # Draw marks at 0%, 25%, 50%, 75%, 100%
-            for i in [0..4]
+            # Draw marks at 0%, 50%, 100% only (removed 25% and 75%)
+            for i in [0, 2, 4]
                 angle = Math.PI + (i * Math.PI / 4)  # From 180° to 0°
                 startRadius = outerRadius + 5
                 endRadius = outerRadius + 15
@@ -539,9 +577,6 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                 labelRadius = outerRadius + 28
                 labelX = cx + labelRadius * Math.cos(angle)
                 labelY = cy + labelRadius * Math.sin(angle)
-
-                shouldDraw = i in [0, 2, 4]
-                continue unless shouldDraw
 
                 if hasCustomScale
                     labelValue = (maxRef or 0) * (i / 4)

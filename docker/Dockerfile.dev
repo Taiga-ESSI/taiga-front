@@ -1,0 +1,21 @@
+FROM node:14.21-alpine
+
+WORKDIR /taiga
+
+# Install system dependencies
+RUN apk add --no-cache git python3 make g++ bash
+
+# Copy package files
+COPY package.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy the rest of the application
+COPY . .
+
+# Expose the gulp server port
+EXPOSE 9001
+
+# Start the gulp server
+CMD ["npm", "run", "start"]
