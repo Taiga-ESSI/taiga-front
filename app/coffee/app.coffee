@@ -309,7 +309,7 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
     $routeProvider.when("/project/:pslug/metrics/team",
         {
             templateUrl: "metrics/metrics-team.html",
-            loader: true,
+            loader: false,
             section: "metrics"
             controller: "MetricsController"
         }
@@ -319,7 +319,7 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
     $routeProvider.when("/project/:pslug/metrics/project",
         {
             templateUrl: "metrics/metrics-project.html",
-            loader: true,
+            loader: false,
             section: "metrics"
             controller: "MetricsController"
         }

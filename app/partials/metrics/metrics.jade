@@ -42,10 +42,6 @@ div.wrapper
         //- Metrics dashboard
         div.metrics-dashboard(ng-if="!metricsView.showTesting")
 
-            div.loading-container(ng-if="metricsView.loading")
-                div.spinner
-                p(translate="METRICS.LOADING")
-
                 div.error-message(ng-if="metricsView.error && !metricsView.loading")
                     div.alert.alert-error
                         i.icon.icon-error
@@ -106,7 +102,7 @@ div.wrapper
                                                     label="{{ metric.name }}"
                                                     metric-id="{{ metric.id }}"
                                                     color="metric.categoryColor"
-                                                    palette="metric.categorySegments"
+                                                    palette="metric.categoryPalette"
                                                 )
                                             div.project-metric-insights
                                                 div.metric-value-wrapper

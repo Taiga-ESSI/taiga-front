@@ -213,10 +213,16 @@ angular.module("taigaComponents").directive "tgMetricsMenu", [
                 updateActiveState()
                 
                 # Agregar listeners a los enlaces para actualizar el estado al hacer click
-                teamLink?.addEventListener "click", ->
+                teamLink?.addEventListener "click", (event) ->
+                    event.preventDefault()
+                    $rootScope.$apply ->
+                        $location.path(teamLink.getAttribute("href"))
                     $timeout(updateActiveState, 100)
                 
-                projectLink?.addEventListener "click", ->
+                projectLink?.addEventListener "click", (event) ->
+                    event.preventDefault()
+                    $rootScope.$apply ->
+                        $location.path(projectLink.getAttribute("href"))
                     $timeout(updateActiveState, 100)
                 
                 # Escuchar cambios de ruta desde Angular para evitar polling

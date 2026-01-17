@@ -16,9 +16,35 @@ div.wrapper
             //- Metrics dashboard - Project
             div.metrics-dashboard
 
-                div.loading-container(ng-if="metricsView.loading")
-                    div.spinner
-                    p(translate="METRICS.LOADING")
+                //- Skeleton loading
+                div.skeleton-loading(ng-if="metricsView.loading")
+                    //- Título real
+                    h2.section-title
+                        span.skeleton-element(style="display: inline-block; width: 200px; height: 1.8rem;")
+                    
+                    //- Pestañas reales
+                    div.project-subtabs
+                        button.project-subtab.skeleton-element(style="width: 100px;")
+                        button.project-subtab.skeleton-element(style="width: 100px;")
+                    
+                    //- Descripción
+                    p.section-description(style="text-align: center;")
+                        span.skeleton-element(style="display: inline-block; width: 70%; height: 1rem;")
+                    
+                    //- Grid de tarjetas de métricas
+                    div.project-metrics-grid
+                        div.project-metric-card(ng-repeat="i in [1,2,3,4,5,6,7,8]")
+                            div.project-metric-header
+                                h3.metric-name
+                                    span.skeleton-element(style="display: inline-block; width: 80%; height: 1.2rem;")
+                            div.project-metric-gauge
+                                div.project-metric-body
+                                    div.project-metric-chart
+                                        div.skeleton-gauge
+                                    div.project-metric-insights
+                                        div.metric-value-wrapper
+                                            span.skeleton-element(style="display: inline-block; width: 60px; height: 1.5rem;")
+                                        p.skeleton-element(style="width: 90%; height: 0.9rem; margin-top: 0.5rem;")
 
                 div.error-message(ng-if="metricsView.error && !metricsView.loading")
                     div.alert.alert-error
@@ -51,9 +77,9 @@ div.wrapper
                                                     raw-value="metric.ratioValue || (metric.absoluteValue / 100)"
                                                     max-value="1"
                                                     label="{{ metric.name }}"
-                                                    metric-id="{{ metric.id }}"
+                                                    metric-key="{{ metric.id }}"
                                                     color="metric.categoryColor"
-                                                    palette="metric.categorySegments"
+                                                    palette="metric.categorySegments || metric.categoryPalette"
                                                 )
                                             div.project-metric-insights
                                                 div.metric-value-wrapper
@@ -77,7 +103,7 @@ div.wrapper
                                     select#projectHistoricalSprint(
                                         ng-model="metricsView.projectHistoricalFilters.sprint"
                                         ng-change="applySprintFilter(metricsView.projectHistoricalFilters)"
-                                        ng-options="option.id as (option.translate ? (option.name | translate) : option.name) for option in metricsView.sprintOptions track by option.id"
+                                        ng-options="option.id as (option.translate ? (option.name | translate) : option.name) for option in metricsView.sprintOptions"
                                     )
                                 //- Custom date range
                                 div.filter-group.date-group
@@ -93,6 +119,13 @@ div.wrapper
                                         type="date"
                                         ng-model="metricsView.projectHistoricalFilters.dateTo"
                                         ng-change="metricsView.projectHistoricalFilters.preset = null"
+                                    )
+                                div.filter-group.metric-filter
+                                    label.filter-label(for="projectHistoricalMetric", translate="METRICS.TEAM_HISTORICAL_METRIC_FILTER")
+                                    select#projectHistoricalMetric(
+                                        ng-model="metricsView.projectHistoricalFilters.metric"
+                                        ng-change="applyProjectHistoricalFilters()"
+                                        ng-options="metric.id as (metric.label | translate) for metric in metricsView.projectHistoricalMetricOptions"
                                     )
                                 div.filter-group.filter-actions
                                     button.filter-action(

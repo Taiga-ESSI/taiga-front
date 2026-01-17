@@ -45,7 +45,7 @@ class CreatetProjectFormController
                 @currentUserService.loadProjects()
 
     onCancelForm: () ->
-        @location.path(@navUrls.resolve("create-project"))
+        @location.path(@navUrls.resolve("projects"))
 
     canCreateProject: () ->
         if @.projectForm.is_private

@@ -1761,7 +1761,7 @@
             "HISTORICAL": "Historical"
         },
         "TEAM_HISTORICAL_TITLE": "Historical trend analysis",
-        "TEAM_HISTORICAL_DESCRIPTION": "Explore how each student evolves across key metrics. Pick a category and focus on a single student or compare everyone at a glance.",
+        "TEAM_HISTORICAL_DESCRIPTION": "Explore how each student evolves across key metrics.",
         "TEAM_HISTORICAL_METRIC_FILTER": "Metric",
         "TEAM_HISTORICAL_USER_FILTER": "Student",
         "TEAM_HISTORICAL_METRIC_ALL": "All metrics",
@@ -1769,6 +1769,8 @@
         "TEAM_HISTORICAL_METRIC_CLOSED_TASKS": "Closed Tasks",
         "TEAM_HISTORICAL_METRIC_MODIFIED_LINES": "Modified Lines",
         "TEAM_HISTORICAL_METRIC_COMMITS": "Commits",
+        "TEAM_HISTORICAL_METRIC_STORY_POINTS": "Story Points",
+        "TEAM_HISTORICAL_METRIC_STORIES_CLOSED": "Stories Closed",
         "TEAM_HISTORICAL_ALL_USERS": "All users",
         "TEAM_HISTORICAL_NO_DATA": "No historical data matches the selected filters.",
         "TEAM_HISTORICAL_DATE_FROM": "From",
@@ -2109,6 +2111,12 @@
             "INPUT_PLACEHOLDER": "Type something...",
             "ACTION_TITLE": "Search",
             "RESULTS": "Search results"
+        },
+        "HOME": {
+            "TITLE": "Welcome to Taiga ESSI",
+            "SUBTITLE_1": "Manage your projects in an agile and efficient way.",
+            "SUBTITLE_2": "This platform allows you to coordinate teams, track progress, and document the work done.",
+            "ACCESS_BUTTON": "Access here"
         }
     },
     "ZOOM": {

@@ -16,9 +16,64 @@ div.wrapper
             //- Metrics dashboard - Team
             div.metrics-dashboard
 
-                div.loading-container(ng-if="metricsView.loading")
-                    div.spinner
-                    p(translate="METRICS.LOADING")
+                //- Skeleton loading
+                div.skeleton-loading(ng-if="metricsView.loading")
+                    //- Título real
+                    h2.section-title
+                        span.skeleton-element(style="display: inline-block; width: 200px; height: 1.8rem;")
+                    
+                    //- Pestañas reales
+                    div.team-subtabs
+                        button.team-subtab.skeleton-element(style="width: 100px;")
+                        button.team-subtab.skeleton-element(style="width: 100px;")
+                    
+                    //- Descripción
+                    p.section-description(style="text-align: center;")
+                        span.skeleton-element(style="display: inline-block; width: 60%; height: 1rem;")
+                    
+                    //- Sección de comparación
+                    div.team-section
+                        h3
+                            span.skeleton-element(style="display: inline-block; width: 180px; height: 1.4rem;")
+                        
+                        //- Grid de gráficos radar y barras
+                        div.team-comparison-grid
+                            div.team-chart-container
+                                h4.chart-title
+                                    span.skeleton-element(style="display: inline-block; width: 150px; height: 1rem;")
+                                div.skeleton-chart
+                            div.team-chart-container
+                                h4.chart-title
+                                    span.skeleton-element(style="display: inline-block; width: 180px; height: 1rem;")
+                                div.skeleton-chart
+                        
+                        //- Filtro de usuarios
+                        div.team-user-filter
+                            div.filter-header
+                                div.filter-info
+                                    span.skeleton-element(style="display: inline-block; width: 120px; height: 1rem;")
+                            div.filter-chips
+                                button.team-user-chip.skeleton-element(ng-repeat="i in [1,2,3,4]", style="width: 80px; height: 32px;")
+                    
+                    //- Sección de métricas por usuario
+                    div.team-section
+                        h3
+                            span.skeleton-element(style="display: inline-block; width: 150px; height: 1.4rem;")
+                        div.team-metrics-groups
+                            div.metric-group(ng-repeat="i in [1,2]")
+                                h4.group-title
+                                    span.skeleton-element(style="display: inline-block; width: 120px; height: 1.1rem;")
+                                div.project-metrics-grid
+                                    div.project-metric-card(ng-repeat="j in [1,2,3]")
+                                        div.project-metric-header
+                                            h3.metric-name
+                                                span.skeleton-element(style="display: inline-block; width: 70%; height: 1rem;")
+                                        div.project-metric-gauge
+                                            div.project-metric-body
+                                                div.project-metric-chart
+                                                    div.skeleton-mini-gauge
+                                                div.project-metric-insights
+                                                    span.skeleton-element(style="display: inline-block; width: 50px; height: 1.2rem;")
 
                 div.error-message(ng-if="metricsView.error && !metricsView.loading")
                     div.alert.alert-error
@@ -80,9 +135,9 @@ div.wrapper
                                                                 raw-value="metric.ratio"
                                                                 max-value="1"
                                                                 label="{{ metric.label }}"
-                                                                metric-id="{{ metric.id }}"
+                                                                metric-key="{{ metric.id }}"
                                                                 color="metric.categoryColor"
-                                                                palette="metric.categorySegments"
+                                                                palette="metric.categorySegments || metric.categoryPalette"
                                                             )
                                                         div.project-metric-insights
                                                             div.metric-value-wrapper
@@ -124,7 +179,7 @@ div.wrapper
                                     select#teamHistoricalSprint(
                                         ng-model="metricsView.teamHistoricalFilters.sprint"
                                         ng-change="applySprintFilter(metricsView.teamHistoricalFilters)"
-                                        ng-options="option.id as (option.translate ? (option.name | translate) : option.name) for option in metricsView.sprintOptions track by option.id"
+                                        ng-options="option.id as (option.translate ? (option.name | translate) : option.name) for option in metricsView.sprintOptions"
                                     )
                                 //- Custom date range
                                 div.filter-group.date-group
@@ -146,14 +201,14 @@ div.wrapper
                                     select#teamHistoricalUser(
                                         ng-model="metricsView.teamHistoricalFilters.user"
                                         ng-change="applyTeamHistoricalFilters()"
-                                        ng-options="option.id as (option.translate ? (option.label | translate) : option.label) for option in metricsView.teamHistoricalUserOptions track by option.id"
+                                        ng-options="option.id as (option.translate ? (option.label | translate) : option.label) for option in metricsView.teamHistoricalUserOptions"
                                     )
                                 div.filter-group.metric-filter
                                     label.filter-label(for="teamHistoricalMetric", translate="METRICS.TEAM_HISTORICAL_METRIC_FILTER")
                                     select#teamHistoricalMetric(
                                         ng-model="metricsView.teamHistoricalFilters.metric"
                                         ng-change="applyTeamHistoricalFilters()"
-                                        ng-options="metric.id as (metric.label | translate) for metric in metricsView.teamHistoricalMetricOptions track by metric.id"
+                                        ng-options="metric.id as (metric.label | translate) for metric in metricsView.teamHistoricalMetricOptions"
                                     )
                                 div.filter-group.filter-actions
                                     button.filter-action(

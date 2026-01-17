@@ -311,29 +311,15 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             else
                 formatted
 
-        deriveRemainderColor = (color) ->
-            base = if typeof color is "string" then color.trim() else ""
-            return 'rgba(148, 163, 184, 0.25)' unless base.length
+        # Solid colors only - NO transparency
+        SOLID_BLUE = '#2563EB'
+        SOLID_GREY = 'rgb(203, 213, 225)'
+        
 
-            hexMatch = base.match(/^#([0-9a-f]{6})$/i)
-            if hexMatch
-                hex = hexMatch[1]
-                r = parseInt(hex.substr(0, 2), 16)
-                g = parseInt(hex.substr(2, 2), 16)
-                b = parseInt(hex.substr(4, 2), 16)
-                return "rgba(#{r}, #{g}, #{b}, 0.18)"
-
-            rgbMatch = base.match(/^rgba?\(([^)]+)\)$/i)
-            if rgbMatch
-                parts = rgbMatch[1].split(',').map (part) -> part.trim()
-                r = parseInt(parts[0], 10) or 148
-                g = parseInt(parts[1], 10) or 163
-                b = parseInt(parts[2], 10) or 184
-                return "rgba(#{r}, #{g}, #{b}, 0.18)"
-
-            'rgba(148, 163, 184, 0.25)'
 
         buildPaletteDataset = (segments, fallbackColor, maxRangeRatio = 1) ->
+            # Only process when we have valid palette segments (typically from EXTERNAL provider)
+            # The segments already come complete from buildMetricCategorySegments
             return null unless Array.isArray(segments) and segments.length > 0
 
             entries = []
@@ -342,7 +328,10 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             for segment in segments when segment?
                 segmentValue = Number(segment.value)
                 continue unless isFinite(segmentValue) and segmentValue > 0
-                colorValue = if typeof segment.color is "string" and segment.color.trim().length > 0 then segment.color.trim() else fallbackColor
+                
+                # Use colors directly from API - they already come without transparency
+                colorValue = segment.color or SOLID_BLUE
+                
                 entries.push({
                     ratio: segmentValue
                     color: colorValue
@@ -351,16 +340,8 @@ SpeedometerChartDirective = ($parse, $timeout) ->
 
             return null unless entries.length
 
-            rangeRatio = if isFinite(maxRangeRatio) and maxRangeRatio > 0 then maxRangeRatio else totalRatio
-
-            if rangeRatio > totalRatio
-                entries.push({
-                    ratio: rangeRatio - totalRatio
-                    color: fallbackColor or 'rgba(148, 163, 184, 0.25)'
-                })
-                totalRatio = rangeRatio
-
-            totalRatio = rangeRatio if rangeRatio < totalRatio
+            # The segments already cover the full range, no need to add remainder
+            # Just normalize to 100% for the chart
             totalRatio = 1 if totalRatio <= 0
 
             scaleFactor = 100 / totalRatio
@@ -373,7 +354,7 @@ SpeedometerChartDirective = ($parse, $timeout) ->
             }
 
         renderChart = (value, label, maxValue, rawValue, unit, metricKey, customColor, paletteSegments) ->
-            console.log("Speedometer renderChart:", value, label, maxValue, rawValue)
+            console.log("Speedometer renderChart:", value, label, "customColor:", customColor, "paletteSegments:", paletteSegments)
             
             return if isRendering
             isRendering = true
@@ -406,33 +387,34 @@ SpeedometerChartDirective = ($parse, $timeout) ->
                             absoluteRatio = ratioClamped
                         absoluteRatio = Math.max(0, absoluteRatio)
 
-                        gaugeFillStyle = getGradientForValue(ctx, normalized, label, metricKey)
-                        providedColor = if typeof customColor is "string" and customColor.trim().length > 0 then customColor.trim() else null
-
-                        if providedColor
-                            gaugeBaseColor = providedColor
-                            gaugeRemainderColor = deriveRemainderColor(providedColor)
+                        # Use palette segments if provided (EXTERNAL), otherwise use solid colors
+                        paletteDataset = buildPaletteDataset(paletteSegments, SOLID_GREY, maxRefRatio)
+                        
+                        # Determine gauge colors - always solid, no transparency
+                        gaugeBaseColor = SOLID_BLUE
+                        gaugeRemainderColor = SOLID_GREY
+                        
+                        # If custom color provided, use it
+                        if typeof customColor is "string" and customColor.trim().length > 0
+                            gaugeBaseColor = customColor.trim()
+                        # If gradient style available (internal metrics), use it
                         else
-                            gaugeBaseColor = gaugeFillStyle?.fill or gaugeFillStyle
-                            gaugeRemainderColor = gaugeFillStyle?.remainder or 'rgba(220, 220, 220, 0.15)'
-
-                        paletteDataset = buildPaletteDataset(paletteSegments, gaugeRemainderColor, maxRefRatio)
+                            gaugeFillStyle = getGradientForValue(ctx, normalized, label, metricKey)
+                            if gaugeFillStyle? and typeof gaugeFillStyle is "object" and gaugeFillStyle.fill
+                                gaugeBaseColor = gaugeFillStyle.fill
+                                gaugeRemainderColor = gaugeFillStyle.remainder
 
                         datasetData = []
                         datasetColors = []
 
                         if paletteDataset?
+                            # Use palette segments if explicitly provided (traffic light or segments)
                             datasetData = paletteDataset.data
                             datasetColors = paletteDataset.colors
                         else
-                            datasetData = [
-                                normalized
-                                Math.max(100 - normalized, 0)
-                            ]
-                            datasetColors = [
-                                gaugeBaseColor
-                                gaugeRemainderColor
-                            ]
+                            # Partial fill rendering (needle + backdrop with gradient/solid)
+                            datasetData = [normalized, Math.max(100 - normalized, 0)]
+                            datasetColors = [gaugeBaseColor, gaugeRemainderColor]
                         
                         datasetObject = {
                             data: datasetData
@@ -662,34 +644,101 @@ SpeedometerChartDirective = ($parse, $timeout) ->
         getGradientForValue = (ctx, value, label, metricKey) ->
             identifier = metricKey or label or ""
             normalizedIdentifier = identifier.toString().toLowerCase()
-            treatAsUnassigned = normalizedIdentifier.indexOf("unassigned") isnt -1
+            
+            console.log("Gauge check:", {label: label, key: metricKey, normalized: normalizedIdentifier})
 
-            if !treatAsUnassigned
-                # Solid blue fill for the rest of project metrics
+            # Identify if it's an internal metric and what type of behavior it has
+            # "Worsening" means high value is bad (Green -> Red)
+            # "Improving" means high value is good (Red -> Green)
+            isWorsening = /unassigned|deviation|commits_anonymous|pattern_check/.test(normalizedIdentifier)
+            isInternal = isWorsening or /acceptance_criteria|closed_tasks_with_ae|commits_sd|commits_taskreference|tasks_sd|tasks_with_ee/.test(normalizedIdentifier)
+            isAssignedMetric = /assigned|asignad|assign|asign/i.test(normalizedIdentifier) and not /unassigned/i.test(normalizedIdentifier)
+
+            console.log "Gauge Check:", {
+                identifier: identifier,
+                normalized: normalizedIdentifier,
+                isAssigned: isAssignedMetric,
+                isInternal: isInternal,
+                value: value
+            }
+
+            if not isInternal and not isAssignedMetric
+                # Solid blue fill - NO transparency
                 return {
-                    fill: 'rgba(37, 99, 235, 0.92)'
-                    remainder: 'rgba(37, 99, 235, 0.18)'
+                    fill: 'rgb(37, 99, 235)'
+                    remainder: SOLID_GREY
                 }
 
             gradient = ctx.createLinearGradient(0, 0, 400, 0)
             remainderGradient = ctx.createLinearGradient(0, 0, 400, 0)
 
-            remainderGradient.addColorStop(0, 'rgba(34, 197, 94, 0.18)')
-            remainderGradient.addColorStop(0.5, 'rgba(251, 191, 36, 0.18)')
-            remainderGradient.addColorStop(1, 'rgba(239, 68, 68, 0.18)')
+            if isAssignedMetric
+                # Custom ranges: 0-10 Orange, 10-30 Green, 30-50 Orange, 50+ Red
+                
+                # Remainder gradient (background track) - SOLID colors
+                remainderGradient.addColorStop(0, 'rgb(251, 191, 36)')   # 0-10 Orange
+                remainderGradient.addColorStop(0.2, 'rgb(34, 197, 94)')  # 10-30 Green
+                remainderGradient.addColorStop(0.4, 'rgb(251, 191, 36)') # 30-50 Orange
+                remainderGradient.addColorStop(1, 'rgb(239, 68, 68)')    # 50+ Red
 
-            if value < 33
-                # Low unassigned percentage -> green
-                gradient.addColorStop(0, 'rgba(34, 197, 94, 0.9)')
-                gradient.addColorStop(1, 'rgba(22, 163, 74, 0.9)')
-            else if value < 66
-                # Mid values -> orange
-                gradient.addColorStop(0, 'rgba(251, 191, 36, 0.9)')
-                gradient.addColorStop(1, 'rgba(245, 158, 11, 0.9)')
+                if value < 10
+                    # 0 - 10: Orange - SOLID
+                    gradient.addColorStop(0, 'rgb(251, 191, 36)')
+                    gradient.addColorStop(1, 'rgb(245, 158, 11)')
+                else if value < 30
+                    # 10 - 30: Green - SOLID
+                    gradient.addColorStop(0, 'rgb(34, 197, 94)')
+                    gradient.addColorStop(1, 'rgb(22, 163, 74)')
+                else if value < 50
+                    # 30 - 50: Orange - SOLID
+                    gradient.addColorStop(0, 'rgb(251, 191, 36)')
+                    gradient.addColorStop(1, 'rgb(245, 158, 11)')
+                else
+                    # 50 - 100: Red - SOLID
+                    gradient.addColorStop(0, 'rgb(239, 68, 68)')
+                    gradient.addColorStop(1, 'rgb(220, 38, 38)')
+
+                return {
+                    fill: gradient
+                    remainder: remainderGradient
+                }
+
+            if isWorsening
+                # Green -> Orange -> Red - SOLID colors
+                remainderGradient.addColorStop(0, 'rgb(34, 197, 94)')
+                remainderGradient.addColorStop(0.5, 'rgb(251, 191, 36)')
+                remainderGradient.addColorStop(1, 'rgb(239, 68, 68)')
+
+                if value < 33
+                    # Low unassigned percentage -> green - SOLID
+                    gradient.addColorStop(0, 'rgb(34, 197, 94)')
+                    gradient.addColorStop(1, 'rgb(22, 163, 74)')
+                else if value < 66
+                    # Mid values -> orange - SOLID
+                    gradient.addColorStop(0, 'rgb(251, 191, 36)')
+                    gradient.addColorStop(1, 'rgb(245, 158, 11)')
+                else
+                    # High unassigned percentage -> red - SOLID
+                    gradient.addColorStop(0, 'rgb(239, 68, 68)')
+                    gradient.addColorStop(1, 'rgb(220, 38, 38)')
             else
-                # High unassigned percentage -> red
-                gradient.addColorStop(0, 'rgba(239, 68, 68, 0.9)')
-                gradient.addColorStop(1, 'rgba(220, 38, 38, 0.9)')
+                # Red -> Orange -> Green - SOLID colors
+                remainderGradient.addColorStop(0, 'rgb(239, 68, 68)')
+                remainderGradient.addColorStop(0.5, 'rgb(251, 191, 36)')
+                remainderGradient.addColorStop(1, 'rgb(34, 197, 94)')
+
+                if value < 33
+                    # Low value -> red - SOLID
+                    gradient.addColorStop(0, 'rgb(239, 68, 68)')
+                    gradient.addColorStop(1, 'rgb(220, 38, 38)')
+                else if value < 66
+                    # Mid values -> orange - SOLID
+                    gradient.addColorStop(0, 'rgb(251, 191, 36)')
+                    gradient.addColorStop(1, 'rgb(245, 158, 11)')
+                else
+                    # High value -> green - SOLID
+                    gradient.addColorStop(0, 'rgb(34, 197, 94)')
+                    gradient.addColorStop(1, 'rgb(22, 163, 74)')
 
             return {
                 fill: gradient
@@ -1218,7 +1267,7 @@ AreaChartDirective = ($parse, $timeout) ->
                                     }
                                     y: {
                                         beginAtZero: true
-                                        max: data.yAxisMax ? undefined
+                                        max: if data.yAxisMax? then data.yAxisMax else undefined
                                         grid: {
                                             display: true
                                             color: '#e2e8f0'
@@ -1230,13 +1279,19 @@ AreaChartDirective = ($parse, $timeout) ->
                                             font: {
                                                 size: 11
                                             }
-                                            stepSize: data.yAxisStep ? undefined
+                                            stepSize: if data.yAxisStep? then data.yAxisStep else undefined
                                             callback: (value) ->
                                                 return value unless typeof value is 'number'
                                                 numericValue = Number(value)
                                                 return value unless isFinite(numericValue)
                                                 if data.isPercentage
                                                     return "#{numericValue.toFixed(1)}%"
+                                                
+                                                # If it's an integer, show as integer
+                                                if Number.isInteger(numericValue)
+                                                    return numericValue.toString()
+                                                
+                                                # Otherwise show with decimals
                                                 numericValue.toFixed(2)
                                         }
                                         title: {
