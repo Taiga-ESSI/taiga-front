@@ -120,13 +120,6 @@ div.wrapper
                                         ng-model="metricsView.projectHistoricalFilters.dateTo"
                                         ng-change="metricsView.projectHistoricalFilters.preset = null"
                                     )
-                                div.filter-group.metric-filter
-                                    label.filter-label(for="projectHistoricalMetric", translate="METRICS.TEAM_HISTORICAL_METRIC_FILTER")
-                                    select#projectHistoricalMetric(
-                                        ng-model="metricsView.projectHistoricalFilters.metric"
-                                        ng-change="applyProjectHistoricalFilters()"
-                                        ng-options="metric.id as (metric.label | translate) for metric in metricsView.projectHistoricalMetricOptions"
-                                    )
                                 div.filter-group.filter-actions
                                     button.filter-action(
                                         type="button"

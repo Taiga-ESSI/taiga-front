@@ -553,6 +553,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 @scope.metricsAuth.loading = false
                 @scope.metricsAuth.error = @.resolveErrorKey(error?.data?.error, "METRICS.LOGOUT_ERROR")
 
+    shouldUseMockMetrics: ->
+        query = @location?.search?() or {}
+        flag = query.mockMetrics or query.mock
+        return false unless flag?
+        flag = flag.toString().trim().toLowerCase()
+        flag in ["1", "true", "yes", "on"]
+
     loadMetrics: (force = false) ->
         return if @scope.metricsView.loading and !force
 
@@ -577,6 +584,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         if externalId
             params.external = externalId
+        if @.shouldUseMockMetrics()
+            params.mock = "metrics"
 
         @scope.metricsView.loading = true
         @scope.metricsView.error = null
@@ -754,6 +763,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         if externalId
             params.external = externalId
+        if @.shouldUseMockMetrics()
+            params.mock = "historical"
 
         if @metricsProvider is "internal"
             params.refresh = true
@@ -3038,7 +3049,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             groupedByStudent = {}
 
             for point in dataPoints when point?
-                student = point.student or point.username or point.name or point.user
+                displayStudent = @.resolveHistoricalStudentDisplay(point, metricId)
+                student = displayStudent or point.student or point.username or point.name or point.user
                 continue unless student? and student.toString().trim().length
                 normalizedStudent = student.toString().trim()
                 groupedByStudent[normalizedStudent] ?= []
@@ -3062,6 +3074,53 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             a.localeCompare(b)
 
         return result
+
+    resolveHistoricalStudentDisplay: (point, metricId) ->
+        return null unless point?.name?
+        name = point.name.toString().trim()
+        return null unless name.length
+
+        suffixes = @.resolveHistoricalUserNameSuffixes(metricId)
+        return null unless suffixes.length
+
+        lowerName = name.toLowerCase()
+        for suffix in suffixes when suffix?
+            suffixLower = suffix.toLowerCase()
+            continue unless suffixLower.length
+            if lowerName.endsWith(suffixLower)
+                base = name.substring(0, name.length - suffixLower.length).trim()
+                return base if base.length
+
+        null
+
+    resolveHistoricalUserNameSuffixes: (metricId) ->
+        metric = metricId?.toString()?.toLowerCase() or ""
+        suffixes = []
+
+        if metric.indexOf("assignedtasks_") isnt -1 or metric.indexOf("tasksratio_") isnt -1
+            suffixes.push(" tasks")
+        if metric.indexOf("closedtasks_") isnt -1 or metric.indexOf("completedtasks_") isnt -1
+            suffixes.push(" closed tasks")
+        if metric.indexOf("commits_") isnt -1
+            suffixes.push(" commits")
+        if metric.indexOf("modifiedlines_") isnt -1
+            suffixes.push(" modified lines")
+        if metric.indexOf("completedus_") isnt -1 or metric.indexOf("closedus_") isnt -1
+            suffixes.push(" completed user stories")
+            suffixes.push(" completed stories")
+        if metric.indexOf("totalus_") isnt -1
+            suffixes.push(" total user stories")
+            suffixes.push(" user stories")
+
+        if suffixes.length is 0
+            suffixes = [
+                " closed tasks"
+                " tasks"
+                " commits"
+                " modified lines"
+            ]
+
+        suffixes
 
     buildHistoricalEntryCollection: (student, category, metricId, dataPoints) ->
         return null unless angular.isArray(dataPoints) and dataPoints.length
@@ -4595,13 +4654,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         if angular.isArray(usersList)
             seen = {}
             for user in usersList when user?
-                username = user.username or user.displayName or user.name or user.id
-                continue unless username? and username.toString().trim().length
-                normalized = username.toString().trim()
-                continue if seen[normalized]
-                seen[normalized] = true
-                displayName = user.displayName or user.name or normalized
-                options.push({id: normalized, label: displayName, translate: false})
+                displayLabel = @.resolveHistoricalUserLabel(user)
+                continue unless displayLabel? and displayLabel.toString().trim().length
+                normalizedKey = @.normalizeUserColorKey(displayLabel)
+                normalizedKey ?= displayLabel.toString().trim().toLowerCase()
+                continue if seen[normalizedKey]
+                seen[normalizedKey] = true
+                options.push({id: displayLabel, label: displayLabel, translate: false})
 
         hasSelected = false
         if selectedUser?
@@ -4622,15 +4681,20 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         seen = {}
 
         for option in existing when option?
-            seen[option.id] = true
+            optionKey = @.normalizeUserColorKey(option.id)
+            optionKey ?= option.id.toString().trim().toLowerCase()
+            seen[optionKey] = true
             options.push(option)
 
         for username in usernames when username?
-            normalized = username.toString().trim()
-            continue unless normalized.length
-            continue if seen[normalized]
-            seen[normalized] = true
-            options.push({id: normalized, label: normalized, translate: false})
+            displayLabel = @.resolveHistoricalUserLabel(username)
+            continue unless displayLabel? and displayLabel.toString().trim().length
+            normalizedKey = @.normalizeUserColorKey(displayLabel)
+            normalizedKey ?= displayLabel.toString().trim().toLowerCase()
+            if seen[normalizedKey]
+                continue
+            seen[normalizedKey] = true
+            options.push({id: displayLabel, label: displayLabel, translate: false})
 
         options.sort (a, b) ->
             if a.id is "all"
@@ -4648,6 +4712,17 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         unless hasSelected
             @scope.metricsView.teamHistoricalFilters.user = "all"
+
+    resolveHistoricalUserLabel: (user) ->
+        return null unless user?
+
+        if typeof user is "object"
+            return user.displayName or user.name or user.fullName or user.username or user.id
+
+        if typeof user is "string"
+            return user.toString().trim()
+
+        null
     
     translateMetricId: (metricId) ->
         """
