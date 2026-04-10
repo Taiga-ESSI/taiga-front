@@ -1225,7 +1225,7 @@ AreaChartDirective = ($parse, $timeout) ->
                                         borderColor: dataset.borderColor || areaColor
                                         backgroundColor: dataset.backgroundColor || (areaColor + '40')  # 25% opacity
                                         borderWidth: dataset.borderWidth || 2
-                                        fill: true  # This creates the area effect
+                                        fill: false  # This creates the area effect
                                         tension: dataset.tension || 0.35  # Smooth curve
                                         pointRadius: dataset.pointRadius || 3
                                         pointHoverRadius: dataset.pointHoverRadius || 5

@@ -1,6 +1,6 @@
 {
-    "api": "http://localhost:9000/api/v1/",
-    "eventsUrl": "ws://localhost:9000/events",
+    "api": "https://essidoc.epsevg.upc.edu/api/v1/",
+    "eventsUrl": "wss://essidoc.epsevg.upc.edu/events",
     "baseHref": "/",
     "eventsMaxMissedHeartbeats": 5,
     "eventsHeartbeatIntervalTime": 60000,
@@ -8,19 +8,14 @@
     "debug": false,
     "debugInfo": false,
     "defaultLanguage": "en",
-    "themes": [
-        "taiga"
-    ],
+    "themes": ["taiga"],
     "defaultTheme": "taiga",
     "defaultLoginEnabled": true,
     "publicRegisterEnabled": true,
     "googleAuth": {
         "enabled": true,
-        "clientId": "286907234950-enq7c1j4085fbj662otfptqqo24hk93u.apps.googleusercontent.com",
-        "allowedDomains": [
-            "upc.edu",
-            "estudiantat.upc.edu"
-        ]
+        "clientId": "271185463588-qrlj676h7675bk8ft1kb8ohgg9k16cqr.apps.googleusercontent.com",
+        "allowedDomains": ["upc.edu", "estudiantat.upc.edu", "essidoc.epsevg.upc.edu"]
     },
     "feedbackEnabled": true,
     "supportUrl": "https://community.taiga.io/",
@@ -28,18 +23,6 @@
     "termsOfServiceUrl": null,
     "maxUploadFileSize": null,
     "contribPlugins": [],
-    "tagManager": {
-        "accountId": null
-    },
-    "tribeHost": null,
-    "enableAsanaImporter": false,
-    "enableGithubImporter": false,
-    "enableJiraImporter": false,
-    "enableTrelloImporter": false,
     "gravatar": false,
-    "rtlLanguages": [
-        "ar",
-        "fa",
-        "he"
-    ]
+    "rtlLanguages": ["ar", "fa", "he"]
 }

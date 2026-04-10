@@ -124,7 +124,7 @@ div.wrapper
                                     div.metric-group(ng-repeat="group in metricsView.data.teamMetricGroups")
                                         h4.group-title {{ group.label }}
                                         div.project-metrics-grid
-                                            div.project-metric-card(ng-repeat="metric in group.metrics track by metric.id")
+                                            div.project-metric-card(ng-repeat="metric in group.metrics track by $index")
                                                 div.project-metric-header
                                                     h3.metric-name {{ metric.label }}
                                                 div.project-metric-gauge

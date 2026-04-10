@@ -394,7 +394,12 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         matchesPrefix = (value) ->
             return false unless allowPrefix and value?
-            value.indexOf("#{normalizedConfig}_") is 0
+            return true if value.indexOf("#{normalizedConfig}_") is 0
+            if normalizedConfig is "commits"
+                return true if value.indexOf("commitscontribution_") is 0
+            if normalizedConfig is "modifiedlines"
+                return true if value.indexOf("modifiedlinescontribution_") is 0
+            return false
 
         return true if matchesExact(normalizedMetricId) or matchesExact(normalizedExternalId)
         return true if matchesPrefix(normalizedMetricId) or matchesPrefix(normalizedExternalId)
@@ -613,45 +618,106 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 allMetricsData = data.metrics or []
                 @qualityFactorNamesMap = @.buildQualityFactorNamesMap(allMetricsData)
 
-                processedMetrics = @.processGessiMetrics(data.metrics or [])
-                console.log "[DEBUG] Before buildMetricDisplayGroups, metrics count:", (data.metrics or []).length, "sample:", data.metrics?[0]
-                displayMetricGroups = @.buildMetricDisplayGroups(data.metrics or [])
-                console.log "[DEBUG] After buildMetricDisplayGroups, team groups:", displayMetricGroups?.team?.length
-                projectMetricsList = @.prepareProjectMetrics(data.metrics or [])
                 studentsRaw = data.students
                 
                 # Pol Alcoverro added: Associate metrics with students using their identities
-                allMetrics = data.metrics or []
+                # Gather all metrics including nested ones
+                allMetrics = []
+                collectMetrics = (arr) ->
+                    return unless angular.isArray(arr)
+                    for m in arr when m?
+                        allMetrics.push(m)
+                        if angular.isArray(m.metrics)
+                            collectMetrics(m.metrics)
+                
+                collectMetrics(data.metrics or [])
+
                 if studentsRaw and angular.isArray(studentsRaw)
                     for student in studentsRaw when student
                         # Get the student's TAIGA and GITHUB usernames
                         taigaUsername = student.identities?.TAIGA?.username
                         githubUsername = student.identities?.GITHUB?.username
-                        
+                        baseUsername = student.username or student.name or student.displayName or student.id
+
                         # Filter metrics that belong to this student
                         studentMetrics = []
-                        for metric in allMetrics when metric?.id
-                            metricId = metric.id.toLowerCase()
+                        for metric in allMetrics when metric?
+                            metricId = (metric.externalId or metric.id or "").toString().toLowerCase()
+                            continue unless metricId.length > 0
                             
                             # Check if this metric belongs to the student
+                            hasExplicitUser = metric.user == baseUsername or metric.resolvedUsername == baseUsername
                             matchesTaiga = taigaUsername and metricId.includes("_#{taigaUsername.toLowerCase()}")
                             matchesGithub = githubUsername and metricId.includes("_#{githubUsername.toLowerCase()}")
-                            
-                            if matchesTaiga or matchesGithub
+                            matchesBase = baseUsername and typeof baseUsername is "string" and metricId.includes("_#{baseUsername.toLowerCase()}")
+
+                            if hasExplicitUser or matchesTaiga or matchesGithub or matchesBase
                                 studentMetrics.push(metric)
+                                metric.resolvedUsername = student.username or student.name or student.displayName or student.id or taigaUsername
+                                metric.resolvedDisplayName = student.displayName or student.name or metric.resolvedUsername
                         
                         # Assign the filtered metrics to the student
                         student.metrics = studentMetrics
+                # AUTO-DISCOVER MISSING MAPPINGS (Pol Alcoverro)
+                # After resolving what we can from identities, learn the best possible username and display name for each suffix
+                suffixToUsername = {}
+                suffixToDisplayName = {}
+
+                for m in allMetrics when m?
+                    # Always prefer resolved/Taiga names over raw Github tags
+                    u = m.resolvedUsername or m.student or m.user or m.username or m.owner
+                    disp = m.resolvedDisplayName or m.student_display or m.studentDisplay or m.user_display or m.userDisplay or m.displayName
+                    idStr = (m.externalId or m.id or "").toString().toLowerCase()
+                    if idStr.includes("_")
+                        parts = idStr.split("_")
+                        if parts.length >= 2
+                            suffix = parts.slice(1).join("_")
+                            # Only overwrite if we found a "better" (likely more resolved) name
+                            currU = suffixToUsername[suffix]
+                            if u and (!currU or currU is suffix)
+                                suffixToUsername[suffix] = u
+                            if disp
+                                suffixToDisplayName[suffix] = disp
+
+                # Forcefully apply the best known identities to ALL metrics sharing the same suffix
+                for m in allMetrics when m?
+                    idStr = (m.externalId or m.id or "").toString().toLowerCase()
+                    if idStr.includes("_")
+                        parts = idStr.split("_")
+                        if parts.length >= 2
+                            suffix = parts.slice(1).join("_")
+                            bestU = suffixToUsername[suffix]
+                            bestDisp = suffixToDisplayName[suffix]
+                            
+                            if bestU
+                                m.resolvedUsername = bestU
+                                m.user = bestU
+                            if bestDisp
+                                m.resolvedDisplayName = bestDisp
+                                m.userDisplayName = bestDisp
+                        
                 # End Pol Alcoverro added
+
+                processedMetrics = @.processGessiMetrics(data.metrics or [])
                 
                 normalizedStudents = @.normalizeStudentsCollection(studentsRaw)
                 
                 processedUsers = @.processStudentsMetrics(normalizedStudents)
                 
-                processedUsersList = @.usersMetricsToArray(processedUsers)
+                # PRIMERO TOCA EXTRAER/MAPEAR USUARIOS (así se les hace el match y añade resolvedUsername a las métricas directas del payload)
+                # ALWAYS extract any missing users found in the metrics that weren't explicitly in studentsRaw
+                extractedUsers = @.extractUsersFromMetrics(data.metrics or [])
+                for own uname, uData of extractedUsers
+                    if not processedUsers[uname]?
+                        processedUsers[uname] = uData
 
+                processedUsersList = @.usersMetricsToArray(processedUsers)
                 @.registerUserColors(processedUsersList)
                 
+                # Y ahora construimos los grupos sabiendo la info resuelta (el resolvedUsername)
+                displayMetricGroups = @.buildMetricDisplayGroups(data.metrics or [])
+                projectMetricsList = @.prepareProjectMetrics(data.metrics or [])
+
                 hoursData = data.hours or {}
                 hasHoursData = hoursData? and typeof hoursData is "object" and Object.keys(hoursData).length > 0
                 hoursChart = if hasHoursData then @.prepareHoursPieData(hoursData) else null
@@ -660,10 +726,6 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 
                 # Prepare quality factors for display
                 processedQualityFactors = @.prepareQualityFactors(data.quality_factors or [])
-                
-                if Object.keys(processedUsers).length is 0
-                    processedUsers = @.extractUsersFromMetrics(data.metrics or [])
-                    processedUsersList = @.usersMetricsToArray(processedUsers)
 
                 @.initializeTeamHistoricalUsers(processedUsersList)
 
@@ -945,10 +1007,11 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         return null unless metric?
 
         normalizedValue = @.normalizeMetricValue(metric.value)
+        resolvedId = metric.externalId or metric.id
 
         return {
-            id: metric.id
-            name: metric.name or metric.id
+            id: resolvedId
+            name: metric.name or resolvedId
             value: normalizedValue
             rawValue: metric.value
             valueDescription: metric.value_description or metric.valueDescription
@@ -1119,9 +1182,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                         entry.closedTasks = metricValue
                         entry.completedTasks = metricValue
                         entry.tasksPercentage = metricValue
-                    else if configuredKey is "commits"
+                    else if configuredKey is "commits" or configuredKey is "commitscontribution"
                         entry.commits = metricValue
-                    else if configuredKey is "modifiedlines" or configuredKey is "linesmodified"
+                    else if configuredKey is "modifiedlines" or configuredKey is "linesmodified" or configuredKey is "modifiedlinescontribution"
                         entry.modifiedLines = metricValue
                     else if configuredKey is "totalus"
                         entry.totalUS = metricValue
@@ -1208,11 +1271,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                     processed.byCategory[factor].push(metric)
 
             # Extract user-specific metrics
-            if metric.id and metric.id.includes("_")
-                parts = metric.id.split("_")
+            identifierForParsing = (metric.externalId or metric.id or "").toString().toLowerCase()
+            if identifierForParsing.includes("_")
+                parts = identifierForParsing.split("_")
                 if parts.length >= 2
                     metricType = parts[0]
-                    userName = parts[1..].join("_")
+                    extractedUserName = parts[1..].join("_")
+                    userName = metric.resolvedUsername or extractedUserName
                     
                     processed.byUser[userName] ?= []
                     processed.byUser[userName].push(metric)
@@ -1291,24 +1356,23 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         
         normalized = extractedUsername.toString().trim().toLowerCase()
         return null unless normalized.length
+
+        # Strip all non-alphanumeric characters for clean comparison
+        cleanString = (str) -> str.replace(/[^a-z0-9]/g, '')
+        cleanExtracted = cleanString(normalized)
         
         # Direct match
         if projectMembers[normalized]
             return projectMembers[normalized]
-        
-        # Try without underscores/hyphens
-        noSeparators = normalized.replace(/[-_]/g, '')
-        if projectMembers[noSeparators]
-            return projectMembers[noSeparators]
         
         # Try partial match (username contains or is contained in member name)
         for memberKey, memberData of projectMembers
             # Check if extracted username contains the member key or vice versa
             if normalized.indexOf(memberKey) isnt -1 or memberKey.indexOf(normalized) isnt -1
                 return memberData
-            # Also check without separators
-            memberNoSep = memberKey.replace(/[-_]/g, '')
-            if noSeparators.indexOf(memberNoSep) isnt -1 or memberNoSep.indexOf(noSeparators) isnt -1
+            # Also check with fully cleaned strings (no dots, no separators)
+            cleanMember = cleanString(memberKey)
+            if cleanExtracted and cleanMember and (cleanExtracted.indexOf(cleanMember) isnt -1 or cleanMember.indexOf(cleanExtracted) isnt -1)
                 return memberData
         
         return null
@@ -1324,36 +1388,74 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         # Track normalized usernames to merge case-insensitive duplicates
         normalizedUserMap = {}
         
-        for metric in metricsArray when metric?.id?
+        for metric in metricsArray when metric?
+            identifierForParsing = (metric.externalId or metric.id or "").toString().toLowerCase()
+
             # Look for user-specific metrics
-            if metric.id and (metric.id.includes("assignedtasks_") or 
-                             metric.id.includes("closedtasks_") or
-                             metric.id.includes("commits_") or
-                             metric.id.includes("modifiedlines_") or
-                             metric.id.includes("completedus_") or
-                             metric.id.includes("totalus_"))
+            if identifierForParsing and (identifierForParsing.includes("assignedtasks_") or 
+                             identifierForParsing.includes("closedtasks_") or
+                             identifierForParsing.includes("commits_") or
+                             identifierForParsing.includes("commitscontribution_") or
+                             identifierForParsing.includes("modifiedlines_") or
+                             identifierForParsing.includes("modifiedlinescontribution_") or
+                             identifierForParsing.includes("completedus_") or
+                             identifierForParsing.includes("totalus_"))
                 
-                parts = metric.id.split("_")
+                parts = identifierForParsing.split("_")
                 if parts.length >= 2
                     metricType = parts[0]
                     extractedUserName = parts[1..].join("_")
                     
-                    # Validate: exclude false positive patterns like 'anonymous', 'sd', etc.
-                    continue unless @.isValidExternalUsername(extractedUserName)
-                    
-                    # If we have project members, filter by membership
-                    resolvedMember = null
-                    if hasProjectMembers
-                        resolvedMember = @.matchUsernameToMember(extractedUserName, projectMembers)
-                        # Skip if not a project member
-                        continue unless resolvedMember?
-                    
-                    # Normalize username for deduplication (case-insensitive)
-                    normalizedKey = extractedUserName.toString().trim().toLowerCase()
-                    
-                    # Use resolved member info if available, otherwise use extracted name
-                    displayName = resolvedMember?.fullName or extractedUserName
-                    canonicalUsername = resolvedMember?.original or extractedUserName
+                    # Use predefined identity mapping if available
+                    if metric.resolvedUsername
+                        canonicalUsername = metric.resolvedUsername
+                        displayName = metric.resolvedDisplayName or metric.resolvedUsername
+                        normalizedKey = canonicalUsername.toString().trim().toLowerCase()
+                    else
+                        # Validate: exclude false positive patterns like 'anonymous', 'sd', etc.
+                        continue unless @.isValidExternalUsername(extractedUserName)
+                        
+                        # If we have project members, filter by membership
+                        resolvedMember = null
+                        if hasProjectMembers
+                            resolvedMember = @.matchUsernameToMember(extractedUserName, projectMembers)
+
+                            if not resolvedMember and metric.name
+                                console.log "[DEBUG METRICS] Evaluando usuario desconocido: '#{extractedUserName}' -> metric.name original: '#{metric.name}'"
+                                realName = metric.name.toString()
+                                realName = realName.replace(/\s+(commits contribution|commits|modified lines contribution|modified lines|closed tasks|tasks)$/i, "")
+                                
+                                realName = realName.trim()
+                                
+                                cleanRealName = realName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '')
+                                
+                                console.log "[DEBUG METRICS] Nombre extraído y limpiado: '#{realName}' -> '#{cleanRealName}'"
+
+                                for key, member of projectMembers
+                                    memberFullNameClean = (member.fullName or "").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '')
+                                    if memberFullNameClean
+                                        # Hacemos un include por si a caso uno usa 2 apellidos y en el otro sitio 1 solo, o el nombre está del revés
+                                        if memberFullNameClean == cleanRealName or memberFullNameClean.includes(cleanRealName) or cleanRealName.includes(memberFullNameClean)
+                                            console.log "[DEBUG METRICS] MATCH ENCONTRADO! '#{extractedUserName}' coincide con miembro '#{member.fullName}' (#{memberFullNameClean})"
+                                            resolvedMember = member
+                                            break
+
+                                if not resolvedMember
+                                    console.log "[DEBUG METRICS] ERROR: No se ha encontrado ningún miembro en Taiga que coincida con '#{cleanRealName}'."
+
+
+                            # Skip if not a project member
+                            continue unless resolvedMember?
+                        
+                        # Normalize username for deduplication (case-insensitive)
+                        if resolvedMember?
+                            canonicalUsername = resolvedMember.original
+                            displayName = resolvedMember.fullName
+                            normalizedKey = canonicalUsername.toString().trim().toLowerCase()
+                        else
+                            canonicalUsername = extractedUserName
+                            displayName = extractedUserName
+                            normalizedKey = extractedUserName.toString().trim().toLowerCase()
                     
                     # Check if we already have this user under a different case variant
                     if normalizedUserMap[normalizedKey]?
@@ -1361,6 +1463,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                     else
                         userName = canonicalUsername
                         normalizedUserMap[normalizedKey] = userName
+
+                    metric.resolvedUsername = userName
+                    metric.resolvedDisplayName = displayName
                     
                     users[userName] ?= {
                         username: userName
@@ -1401,9 +1506,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                         users[userName].closedTasks = normalizedValue
                         users[userName].completedTasks = normalizedValue
                         users[userName].tasksPercentage = normalizedValue
-                    else if metricType == "commits"
+                    else if metricType == "commits" or metricType == "commitscontribution"
                         users[userName].commits = normalizedValue
-                    else if metricType == "modifiedlines"
+                    else if metricType == "modifiedlines" or metricType == "modifiedlinescontribution"
                         users[userName].modifiedLines = normalizedValue
                     else if metricType == "totalus"
                         # totalus is an absolute count, not a ratio - use raw value
@@ -1428,17 +1533,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                     # Attempt to resolve display name from metric name if missing
                     if !users[userName].displayName and metric.name
                          name = metric.name.toString()
-                         suffix = ""
-                         if metricType == "assignedtasks" then suffix = " tasks"
-                         else if metricType == "closedtasks" then suffix = " closed tasks"
-                         else if metricType == "commits" then suffix = " commits"
-                         else if metricType == "modifiedlines" then suffix = " modified lines"
-                         else if metricType == "totalus" then suffix = " user stories"
-                         else if metricType == "completedus" then suffix = " completed user stories"
-
-                         if suffix and name.toLowerCase().endsWith(suffix)
-                             users[userName].displayName = name.substring(0, name.length - suffix.length)
-                         else if name.length > userName.length + 5 # Simple heuristic: if name is significantly longer/different
+                         name = name.replace(/\s+(commits contribution|commits|modified lines contribution|modified lines|closed tasks|tasks|user stories|completed user stories)$/i, "")
+                         if name.length > 0
                              users[userName].displayName = name
 
         # Cleanup helper metadata
@@ -1712,10 +1808,14 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             return 'stories_closed'
         if lowerId.indexOf('user_commits') is 0 or lowerId.indexOf('commits_') is 0
             return 'commits'
+        if lowerId.indexOf('commitscontribution_') is 0
+            return 'commitscontribution'
         if lowerId.indexOf('user_assigned_tasks') is 0 or lowerId.indexOf('assignedtasks_') is 0
             return 'tasks'
         if lowerId.indexOf('user_modified_lines') is 0 or lowerId.indexOf('modifiedlines_') is 0
             return 'modified_lines'
+        if lowerId.indexOf('modifiedlinescontribution_') is 0
+            return 'modifiedlinescontribution'
         if lowerId.indexOf('tasksratio_') is 0
             return 'tasks_ratio'
 
@@ -1766,7 +1866,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             "closedtasks_"
             "completedtasks_"
             "commits_"
+            "commitscontribution_"
             "modifiedlines_"
+            "modifiedlinescontribution_"
             "completedus_"
             "totalus_"
             "tasksratio_"
@@ -1804,8 +1906,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                     return value
             null
 
-        username = pickValue(metric, ["student", "user", "username", "owner"])
-        displayName = pickValue(metric, ["student_display", "studentDisplay", "user_display", "userDisplay", "displayName"])
+        username = pickValue(metric, ["resolvedUsername", "student", "user", "username", "owner"])
+        displayName = pickValue(metric, ["resolvedDisplayName", "student_display", "studentDisplay", "user_display", "userDisplay", "displayName"])
 
         username ?= pickValue(metric.metadata, ["student", "user", "username"])
         displayName ?= pickValue(metric.metadata, ["student_display", "studentDisplay", "user_display", "userDisplay", "displayName"])
@@ -1916,6 +2018,10 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             else if classificationOverride is 'team'
                 isTeamConfigured = true
                 isProjectConfigured = false
+         
+            # [DEBUG AÑADIDO] -> Traza de Gessi / Dashboard para Lidia y Marc
+            if normalizedMetricId and (normalizedMetricId.includes("lidix91") or normalizedMetricId.includes("marcoriol"))
+                console.log "[DEBUG-TRAZA] #{normalizedMetricId} | isUserMetric: #{isUserMetric} | isTeamConfigured: #{isTeamConfigured} | isProjectConfigured: #{isProjectConfigured} | Provider: #{@metricsProvider}"
 
             # For external provider: if no classification was resolved, show the metric anyway
             # User metrics go to team view, aggregate metrics go to project view
@@ -1926,11 +2032,20 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                     # Check if metric looks like a project/aggregate metric
                     isProjectConfigured = true
 
+             if normalizedMetricId and (normalizedMetricId.includes("lidix91") or normalizedMetricId.includes("marcoriol"))
+                console.log "[DEBUG-TRAZA-2] #{normalizedMetricId} | POST PROVIDER -> isTeamConfigured: #{isTeamConfigured}"
+
             # Skip metrics that are not configured for any dashboard slot
-            continue unless isProjectConfigured or isTeamConfigured
+            # continue unless isProjectConfigured or isTeamConfigured
+            if not isProjectConfigured and not isTeamConfigured
+                if normalizedMetricId and (normalizedMetricId.includes("lidix91") or normalizedMetricId.includes("marcoriol"))
+                    console.warn "[DEBUG-DROP] Eliminado por NO estar en ProjectConfig ni TeamConfig: #{normalizedMetricId}"
+                continue
 
             # Only keep user-scoped metrics when they are explicitly enabled for the team dashboard
             if isUserMetric and !isTeamConfigured
+                if normalizedMetricId and (normalizedMetricId.includes("lidix91") or normalizedMetricId.includes("marcoriol"))
+                    console.warn "[DEBUG-DROP] Eliminado por ser UserMetric pero isTeamConfigured es FALSE: #{normalizedMetricId}"
                 continue
 
             normalizedValue = @.normalizeMetricValue(metric.value)
@@ -1942,7 +2057,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             displayLabel = translatedLabel or metric.name or @.formatMetricLabel(metric.id)
 
             entry =
-                id: metric.id or metric.name
+                id: metric.externalId or metric.id or metric.name
                 label: displayLabel
                 ratio: ratioValue
                 formattedRatio: Number(ratioValue or 0).toFixed(2)
@@ -1993,6 +2108,13 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             # For internal provider: if no qualityFactors defined, use extracted category as group
             # Also, if qualityFactors are generic (like "Delivery"), replace with specific category
             effectiveQualityFactors = metric.qualityFactors
+
+            # Fix para el JSON de Gessi: unificar los qualityFactors con las keys del Dashboard
+            if angular.isArray(effectiveQualityFactors)
+                effectiveQualityFactors = effectiveQualityFactors.map (factor) ->
+                    if factor is "commitscontribution" then return "commits"
+                    if factor is "modifiedlinescontribution" then return "modifiedlines"
+                    return factor
             
             if @metricsProvider is "internal" and (!effectiveQualityFactors or effectiveQualityFactors.length is 0) and categoryName
                 effectiveQualityFactors = [categoryName]
@@ -2183,7 +2305,16 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         categoryName = metric.categoryName or metric.category_name or metric.category?.name or metric.category
         # If no explicit category name, try to use the first quality factor if available
         if !categoryName and angular.isArray(metric.qualityFactors) and metric.qualityFactors.length > 0
-            categoryName = metric.qualityFactors[0]
+            rawQualityFactor = metric.qualityFactors[0]
+            normalizedQualityFactor = if rawQualityFactor? then rawQualityFactor.toString().toLowerCase() else null
+
+            # Some external metrics come without categoryName but with quality factor ids.
+            # Map them to existing visual categories so gauges can render segmented palettes.
+            qualityFactorCategoryMap =
+                taskeffortinformation: "Deviation"
+                taskseffortinformation: "Deviation"
+
+            categoryName = qualityFactorCategoryMap[normalizedQualityFactor] or rawQualityFactor
         
         categoryColor = @.resolveMetricCategoryColor(categoryName, preciseValue or numericValue)
         categorySegments = @.buildMetricCategorySegments(categoryName)
@@ -2939,7 +3070,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             continue unless angular.isArray(dataPoints) and dataPoints.length > 0
 
             # Filter out user metrics from project category
-            if category is 'project' and @.isUserMetricId(metricKey)
+            if category is 'project' and @.isUserMetricId(metricKey) and @.extractHistoricalStudentFromMetricId(metricKey)?
                 continue
             
             labels = []
@@ -3040,7 +3171,20 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             for point in dataPoints when point?
                 student = point.student or point.username or point.name or point.user
                 continue unless student? and student.toString().trim().length
-                normalizedStudent = student.toString().trim()
+                # Use identical resolving logic for historical points as we do for current metrics
+                resolvedStudent = student
+                if @scope?.metricsView?.data?.rawStudents
+                    normalizedRaw = student.toString().trim().toLowerCase()
+                    for rawS in @scope.metricsView.data.rawStudents when rawS
+                        taigaU = rawS.identities?.TAIGA?.username
+                        githubU = rawS.identities?.GITHUB?.username
+                        if (taigaU and taigaU.toLowerCase() == normalizedRaw) or
+                           (githubU and githubU.toLowerCase() == normalizedRaw) or
+                           (rawS.username and rawS.username.toLowerCase() == normalizedRaw)
+                            resolvedStudent = rawS.username or taigaU or student
+                            break
+                            
+                normalizedStudent = resolvedStudent.toString().trim()
                 groupedByStudent[normalizedStudent] ?= []
                 groupedByStudent[normalizedStudent].push(point)
 
@@ -3062,6 +3206,74 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             a.localeCompare(b)
 
         return result
+
+    extractHistoricalStudentFromMetricId: (metricId) ->
+        return null unless metricId?
+
+        normalizedId = metricId.toString().toLowerCase()
+        parts = normalizedId.split("_")
+        return null unless parts.length >= 2
+
+        prefix = parts[0]
+        validPrefixes = [
+            "assignedtasks"
+            "closedtasks"
+            "completedtasks"
+            "tasksratio"
+            "commits"
+            "commitscontribution"
+            "modifiedlines"
+            "modifiedlinescontribution"
+            "completedus"
+            "totalus"
+        ]
+
+        return null unless validPrefixes.indexOf(prefix) isnt -1
+
+        extracted = parts[1..].join("_")
+        return null unless extracted?.length
+        return null unless @.isValidExternalUsername(extracted)
+
+        extracted
+
+    enrichHistoricalPointsWithStudent: (metricId, dataPoints, onlyIndividual = false) ->
+        return [] unless angular.isArray(dataPoints)
+
+        inferredStudent = @.extractHistoricalStudentFromMetricId(metricId)
+        enriched = []
+
+        for point in dataPoints when point?
+            scope = (point.scope or "").toString().toLowerCase()
+            isIndividualScope = scope is "individual"
+            includePoint = if onlyIndividual then (isIndividualScope or inferredStudent?) else true
+            continue unless includePoint
+
+            cloned = angular.extend({}, point)
+            unless cloned.student? or cloned.username? or cloned.user?
+                cloned.student = inferredStudent if inferredStudent?
+            enriched.push(cloned)
+
+        enriched
+
+    buildTeamHistoricalRawMetrics: (userMetricsRaw, projectMetricsRaw) ->
+        merged = {}
+
+        appendSeries = (metricId, points) =>
+            return unless metricId? and angular.isArray(points) and points.length
+            if merged[metricId]?
+                merged[metricId] = merged[metricId].concat(points)
+            else
+                merged[metricId] = points.slice()
+
+        for own metricId, dataPoints of (userMetricsRaw or {})
+            enriched = @.enrichHistoricalPointsWithStudent(metricId, dataPoints, false)
+            appendSeries(metricId, enriched)
+
+        for own metricId, dataPoints of (projectMetricsRaw or {})
+            enriched = @.enrichHistoricalPointsWithStudent(metricId, dataPoints, true)
+            appendSeries(metricId, enriched)
+
+        merged
 
     buildHistoricalEntryCollection: (student, category, metricId, dataPoints) ->
         return null unless angular.isArray(dataPoints) and dataPoints.length
@@ -3327,9 +3539,9 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             return "tasks"
         if normalized.indexOf("closedtasks_") isnt -1 or normalized.indexOf("completedtasks_") isnt -1
             return "closed_tasks"
-        if normalized.indexOf("modifiedlines_") isnt -1
+        if normalized.indexOf("modifiedlines_") isnt -1 or normalized.indexOf("modifiedlinescontribution_") isnt -1
             return "modified_lines"
-        if normalized.indexOf("commits_") isnt -1
+        if normalized.indexOf("commits_") isnt -1 or normalized.indexOf("commitscontribution_") isnt -1
             return "commits"
         
         # Internal metrics support (Taiga native) - per user
@@ -4316,8 +4528,10 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             return
 
         rawUserMetrics = historicalMetrics?.raw?.userMetrics or {}
-        console.log "[DEBUG] rawUserMetrics keys:", Object.keys(rawUserMetrics)
-        teamData = @.buildTeamHistoricalData(rawUserMetrics)
+        rawProjectMetrics = historicalMetrics?.raw?.projectMetrics or {}
+        teamHistoricalRaw = @.buildTeamHistoricalRawMetrics(rawUserMetrics, rawProjectMetrics)
+        console.log "[DEBUG] rawUserMetrics keys:", Object.keys(rawUserMetrics), "rawProjectMetrics keys:", Object.keys(rawProjectMetrics), "teamHistoricalRaw keys:", Object.keys(teamHistoricalRaw)
+        teamData = @.buildTeamHistoricalData(teamHistoricalRaw)
         console.log "[DEBUG] teamData built:", teamData?.users?.length, "users, chartsByCategory:", Object.keys(teamData?.chartsByCategory or {})
 
         @scope.metricsView.teamHistoricalSource = teamData
