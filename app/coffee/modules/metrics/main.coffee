@@ -2454,7 +2454,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         
         assignedLabel = @translate?.instant?("METRICS.RADAR_LABEL_ASSIGNED_TASKS") or "Assigned Tasks"
         commitsLabel = @translate?.instant?("METRICS.RADAR_LABEL_COMMITS") or "Commits"
-        closedLabel = @translate?.instant?("METRICS.CLOSED_TASKS_LABEL") or "Closed Tasks"
+        modifiedLinesLabel = @translate?.instant?("METRICS.RADAR_LABEL_MODIFIED_LINES") or "Modified Lines"
         
         datasets = []
         @.registerUserColors(usersList)
@@ -2466,11 +2466,11 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             
             assignedTasks = Math.max(0, Math.min(100, parseFloat(user.assignedTasks) or 0))
             commits = Math.max(0, Math.min(100, parseFloat(user.commits) or 0))
-            closedTasks = Math.max(0, Math.min(100, parseFloat(user.closedTasks) or 0))
+            modifiedLines = Math.max(0, Math.min(100, parseFloat(user.modifiedLines) or 0))
             
             dataset = {
                 label: "#{user.displayName or user.username}"
-                data: [assignedTasks, commits, closedTasks]
+                data: [assignedTasks, commits, modifiedLines]
                 backgroundColor: areaColor
                 borderColor: borderColor
                 borderWidth: 2
@@ -2485,7 +2485,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             datasets.push(dataset)
         
         return {
-            labels: [assignedLabel, commitsLabel, closedLabel]
+            labels: [assignedLabel, commitsLabel, modifiedLinesLabel]
             datasets: datasets
         }
 

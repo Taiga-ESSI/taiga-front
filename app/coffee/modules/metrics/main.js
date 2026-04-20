@@ -2621,7 +2621,7 @@
     };
 
     MetricsController.prototype.buildStudentsOverallRadar = function(usersList) {
-      var areaColor, assignedLabel, assignedTasks, borderColor, closedLabel, closedTasks, colorPalette, commits, commitsLabel, dataset, datasets, i, len, ref, ref1, ref2, user;
+      var areaColor, assignedLabel, assignedTasks, borderColor, colorPalette, commits, commitsLabel, dataset, datasets, i, len, modifiedLines, modifiedLinesLabel, ref, ref1, ref2, user;
       if (!(usersList && usersList.length > 0)) {
         return null;
       }
@@ -2630,7 +2630,7 @@
       }
       assignedLabel = ((ref = this.translate) != null ? typeof ref.instant === "function" ? ref.instant("METRICS.RADAR_LABEL_ASSIGNED_TASKS") : void 0 : void 0) || "Assigned Tasks";
       commitsLabel = ((ref1 = this.translate) != null ? typeof ref1.instant === "function" ? ref1.instant("METRICS.RADAR_LABEL_COMMITS") : void 0 : void 0) || "Commits";
-      closedLabel = ((ref2 = this.translate) != null ? typeof ref2.instant === "function" ? ref2.instant("METRICS.CLOSED_TASKS_LABEL") : void 0 : void 0) || "Closed Tasks";
+      modifiedLinesLabel = ((ref2 = this.translate) != null ? typeof ref2.instant === "function" ? ref2.instant("METRICS.RADAR_LABEL_MODIFIED_LINES") : void 0 : void 0) || "Modified Lines";
       datasets = [];
       this.registerUserColors(usersList);
       for (i = 0, len = usersList.length; i < len; i++) {
@@ -2640,10 +2640,10 @@
         areaColor = (colorPalette != null ? colorPalette.fill : void 0) || 'rgba(59, 130, 246, 0.26)';
         assignedTasks = Math.max(0, Math.min(100, parseFloat(user.assignedTasks) || 0));
         commits = Math.max(0, Math.min(100, parseFloat(user.commits) || 0));
-        closedTasks = Math.max(0, Math.min(100, parseFloat(user.closedTasks) || 0));
+        modifiedLines = Math.max(0, Math.min(100, parseFloat(user.modifiedLines) || 0));
         dataset = {
           label: "" + (user.displayName || user.username),
-          data: [assignedTasks, commits, closedTasks],
+          data: [assignedTasks, commits, modifiedLines],
           backgroundColor: areaColor,
           borderColor: borderColor,
           borderWidth: 2,
@@ -2657,7 +2657,7 @@
         datasets.push(dataset);
       }
       return {
-        labels: [assignedLabel, commitsLabel, closedLabel],
+        labels: [assignedLabel, commitsLabel, modifiedLinesLabel],
         datasets: datasets
       };
     };
