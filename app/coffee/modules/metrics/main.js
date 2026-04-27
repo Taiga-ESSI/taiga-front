@@ -1575,7 +1575,25 @@
           usernames[fullNameNormalized] = usernames[normalized];
           fullNameNoSpace = member.full_name.toString().trim().toLowerCase().replace(/\s+/g, '');
           usernames[fullNameNoSpace] = usernames[normalized];
+          var nameParts2 = member.full_name.toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(function(p) { return p.length >= 3; });
+          if (nameParts2.length >= 2) { var fp2 = nameParts2[0]; for (var ni2 = 1; ni2 < nameParts2.length; ni2++) { var cb2 = fp2 + nameParts2[ni2]; if (cb2.length >= 6 && !usernames[cb2]) { usernames[cb2] = usernames[normalized]; } } }
+          for (var wi2 = 0; wi2 < nameParts2.length; wi2++) { var np2 = nameParts2[wi2]; if (np2.length >= 4 && !usernames[np2]) { usernames[np2] = usernames[normalized]; } }
         }
+	// Include explicit identity usernames if available (TAIGA / GITHUB)
+            taigaId = (member.identities != null ? (_ref2 = member.identities.TAIGA) != null ? _ref2.username : void 0 : void 0);
+            githubId = (member.identities != null ? (_ref3 = member.identities.GITHUB) != null ? _ref3.username : void 0 : void 0);
+            if (taigaId) {
+              taigaNorm = taigaId.toString().trim().toLowerCase();
+              usernames[taigaNorm] = usernames[normalized];
+              usernames[taigaNorm.replace(/[^a-z0-9]/g, '')] = usernames[normalized];
+              usernames[normalized].taiga = taigaId;
+            }
+            if (githubId) {
+              ghNorm = githubId.toString().trim().toLowerCase();
+              usernames[ghNorm] = usernames[normalized];
+              usernames[ghNorm.replace(/[^a-z0-9]/g, '')] = usernames[normalized];
+              usernames[normalized].github = githubId;
+            }
       }
       return usernames;
     };
@@ -1603,7 +1621,7 @@
     };
 
     MetricsController.prototype.matchUsernameToMember = function(extractedUsername, projectMembers) {
-      var memberData, memberKey, memberNoSep, noSeparators, normalized;
+      var cleanExtracted, cleanMember, cleanString, memberData, memberKey, memberNoSep, noSeparators, normalized;
       if (!((extractedUsername != null) && (projectMembers != null))) {
         return null;
       }
@@ -1611,6 +1629,10 @@
       if (!normalized.length) {
         return null;
       }
+      cleanString = function(str) {
+        return str.replace(/[^a-z0-9]/g, '');
+      };
+      cleanExtracted = cleanString(normalized);
       if (projectMembers[normalized]) {
         return projectMembers[normalized];
       }
@@ -1627,12 +1649,16 @@
         if (noSeparators.indexOf(memberNoSep) !== -1 || memberNoSep.indexOf(noSeparators) !== -1) {
           return memberData;
         }
+	cleanMember = cleanString(memberKey);
+        if (cleanExtracted && cleanMember && (cleanExtracted.indexOf(cleanMember) !== -1 || cleanMember.indexOf(cleanExtracted) !== -1)) {
+          return memberData;
+        }
       }
       return null;
     };
 
     MetricsController.prototype.extractUsersFromMetrics = function(metricsArray) {
-      var base, base1, canonicalUsername, detail, displayName, existingIds, extractedUserName, hasProjectMembers, i, len, metric, metricType, name, normalizedKey, normalizedUserMap, normalizedValue, parts, projectMembers, ratio, ratioUS, rawValue, resolvedMember, suffix, userData, userName, users;
+      var base, base1, canonicalUsername, cleanRealName, detail, displayName, existingIds, extractedUserName, hasProjectMembers, i, key, len, member, memberFullNameClean, metric, metricType, name, normalizedKey, normalizedUserMap, normalizedValue, parts, projectMembers, ratio, ratioUS, rawValue, realName, resolvedMember, suffix, userData, userName, users;
       users = {};
       projectMembers = this.getProjectMemberUsernames();
       hasProjectMembers = (projectMembers != null) && Object.keys(projectMembers).length > 0;
@@ -1640,24 +1666,60 @@
       for (i = 0, len = metricsArray.length; i < len; i++) {
         metric = metricsArray[i];
         if ((metric != null ? metric.id : void 0) != null) {
-          if (metric.id && (metric.id.includes("assignedtasks_") || metric.id.includes("closedtasks_") || metric.id.includes("commits_") || metric.id.includes("modifiedlines_") || metric.id.includes("completedus_") || metric.id.includes("totalus_"))) {
+          if (metric.id && (metric.id.includes("assignedtasks_") || metric.id.includes("closedtasks_") || metric.id.includes("commits_") || metric.id.includes("commitscontribution_") || metric.id.includes("modifiedlines_") || metric.id.includes("modifiedlinescontribution_") || metric.id.includes("completedus_") || metric.id.includes("totalus_"))) {
             parts = metric.id.split("_");
             if (parts.length >= 2) {
               metricType = parts[0];
               extractedUserName = parts.slice(1).join("_");
-              if (!this.isValidExternalUsername(extractedUserName)) {
-                continue;
-              }
-              resolvedMember = null;
-              if (hasProjectMembers) {
-                resolvedMember = this.matchUsernameToMember(extractedUserName, projectMembers);
-                if (resolvedMember == null) {
+              if (metric.resolvedUsername) {
+                canonicalUsername = metric.resolvedUsername;
+                displayName = metric.resolvedDisplayName || metric.resolvedUsername;
+                normalizedKey = canonicalUsername.toString().trim().toLowerCase();
+              } else {
+                if (!this.isValidExternalUsername(extractedUserName)) {
                   continue;
                 }
+                resolvedMember = null;
+                if (hasProjectMembers) {
+                  resolvedMember = this.matchUsernameToMember(extractedUserName, projectMembers);
+                  if (resolvedMember == null && metric.name) {
+                    console.log("[DEBUG METRICS] Evaluando usuario desconocido: '" + extractedUserName + "' -> metric.name original: '" + metric.name + "'");
+                    realName = metric.name.toString();
+                    realName = realName.replace(/\s+(commits contribution|commits|modified lines contribution|modified lines|closed tasks|tasks)$/i, "");
+                    realName = realName.trim();
+                    cleanRealName = realName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+                    console.log("[DEBUG METRICS] Nombre extraído y limpiado: '" + realName + "' -> '" + cleanRealName + "'");
+                    for (key in projectMembers) {
+                      member = projectMembers[key];
+                      memberFullNameClean = ((member != null ? member.fullName : void 0) || "").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+                      if (memberFullNameClean) {
+                        if (memberFullNameClean === cleanRealName || memberFullNameClean.indexOf(cleanRealName) !== -1 || cleanRealName.indexOf(memberFullNameClean) !== -1) {
+                          console.log("[DEBUG METRICS] MATCH ENCONTRADO! '" + extractedUserName + "' coincide con miembro '" + member.fullName + "' (" + memberFullNameClean + ")");
+                          resolvedMember = member;
+                          break;
+                        } else {
+                          var externalWords = realName.split(/\s+/).map(function(w) { return w.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ''); }).filter(function(w) { return w.length > 1; });
+                          var memberNameWords = ((member != null ? member.fullName : void 0) || "").split(/\s+/).map(function(w) { return w.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, ''); }).filter(function(w) { return w.length > 1; });
+                          if (externalWords.length > 0 && memberNameWords.length > 0 && externalWords.every(function(w) { return memberNameWords.indexOf(w) !== -1; })) {
+                            console.log("[DEBUG METRICS] MATCH WORD-BY-WORD! '" + extractedUserName + "' -> '" + (member != null ? member.fullName : void 0) + "'");
+                            resolvedMember = member;
+                            break;
+                          }
+                        }
+                      }
+                    }
+                    if (!resolvedMember) {
+                      console.log("[DEBUG METRICS] ERROR: No se ha encontrado ningún miembro en Taiga que coincida con '" + cleanRealName + "'.");
+                    }
+                  }
+                  if (resolvedMember == null) {
+                    continue;
+                  }
+                }
+                normalizedKey = extractedUserName.toString().trim().toLowerCase();
+                displayName = (resolvedMember != null ? resolvedMember.fullName : void 0) || extractedUserName;
+                canonicalUsername = (resolvedMember != null ? resolvedMember.original : void 0) || extractedUserName;
               }
-              normalizedKey = extractedUserName.toString().trim().toLowerCase();
-              displayName = (resolvedMember != null ? resolvedMember.fullName : void 0) || extractedUserName;
-              canonicalUsername = (resolvedMember != null ? resolvedMember.original : void 0) || extractedUserName;
               if (normalizedUserMap[normalizedKey] != null) {
                 userName = normalizedUserMap[normalizedKey];
               } else {
@@ -1705,9 +1767,9 @@
                 users[userName].closedTasks = normalizedValue;
                 users[userName].completedTasks = normalizedValue;
                 users[userName].tasksPercentage = normalizedValue;
-              } else if (metricType === "commits") {
+              } else if (metricType === "commits" || metricType === "commitscontribution") {
                 users[userName].commits = normalizedValue;
-              } else if (metricType === "modifiedlines") {
+              } else if (metricType === "modifiedlines" || metricType === "modifiedlinescontribution") {
                 users[userName].modifiedLines = normalizedValue;
               } else if (metricType === "totalus") {
                 rawValue = typeof metric.value === 'number' ? metric.value : parseFloat(metric.value) || 0;
@@ -1737,9 +1799,9 @@
                   suffix = " tasks";
                 } else if (metricType === "closedtasks") {
                   suffix = " closed tasks";
-                } else if (metricType === "commits") {
+                } else if (metricType === "commits" || metricType === "commitscontribution") {
                   suffix = " commits";
-                } else if (metricType === "modifiedlines") {
+                } else if (metricType === "modifiedlines" || metricType === "modifiedlinescontribution") {
                   suffix = " modified lines";
                 } else if (metricType === "totalus") {
                   suffix = " user stories";
@@ -2230,7 +2292,14 @@
         classificationOverride = this.resolveMetricClassificationValue(metric);
         normalizedMetricId = metric.id != null ? metric.id.toString().toLowerCase() : null;
         normalizedExternalId = metric.externalId != null ? metric.externalId.toLowerCase() : null;
-        isUserMetric = this.isUserMetricId(normalizedMetricId) || this.isUserMetricId(normalizedExternalId);
+        // Check if metric has explicit scope
+        if (metric.scope === 'individual') {
+          isUserMetric = true;
+        } else if (metric.scope === 'team') {
+          isUserMetric = false;
+        } else {
+          isUserMetric = this.isUserMetricId(normalizedMetricId) || this.isUserMetricId(normalizedExternalId);
+        }
         if (classificationOverride === 'hidden') {
           continue;
         }

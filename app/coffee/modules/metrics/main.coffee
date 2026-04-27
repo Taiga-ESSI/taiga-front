@@ -1311,6 +1311,30 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                 # Also without underscores
                 fullNameNoSpace = member.full_name.toString().trim().toLowerCase().replace(/\s+/g, '')
                 usernames[fullNameNoSpace] = usernames[normalized]
+                # Add partial name combos: first word + each other word, and individual words
+                # Handles GitHub usernames that combine parts of a multi-word full name
+                nameParts = member.full_name.toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter((p) -> p.length >= 3)
+                if nameParts.length >= 2
+                    firstNamePart = nameParts[0]
+                    for otherPart in nameParts[1..]
+                        combo = firstNamePart + otherPart
+                        usernames[combo] ?= usernames[normalized] if combo.length >= 6
+                for namePart in nameParts
+                    usernames[namePart] ?= usernames[normalized] if namePart.length >= 4
+
+            # Include explicit identity usernames if available (TAIGA / GITHUB)
+            taigaId = member.identities?.TAIGA?.username
+            githubId = member.identities?.GITHUB?.username
+            if taigaId
+                taigaNorm = taigaId.toString().trim().toLowerCase()
+                usernames[taigaNorm] = usernames[normalized]
+                usernames[taigaNorm.replace(/[^a-z0-9]/g, '')] = usernames[normalized]
+                usernames[normalized].taiga = taigaId
+            if githubId
+                ghNorm = githubId.toString().trim().toLowerCase()
+                usernames[ghNorm] = usernames[normalized]
+                usernames[ghNorm.replace(/[^a-z0-9]/g, '')] = usernames[normalized]
+                usernames[normalized].github = githubId
         
         return usernames
 
@@ -1439,6 +1463,16 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                                             console.log "[DEBUG METRICS] MATCH ENCONTRADO! '#{extractedUserName}' coincide con miembro '#{member.fullName}' (#{memberFullNameClean})"
                                             resolvedMember = member
                                             break
+                                        else
+                                            # Word-by-word matching: handles middle names omitted in external dashboard
+                                            # e.g., "john smith" matches "John Middle Smith Lastname"
+                                            normalizeWord = (w) -> w.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '')
+                                            externalWords = realName.split(/\s+/).map(normalizeWord).filter (w) -> w.length > 1
+                                            memberWords = (member.fullName or "").split(/\s+/).map(normalizeWord).filter (w) -> w.length > 1
+                                            if externalWords.length > 0 and memberWords.length > 0 and externalWords.every((w) -> memberWords.indexOf(w) isnt -1)
+                                                console.log "[DEBUG METRICS] MATCH WORD-BY-WORD! '#{extractedUserName}' -> '#{member.fullName}'"
+                                                resolvedMember = member
+                                                break
 
                                 if not resolvedMember
                                     console.log "[DEBUG METRICS] ERROR: No se ha encontrado ningún miembro en Taiga que coincida con '#{cleanRealName}'."
