@@ -740,6 +740,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                     rawMetrics: data.metrics or [],
                     projectMetrics: projectMetricsList,
                     rawStudents: studentsRaw,
+                    suffixToDisplayName: suffixToDisplayName,
                     strategicIndicators: processedStrategicIndicators,
                     qualityFactors: processedQualityFactors,
                     projectMetricGroups: displayMetricGroups.project,
@@ -3186,6 +3187,51 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         return result unless userMetricsRaw? and typeof userMetricsRaw is "object"
 
+        # Build comprehensive identity -> displayName map (Taiga, GitHub, metric suffix)
+        identityToDisplay = {}
+        for rawS in (@scope?.metricsView?.data?.rawStudents or []) when rawS
+            dName = rawS.displayName or rawS.name or rawS.username or ""
+            continue unless dName.length
+            identityToDisplay[rawS.username.toLowerCase()] = dName if rawS.username
+            rTaigaU = rawS.identities?.TAIGA?.username
+            rGithubU = rawS.identities?.GITHUB?.username
+            identityToDisplay[rTaigaU.toLowerCase()] = dName if rTaigaU
+            identityToDisplay[rGithubU.toLowerCase()] = dName if rGithubU
+            for m in (rawS.metrics or []) when m?
+                mId = (m.externalId or m.id or "").toString().toLowerCase()
+                if mId.indexOf("_") isnt -1
+                    mParts = mId.split("_")
+                    if mParts.length >= 2
+                        mSuffix = mParts.slice(1).join("_")
+                        identityToDisplay[mSuffix] = dName if mSuffix?.length
+
+        # Augment with all known username->displayName mappings from processed users list
+        # (includes GitHub usernames resolved via Taiga project member matching)
+        for user in (@scope?.metricsView?.data?.usersMetricsList or []) when user?
+            uName = user.username or user.displayName or ""
+            uDisp = user.displayName or user.name or uName
+            identityToDisplay[uName.toLowerCase()] = uDisp if uName and uDisp
+
+        # Augment with suffix->displayName from current metrics auto-discovery (catches unlinked GitHub usernames)
+        for own sfx, sfxDisp of (@scope?.metricsView?.data?.suffixToDisplayName or {})
+            identityToDisplay[sfx] = sfxDisp if sfx and sfxDisp
+
+        # Augment from rawMetrics (resolved by extractUsersFromMetrics via fuzzy name matching)
+        # Maps metric ID suffix -> resolvedDisplayName, catches GitHub usernames not linked in Taiga identities
+        for metric in (@scope?.metricsView?.data?.rawMetrics or []) when metric?
+            rmId = (metric.externalId or metric.id or "").toString().toLowerCase()
+            if rmId.indexOf("_") isnt -1
+                rmParts = rmId.split("_")
+                if rmParts.length >= 2
+                    rmSuffix = rmParts.slice(1).join("_")
+                    rmDisp = metric.resolvedDisplayName or metric.userDisplayName
+                    identityToDisplay[rmSuffix] = rmDisp if rmSuffix and rmDisp and not identityToDisplay[rmSuffix]
+
+        # Augment with ALL project member username variants (Taiga, GitHub, name combos)
+        # This is the most reliable source since it derives from scope.project.members
+        for own pmKey, pmEntry of @.getProjectMemberUsernames()
+            identityToDisplay[pmKey] = pmEntry.fullName if pmKey and pmEntry?.fullName and not identityToDisplay[pmKey]
+
         userSet = {}
 
         mergedMetrics = @.mergeHistoricalMetricSeries(userMetricsRaw)
@@ -3205,20 +3251,8 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             for point in dataPoints when point?
                 student = point.student or point.username or point.name or point.user
                 continue unless student? and student.toString().trim().length
-                # Use identical resolving logic for historical points as we do for current metrics
-                resolvedStudent = student
-                if @scope?.metricsView?.data?.rawStudents
-                    normalizedRaw = student.toString().trim().toLowerCase()
-                    for rawS in @scope.metricsView.data.rawStudents when rawS
-                        taigaU = rawS.identities?.TAIGA?.username
-                        githubU = rawS.identities?.GITHUB?.username
-                        if (taigaU and taigaU.toLowerCase() == normalizedRaw) or
-                           (githubU and githubU.toLowerCase() == normalizedRaw) or
-                           (rawS.username and rawS.username.toLowerCase() == normalizedRaw)
-                            resolvedStudent = rawS.username or taigaU or student
-                            break
-                            
-                normalizedStudent = resolvedStudent.toString().trim()
+                nRaw = student.toString().trim().toLowerCase()
+                normalizedStudent = identityToDisplay[nRaw] or student.toString().trim()
                 groupedByStudent[normalizedStudent] ?= []
                 groupedByStudent[normalizedStudent].push(point)
 
@@ -4486,6 +4520,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         # Update metric options if empty
         if @scope.metricsView.projectHistoricalMetricOptions.length <= 1
             for own metricId, bundle of mergedProjectMetrics
+                continue if @.isUserMetricId(metricId) and @.extractHistoricalStudentFromMetricId(metricId)?
                 @scope.metricsView.projectHistoricalMetricOptions.push({
                     id: metricId
                     label: bundle.metricLabel or @.formatMetricLabel(metricId)
@@ -4843,13 +4878,12 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
         if angular.isArray(usersList)
             seen = {}
             for user in usersList when user?
-                username = user.username or user.displayName or user.name or user.id
-                continue unless username? and username.toString().trim().length
-                normalized = username.toString().trim()
+                displayName = user.displayName or user.name or user.username or user.id
+                continue unless displayName? and displayName.toString().trim().length
+                normalized = displayName.toString().trim()
                 continue if seen[normalized]
                 seen[normalized] = true
-                displayName = user.displayName or user.name or normalized
-                options.push({id: normalized, label: displayName, translate: false})
+                options.push({id: normalized, label: normalized, translate: false})
 
         hasSelected = false
         if selectedUser?
