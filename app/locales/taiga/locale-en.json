@@ -1729,7 +1729,14 @@
         "MAX": "Max",
         "ACCESS_DENIED": "You do not have permission to access this section.",
         "EDITION_NOT_FOUND": "Edition not found.",
-        "LOAD_ERROR": "Error loading data."
+        "LOAD_ERROR": "Error loading data.",
+        "GROUP_NOT_FOUND": "Group not found in this edition.",
+        "PROJECT_METRICS_TITLE": "Project metrics",
+        "STUDENTS_TITLE": "Students",
+        "NO_STUDENTS": "No students found in this group.",
+        "STUDENT_NAME": "Student",
+        "VIEW_PROJECT": "View project:",
+        "BACK_TO_EDITION": "Back to edition"
     },
     "METRICS": {
         "PAGE_TITLE": "Metrics - {{projectName}}",

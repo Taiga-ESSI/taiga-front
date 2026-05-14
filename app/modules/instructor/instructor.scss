@@ -23,7 +23,8 @@ $instructor-text-muted: rgb(148, 163, 184);
 // ─── Page layout ─────────────────────────────────────────────────────────────
 
 .instructor-home,
-.instructor-edition {
+.instructor-edition,
+.instructor-group {
     background: $instructor-bg;
     min-height: calc(100vh - 60px);
     padding: 2.5rem;
@@ -231,32 +232,30 @@ $instructor-text-muted: rgb(148, 163, 184);
     // Speedometer gauges inside group cards — compact size
     .group-metrics-gauges {
         display: grid;
-        gap: .75rem;
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: .5rem;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     }
 
     .metric-gauge-item {
         align-items: center;
         display: flex;
         flex-direction: column;
+        flex-shrink: 0;
+        overflow: hidden;
 
         tg-speedometer-chart {
             display: block;
-            max-width: 140px;
-            width: 100%;
-        }
-
-        tg-speedometer-chart canvas {
-            height: auto !important;
-            max-width: 100%;
-            width: 100% !important;
+            flex-shrink: 0;
+            width: 90px;
         }
 
         .gauge-label {
             color: $instructor-text-secondary;
-            font-size: .7rem;
-            margin-top: .25rem;
+            font-size: .65rem;
+            margin-top: .2rem;
             text-align: center;
+            width: 90px;
+            word-break: break-word;
         }
     }
 
@@ -276,6 +275,17 @@ $instructor-text-muted: rgb(148, 163, 184);
         display: grid;
         gap: 1.5rem;
         grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    }
+
+    // Make group cards clickable
+    .groups-grid .group-card {
+        cursor: pointer;
+
+        &:hover {
+            box-shadow: 0 4px 16px rgba(0, 115, 207, .2);
+            transform: translateY(-2px);
+            transition: box-shadow .15s ease, transform .15s ease;
+        }
     }
 
     .aggregated-chart-card {
@@ -307,6 +317,174 @@ $instructor-text-muted: rgb(148, 163, 184);
         tg-bar-chart canvas {
             height: auto !important;
             max-height: 200px;
+        }
+    }
+}
+
+// ─── Instructor Group ─────────────────────────────────────────────────────────
+
+.instructor-group {
+    .group-header {
+        align-items: flex-start;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+    }
+
+    .breadcrumb {
+        color: $instructor-text-secondary;
+        font-size: .85rem;
+        margin-bottom: .5rem;
+
+        a {
+            color: $instructor-primary;
+            text-decoration: none;
+
+            &:hover {
+                text-decoration: underline;
+            }
+        }
+
+        .breadcrumb-sep {
+            color: $instructor-text-muted;
+            margin: 0 .35rem;
+        }
+    }
+
+    .group-title {
+        color: $instructor-text-main;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0;
+
+        .group-title-name {
+            color: $instructor-text-secondary;
+            font-weight: 400;
+        }
+    }
+
+    .group-project-link {
+        margin-bottom: 1.5rem;
+
+        a {
+            color: $instructor-primary;
+            font-size: .9rem;
+            text-decoration: none;
+
+            &:hover {
+                text-decoration: underline;
+            }
+        }
+    }
+
+    .group-new-project-notice {
+        background: rgba(217, 119, 6, .08);
+        border: 1px solid rgba(217, 119, 6, .2);
+        border-radius: 8px;
+        color: #d97706;
+        font-size: .9rem;
+        margin-bottom: 1.5rem;
+        padding: .75rem 1rem;
+    }
+
+    .group-metrics-section {
+        margin-bottom: 2.5rem;
+
+        h2 {
+            color: $instructor-text-main;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+        }
+    }
+
+    .group-metrics-gauges-detail {
+        display: grid;
+        gap: 1.25rem;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    }
+
+    .metric-gauge-item-detail {
+        align-items: center;
+        background: $instructor-card-bg;
+        border: 1px solid $instructor-card-border;
+        border-radius: 8px;
+        box-shadow: $instructor-card-shadow;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        overflow: hidden;
+        padding: 1rem;
+
+        tg-speedometer-chart {
+            display: block;
+            flex-shrink: 0;
+            width: 150px;
+        }
+
+        .gauge-label {
+            color: $instructor-text-secondary;
+            font-size: .8rem;
+            margin-top: .35rem;
+            text-align: center;
+            width: 150px;
+        }
+    }
+
+    .students-section {
+        h2 {
+            color: $instructor-text-main;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+        }
+    }
+
+    .no-students {
+        color: $instructor-text-secondary;
+        font-size: .9rem;
+        padding: 1rem 0;
+    }
+
+    .students-table {
+        background: $instructor-card-bg;
+        border: 1px solid $instructor-card-border;
+        border-collapse: collapse;
+        border-radius: 8px;
+        box-shadow: $instructor-card-shadow;
+        overflow: hidden;
+        width: 100%;
+
+        th,
+        td {
+            border-bottom: 1px solid $instructor-card-border;
+            padding: .65rem 1rem;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(0, 115, 207, .05);
+            color: $instructor-text-secondary;
+            font-size: .8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        td {
+            color: $instructor-text-main;
+            font-size: .875rem;
+        }
+
+        .student-name {
+            font-weight: 500;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:hover td {
+            background: rgba(0, 115, 207, .03);
         }
     }
 }

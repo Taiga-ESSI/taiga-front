@@ -126,6 +126,7 @@ urls = {
     # Instructor Dashboard
     "instructor-home":    "/instructor"
     "instructor-edition": "/instructor/edition/:editionId"
+    "instructor-group":   "/instructor/edition/:editionId/group/:groupId"
 }
 
 init = ($log, $navurls) ->
