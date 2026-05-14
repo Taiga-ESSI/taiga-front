@@ -17,6 +17,25 @@ div.wrapper
                         span(ng-if="!view.refreshing" translate="INSTRUCTOR.REFRESH")
                         span(ng-if="view.refreshing" translate="INSTRUCTOR.REFRESHING")
 
+            //- Aggregated charts: one bar chart per metric comparing all groups
+            div.aggregated-section(ng-if="view.groups.length > 1")
+                h2(translate="INSTRUCTOR.AGGREGATED_TITLE")
+                div.aggregated-charts-grid
+                    div.aggregated-chart-card(ng-repeat="(metricId, data) in view.aggregated track by metricId")
+                        h4.agg-metric-name {{ data.metric_name }}
+                        div.agg-stats-row
+                            span.agg-stat
+                                span.stat-label(translate="INSTRUCTOR.AVG")
+                                span.stat-value &nbsp;{{ data.avg | number:2 }}
+                            span.agg-stat
+                                span.stat-label(translate="INSTRUCTOR.MIN")
+                                span.stat-value &nbsp;{{ data.min | number:2 }}
+                            span.agg-stat
+                                span.stat-label(translate="INSTRUCTOR.MAX")
+                                span.stat-value &nbsp;{{ data.max | number:2 }}
+                        tg-bar-chart(data="view.charts[metricId]")
+
+            //- Group cards
             div.no-groups(ng-if="view.groups.length === 0")
                 div.empty-state
                     p(translate="INSTRUCTOR.NO_GROUPS")
@@ -35,33 +54,19 @@ div.wrapper
                         span(translate="INSTRUCTOR.SNAPSHOT_AT")
                         span &nbsp;{{ group.snapshot_computed_at | date:'dd/MM/yyyy HH:mm' }}
 
-                    div.group-metrics-summary(ng-if="group.metrics.length > 0")
-                        div.metric-row(
-                            ng-repeat="metric in group.metrics | limitTo:5 track by metric.id"
-                            ng-if="metric.classification === 'project'"
-                        )
-                            span.metric-name {{ metric.name }}
-                            span.metric-value {{ metric.value | number:2 }}
-
                     div.group-new-project(ng-if="group.is_new_project")
                         p(translate="INSTRUCTOR.GROUP_NEW_PROJECT")
 
-            div.aggregated-section(ng-if="!view.loading && !view.error && (view.aggregated | json) !== '{}'")
-                h2(translate="INSTRUCTOR.AGGREGATED_TITLE")
-                div.aggregated-grid
-                    div.aggregated-card(ng-repeat="(metricId, data) in view.aggregated track by metricId")
-                        h4.agg-metric-name {{ data.metric_name }}
-                        div.agg-stats
-                            div.agg-stat
-                                span.stat-label(translate="INSTRUCTOR.AVG")
-                                span.stat-value {{ data.avg | number:2 }}
-                            div.agg-stat
-                                span.stat-label(translate="INSTRUCTOR.MIN")
-                                span.stat-value {{ data.min | number:2 }}
-                            div.agg-stat
-                                span.stat-label(translate="INSTRUCTOR.MAX")
-                                span.stat-value {{ data.max | number:2 }}
-                        div.agg-breakdown
-                            div.breakdown-row(ng-repeat="entry in data.values track by entry.group_id")
-                                span.breakdown-group {{ entry.group_code }}
-                                span.breakdown-value {{ entry.value | number:2 }}
+                    div.group-metrics-gauges(ng-if="!group.is_new_project && group.metrics.length > 0")
+                        div.metric-gauge-item(
+                            ng-repeat="metric in group.metrics track by metric.id"
+                            ng-if="metric.classification === 'project'"
+                        )
+                            tg-speedometer-chart(
+                                value="metric.value"
+                                raw-value="metric.value"
+                                max-value="1"
+                                label="{{ metric.name }}"
+                                metric-key="{{ metric.id }}"
+                            )
+                            span.gauge-label {{ metric.name }}

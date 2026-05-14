@@ -81,6 +81,11 @@ class InstructorEditionController extends mixOf(taiga.Controller, taiga.PageMixi
 
         @.load()
 
+    GROUP_COLORS: [
+        '#2563EB', '#16A34A', '#DC2626', '#D97706',
+        '#7C3AED', '#0891B2', '#DB2777', '#65A30D'
+    ]
+
     load: (force=false) ->
         @scope.view.loading = true
         @scope.view.error = null
@@ -95,6 +100,7 @@ class InstructorEditionController extends mixOf(taiga.Controller, taiga.PageMixi
                 key: data.course_edition_key
             @scope.view.groups     = data.groups or []
             @scope.view.aggregated = data.aggregated or {}
+            @scope.view.charts     = @.buildBarCharts(data.aggregated or {})
             @scope.view.loading    = false
 
             @translate("INSTRUCTOR.EDITION_TITLE", {key: data.course_edition_key}).then (title) =>
@@ -108,6 +114,23 @@ class InstructorEditionController extends mixOf(taiga.Controller, taiga.PageMixi
             else
                 @scope.view.error = "INSTRUCTOR.LOAD_ERROR"
             @scope.view.loading = false
+
+    buildBarCharts: (aggregated) ->
+        charts = {}
+        for metricId, data of aggregated
+            labels = data.values.map (v) -> v.group_code
+            values = data.values.map (v) -> v.value
+            colors = labels.map (_, i) => @.GROUP_COLORS[i % @.GROUP_COLORS.length]
+            charts[metricId] =
+                labels: labels
+                datasets: [{
+                    label: data.metric_name
+                    data: values
+                    backgroundColor: colors
+                    borderColor: colors
+                    borderWidth: 1
+                }]
+        charts
 
     refresh: ->
         @scope.view.refreshing = true

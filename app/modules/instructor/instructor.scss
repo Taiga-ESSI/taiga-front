@@ -1,0 +1,312 @@
+/*
+ * Sergio Utrilla added - Instructor Dashboard styles
+ * Descripción: Estilos para el módulo del dashboard del instructor.
+ *              Sigue las convenciones visuales del módulo de métricas de Taiga.
+ */
+
+// ─── Variables ───────────────────────────────────────────────────────────────
+
+$instructor-bg: linear-gradient(
+    160deg,
+    rgb(250, 251, 253) 0%,
+    rgb(241, 245, 249) 50%,
+    rgb(226, 232, 240) 100%
+);
+$instructor-card-bg: #fff;
+$instructor-card-border: rgba(0, 115, 207, .12);
+$instructor-card-shadow: 0 2px 8px rgba(0, 0, 0, .06);
+$instructor-primary: #0073cf;
+$instructor-text-main: rgb(15, 23, 42);
+$instructor-text-secondary: rgb(71, 85, 105);
+$instructor-text-muted: rgb(148, 163, 184);
+
+// ─── Page layout ─────────────────────────────────────────────────────────────
+
+.instructor-home,
+.instructor-edition {
+    background: $instructor-bg;
+    min-height: calc(100vh - 60px);
+    padding: 2.5rem;
+}
+
+// ─── Instructor Home ─────────────────────────────────────────────────────────
+
+.instructor-home {
+    .subheader {
+        margin-bottom: 2rem;
+
+        h1 {
+            color: $instructor-text-main;
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+    }
+
+    .subject-block {
+        margin-bottom: 2.5rem;
+    }
+
+    .subject-header {
+        align-items: baseline;
+        border-bottom: 2px solid $instructor-card-border;
+        display: flex;
+        gap: .75rem;
+        margin-bottom: 1rem;
+        padding-bottom: .5rem;
+
+        h2 {
+            color: $instructor-text-main;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .subject-code {
+            color: $instructor-primary;
+            font-size: .85rem;
+            font-weight: 600;
+        }
+
+        .subject-dept {
+            color: $instructor-text-secondary;
+            font-size: .85rem;
+        }
+    }
+
+    .editions-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+
+    .edition-card {
+        background: $instructor-card-bg;
+        border: 1px solid $instructor-card-border;
+        border-radius: 8px;
+        box-shadow: $instructor-card-shadow;
+        color: $instructor-text-main;
+        cursor: pointer;
+        display: block;
+        padding: 1.25rem;
+        text-decoration: none;
+        transition: box-shadow .15s ease, transform .15s ease;
+
+        &:hover {
+            box-shadow: 0 4px 16px rgba(0, 115, 207, .15);
+            transform: translateY(-2px);
+        }
+
+        .edition-key {
+            color: $instructor-primary;
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: .4rem;
+        }
+
+        .edition-meta {
+            color: $instructor-text-secondary;
+            font-size: .85rem;
+            margin-bottom: .5rem;
+
+            span + span::before {
+                content: ' · ';
+            }
+        }
+
+        .edition-status {
+            margin-bottom: .5rem;
+
+            .status-badge {
+                border-radius: 4px;
+                font-size: .75rem;
+                font-weight: 600;
+                padding: .15rem .5rem;
+                text-transform: uppercase;
+
+                &.status-ACTIVE {
+                    background: rgba(22, 163, 74, .1);
+                    color: #16a34a;
+                }
+
+                &.status-CLOSED {
+                    background: rgba(148, 163, 184, .15);
+                    color: $instructor-text-secondary;
+                }
+
+                &.status-DRAFT {
+                    background: rgba(217, 119, 6, .1);
+                    color: #d97706;
+                }
+            }
+        }
+
+        .edition-counts {
+            color: $instructor-text-muted;
+            font-size: .8rem;
+        }
+    }
+}
+
+// ─── Instructor Edition ───────────────────────────────────────────────────────
+
+.instructor-edition {
+    .edition-header {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+
+        h1 {
+            color: $instructor-text-main;
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin: 0;
+        }
+    }
+
+    // Groups grid
+    .groups-grid {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        margin-bottom: 3rem;
+    }
+
+    .group-card {
+        background: $instructor-card-bg;
+        border: 1px solid $instructor-card-border;
+        border-radius: 10px;
+        box-shadow: $instructor-card-shadow;
+        overflow: hidden;
+        padding: 1.25rem;
+    }
+
+    .group-card-header {
+        align-items: baseline;
+        border-bottom: 1px solid $instructor-card-border;
+        display: flex;
+        gap: .5rem;
+        margin-bottom: 1rem;
+        padding-bottom: .75rem;
+
+        h3 {
+            color: $instructor-primary;
+            font-size: 1rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .group-name {
+            color: $instructor-text-secondary;
+            font-size: .875rem;
+        }
+    }
+
+    .group-project {
+        margin-bottom: .5rem;
+
+        a {
+            color: $instructor-primary;
+            font-size: .875rem;
+            text-decoration: none;
+
+            &:hover {
+                text-decoration: underline;
+            }
+        }
+    }
+
+    .group-snapshot-date {
+        color: $instructor-text-muted;
+        font-size: .75rem;
+        margin-bottom: 1rem;
+    }
+
+    .group-new-project {
+        color: $instructor-text-secondary;
+        font-size: .875rem;
+        font-style: italic;
+    }
+
+    // Speedometer gauges inside group cards — compact size
+    .group-metrics-gauges {
+        display: grid;
+        gap: .75rem;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+
+    .metric-gauge-item {
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+
+        tg-speedometer-chart {
+            display: block;
+            max-width: 140px;
+            width: 100%;
+        }
+
+        tg-speedometer-chart canvas {
+            height: auto !important;
+            max-width: 100%;
+            width: 100% !important;
+        }
+
+        .gauge-label {
+            color: $instructor-text-secondary;
+            font-size: .7rem;
+            margin-top: .25rem;
+            text-align: center;
+        }
+    }
+
+    // Aggregated comparison charts
+    .aggregated-section {
+        margin-top: 2rem;
+
+        h2 {
+            color: $instructor-text-main;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+    }
+
+    .aggregated-charts-grid {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    }
+
+    .aggregated-chart-card {
+        background: $instructor-card-bg;
+        border: 1px solid $instructor-card-border;
+        border-radius: 10px;
+        box-shadow: $instructor-card-shadow;
+        padding: 1.25rem;
+
+        h4 {
+            color: $instructor-text-main;
+            font-size: .95rem;
+            font-weight: 600;
+            margin-bottom: .5rem;
+        }
+
+        .agg-stats-row {
+            color: $instructor-text-secondary;
+            display: flex;
+            font-size: .8rem;
+            gap: 1rem;
+            margin-bottom: .75rem;
+
+            .stat-label {
+                font-weight: 600;
+            }
+        }
+
+        tg-bar-chart canvas {
+            height: auto !important;
+            max-height: 200px;
+        }
+    }
+}

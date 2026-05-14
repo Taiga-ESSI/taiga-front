@@ -1723,7 +1723,7 @@
         "REFRESHING": "Refreshing...",
         "SNAPSHOT_AT": "Snapshot:",
         "GROUP_NEW_PROJECT": "Project not yet evaluated.",
-        "AGGREGATED_TITLE": "Aggregated metrics",
+        "AGGREGATED_TITLE": "Groups comparison",
         "AVG": "Avg",
         "MIN": "Min",
         "MAX": "Max",
