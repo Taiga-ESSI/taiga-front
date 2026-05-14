@@ -122,6 +122,10 @@ urls = {
     "user-settings-contrib": "/user-settings/contrib/:plugin"
 
     "notifications": "/notifications"
+
+    # Instructor Dashboard
+    "instructor-home":    "/instructor"
+    "instructor-edition": "/instructor/edition/:editionId"
 }
 
 init = ($log, $navurls) ->

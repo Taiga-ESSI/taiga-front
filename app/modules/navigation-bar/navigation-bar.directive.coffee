@@ -68,7 +68,9 @@ NavigationBarDirective = (currentUserService, navigationBarService, locationServ
                 when "/projects/"
                     scope.vm.active = 'projects'
                 else
-                    if path.startsWith('/project')
+                    if path.startsWith('/instructor')
+                        scope.vm.active = 'instructor'
+                    else if path.startsWith('/project')
                         scope.vm.active = 'project'
 
     directive = {

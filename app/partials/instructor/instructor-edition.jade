@@ -1,0 +1,67 @@
+//- Sergio Utrilla added - Instructor Dashboard: vista de detalle de una edition con grupos y métricas agregadas
+div.wrapper
+    section.main.instructor-edition
+        div.error-message(ng-if="view.error && !view.loading")
+            div.alert.alert-error
+                p(translate="{{ view.error }}")
+
+        div.edition-dashboard(ng-if="!view.loading && !view.error")
+            header.edition-header
+                div.header-left
+                    h1.edition-key {{ view.edition.key }}
+                div.header-actions
+                    button.button.small(
+                        ng-click="refresh()"
+                        ng-disabled="view.refreshing"
+                    )
+                        span(ng-if="!view.refreshing" translate="INSTRUCTOR.REFRESH")
+                        span(ng-if="view.refreshing" translate="INSTRUCTOR.REFRESHING")
+
+            div.no-groups(ng-if="view.groups.length === 0")
+                div.empty-state
+                    p(translate="INSTRUCTOR.NO_GROUPS")
+
+            div.groups-grid(ng-if="view.groups.length > 0")
+                div.group-card(ng-repeat="group in view.groups track by group.group_id")
+                    div.group-card-header
+                        h3.group-code {{ group.group_code }}
+                        span.group-name {{ group.display_name }}
+
+                    div.group-project(ng-if="group.project_slug")
+                        a.project-link(href="/project/{{ group.project_slug }}/metrics/project")
+                            span {{ group.project_name }}
+
+                    div.group-snapshot-date
+                        span(translate="INSTRUCTOR.SNAPSHOT_AT")
+                        span &nbsp;{{ group.snapshot_computed_at | date:'dd/MM/yyyy HH:mm' }}
+
+                    div.group-metrics-summary(ng-if="group.metrics.length > 0")
+                        div.metric-row(
+                            ng-repeat="metric in group.metrics | limitTo:5 track by metric.id"
+                            ng-if="metric.classification === 'project'"
+                        )
+                            span.metric-name {{ metric.name }}
+                            span.metric-value {{ metric.value | number:2 }}
+
+                    div.group-new-project(ng-if="group.is_new_project")
+                        p(translate="INSTRUCTOR.GROUP_NEW_PROJECT")
+
+            div.aggregated-section(ng-if="!view.loading && !view.error && (view.aggregated | json) !== '{}'")
+                h2(translate="INSTRUCTOR.AGGREGATED_TITLE")
+                div.aggregated-grid
+                    div.aggregated-card(ng-repeat="(metricId, data) in view.aggregated track by metricId")
+                        h4.agg-metric-name {{ data.metric_name }}
+                        div.agg-stats
+                            div.agg-stat
+                                span.stat-label(translate="INSTRUCTOR.AVG")
+                                span.stat-value {{ data.avg | number:2 }}
+                            div.agg-stat
+                                span.stat-label(translate="INSTRUCTOR.MIN")
+                                span.stat-value {{ data.min | number:2 }}
+                            div.agg-stat
+                                span.stat-label(translate="INSTRUCTOR.MAX")
+                                span.stat-value {{ data.max | number:2 }}
+                        div.agg-breakdown
+                            div.breakdown-row(ng-repeat="entry in data.values track by entry.group_id")
+                                span.breakdown-group {{ entry.group_code }}
+                                span.breakdown-value {{ entry.value | number:2 }}

@@ -1,0 +1,43 @@
+//- Sergio Utrilla added - Instructor Dashboard: vista principal con lista de subjects y editions
+div.wrapper
+    section.main.instructor-home
+        header.subheader
+            div.header-container
+                h1(translate="INSTRUCTOR.SECTION_NAME")
+
+        div.instructor-content
+            div.error-message(ng-if="view.error && !view.loading")
+                div.alert.alert-error
+                    p(translate="{{ view.error }}")
+
+            div.subjects-list(ng-if="!view.loading && !view.error")
+                div.no-data(ng-if="view.subjects.length === 0")
+                    p(translate="INSTRUCTOR.NO_SUBJECTS")
+
+                div.subject-block(ng-repeat="subject in view.subjects track by subject.id")
+                    div.subject-header
+                        h2.subject-name {{ subject.name }}
+                        span.subject-code {{ subject.code }}
+                        span &nbsp;·&nbsp;
+                        span.subject-dept {{ subject.department }}
+
+                    div.editions-grid(ng-if="subject.editions.length > 0")
+                        a.edition-card(
+                            ng-repeat="edition in subject.editions track by edition.id"
+                            tg-nav="instructor-edition:editionId=edition.id"
+                        )
+                            div.edition-key {{ edition.key }}
+                            div.edition-meta
+                                span.edition-year {{ edition.academic_year }}
+                                span.edition-term {{ edition.term }}
+                            div.edition-status
+                                span.status-badge(ng-class="'status-' + edition.status") {{ edition.status }}
+                            div.edition-counts
+                                span {{ edition.group_count }}
+                                span(translate="INSTRUCTOR.GROUPS")
+                                span &nbsp;&middot;&nbsp;
+                                span {{ edition.professor_count }}
+                                span(translate="INSTRUCTOR.PROFESSORS")
+
+                    div.no-editions(ng-if="subject.editions.length === 0")
+                        p(translate="INSTRUCTOR.NO_EDITIONS")

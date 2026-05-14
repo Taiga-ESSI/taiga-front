@@ -1710,6 +1710,27 @@
         "CONFIRM_LEAVE_PROJECT": "Are you sure you want to leave the project?",
         "ACTION_LEAVE_PROJECT": "Leave this project"
     },
+    "INSTRUCTOR": {
+        "SECTION_NAME": "Instructor Dashboard",
+        "NAV_LINK": "Instructor",
+        "EDITION_TITLE": "Edition {{key}}",
+        "NO_SUBJECTS": "No subjects available.",
+        "NO_EDITIONS": "No editions for this subject.",
+        "NO_GROUPS": "No active groups with linked projects.",
+        "GROUPS": "groups",
+        "PROFESSORS": "professors",
+        "REFRESH": "Refresh",
+        "REFRESHING": "Refreshing...",
+        "SNAPSHOT_AT": "Snapshot:",
+        "GROUP_NEW_PROJECT": "Project not yet evaluated.",
+        "AGGREGATED_TITLE": "Aggregated metrics",
+        "AVG": "Avg",
+        "MIN": "Min",
+        "MAX": "Max",
+        "ACCESS_DENIED": "You do not have permission to access this section.",
+        "EDITION_NOT_FOUND": "Edition not found.",
+        "LOAD_ERROR": "Error loading data."
+    },
     "METRICS": {
         "PAGE_TITLE": "Metrics - {{projectName}}",
         "PAGE_DESCRIPTION": "Learning Dashboard metrics for the project {{projectName}}: {{projectDescription}}",

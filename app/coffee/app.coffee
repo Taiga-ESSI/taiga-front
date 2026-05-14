@@ -325,6 +325,27 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
         }
     )
 
+    # Instructor Dashboard
+    $routeProvider.when("/instructor",
+        {
+            templateUrl: "instructor/instructor-home.html",
+            controller: "InstructorHomeController",
+            loader: true,
+            title: "INSTRUCTOR.SECTION_NAME",
+            section: "instructor"
+        }
+    )
+
+    $routeProvider.when("/instructor/edition/:editionId",
+        {
+            templateUrl: "instructor/instructor-edition.html",
+            controller: "InstructorEditionController",
+            loader: true,
+            title: "INSTRUCTOR.EDITION_TITLE",
+            section: "instructor"
+        }
+    )
+
     # Issues
     $routeProvider.when("/project/:pslug/issues",
         {
@@ -1106,6 +1127,8 @@ modules = [
     "taigaComponents",
     # Pol Alcoverro added - Metrics module
     "taigaMetrics",
+    # Sergio Utrilla added - Instructor module
+    "taigaInstructor",
 
     # new modules
     "taigaProfile",

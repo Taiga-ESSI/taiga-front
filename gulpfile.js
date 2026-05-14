@@ -160,6 +160,7 @@ paths.coffee_order = [
     paths.app + "coffee/modules/resources/*.coffee",
     // Pol Alcoverro: incluir los archivos CoffeeScript del nuevo módulo de métricas
     paths.app + "coffee/modules/metrics/*.coffee",
+    paths.app + "coffee/modules/instructor/*.coffee",
     paths.app + "coffee/modules/user-settings/*.coffee",
     paths.app + "coffee/modules/integrations/*.coffee",
     paths.app + "modules/**/*.module.coffee",
