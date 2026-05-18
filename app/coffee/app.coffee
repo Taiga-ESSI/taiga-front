@@ -356,6 +356,16 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
         }
     )
 
+    $routeProvider.when("/instructor/edition/:editionId/settings",
+        {
+            templateUrl: "instructor/instructor-edition-settings.html",
+            controller: "InstructorEditionSettingsController",
+            loader: true,
+            title: "INSTRUCTOR.SETTINGS_TITLE",
+            section: "instructor"
+        }
+    )
+
     # Issues
     $routeProvider.when("/project/:pslug/issues",
         {

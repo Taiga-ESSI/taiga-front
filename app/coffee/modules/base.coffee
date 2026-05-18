@@ -124,9 +124,10 @@ urls = {
     "notifications": "/notifications"
 
     # Instructor Dashboard
-    "instructor-home":    "/instructor"
-    "instructor-edition": "/instructor/edition/:editionId"
-    "instructor-group":   "/instructor/edition/:editionId/group/:groupId"
+    "instructor-home":              "/instructor"
+    "instructor-edition":           "/instructor/edition/:editionId"
+    "instructor-group":             "/instructor/edition/:editionId/group/:groupId"
+    "instructor-edition-settings":  "/instructor/edition/:editionId/settings"
 }
 
 init = ($log, $navurls) ->

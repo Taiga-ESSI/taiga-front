@@ -1,0 +1,87 @@
+//- Sergio Utrilla added - Instructor Dashboard: panel de configuración de métricas y visibilidad por edition
+div.wrapper
+    section.main.instructor-settings
+        div.error-message(ng-if="view.error && !view.loading")
+            div.alert.alert-error
+                p(translate="{{ view.error }}")
+
+        div.settings-dashboard(ng-if="!view.loading && !view.error")
+            header.settings-header
+                div.header-left
+                    nav.breadcrumb
+                        a(tg-nav="instructor-home") {{ 'INSTRUCTOR.SECTION_NAME' | translate }}
+                        span.breadcrumb-sep  ›
+                        a(tg-nav="instructor-edition:editionId=editionId") {{ view.edition.key }}
+                        span.breadcrumb-sep  ›
+                        span(translate="INSTRUCTOR.SETTINGS_TITLE")
+                    h1(translate="INSTRUCTOR.SETTINGS_TITLE")
+
+            //- Metrics visibility
+            div.settings-section
+                h2(translate="INSTRUCTOR.SETTINGS_METRICS_TITLE")
+                p.settings-hint(translate="INSTRUCTOR.SETTINGS_METRICS_HINT")
+
+                div.metrics-group(ng-if="view.projectMetrics.length > 0")
+                    h3(translate="INSTRUCTOR.SETTINGS_PROJECT_METRICS")
+                    div.metric-toggle-row(ng-repeat="metric in view.projectMetrics track by metric.id")
+                        div.metric-toggle-info
+                            span.metric-toggle-name {{ metric.name }}
+                        div.metric-toggle-controls
+                            label.toggle-label
+                                input(
+                                    type="checkbox"
+                                    ng-model="metric.hidden"
+                                )
+                                span(translate="INSTRUCTOR.SETTINGS_HIDDEN")
+                            label.toggle-label
+                                input(
+                                    type="checkbox"
+                                    ng-model="metric.visibleToStudents"
+                                    ng-disabled="metric.hidden"
+                                )
+                                span(translate="INSTRUCTOR.SETTINGS_VISIBLE_STUDENTS")
+
+                div.metrics-group(ng-if="view.teamMetrics.length > 0")
+                    h3(translate="INSTRUCTOR.SETTINGS_TEAM_METRICS")
+                    div.metric-toggle-row(ng-repeat="metric in view.teamMetrics track by metric.id")
+                        div.metric-toggle-info
+                            span.metric-toggle-name {{ metric.name }}
+                        div.metric-toggle-controls
+                            label.toggle-label
+                                input(
+                                    type="checkbox"
+                                    ng-model="metric.hidden"
+                                )
+                                span(translate="INSTRUCTOR.SETTINGS_HIDDEN")
+                            label.toggle-label
+                                input(
+                                    type="checkbox"
+                                    ng-model="metric.visibleToStudents"
+                                    ng-disabled="metric.hidden"
+                                )
+                                span(translate="INSTRUCTOR.SETTINGS_VISIBLE_STUDENTS")
+
+            //- Student drilldown toggle
+            div.settings-section
+                h2(translate="INSTRUCTOR.SETTINGS_ACCESS_TITLE")
+                div.drilldown-toggle-row
+                    label.toggle-label.toggle-label--large
+                        input(
+                            type="checkbox"
+                            ng-model="view.allowStudentDrilldown"
+                        )
+                        span(translate="INSTRUCTOR.SETTINGS_ALLOW_DRILLDOWN")
+                    p.settings-hint(translate="INSTRUCTOR.SETTINGS_ALLOW_DRILLDOWN_HINT")
+
+            //- Save button + feedback
+            div.settings-actions
+                div.save-feedback.save-feedback--error(ng-if="view.saveError")
+                    span(translate="{{ view.saveError }}")
+                div.save-feedback.save-feedback--ok(ng-if="view.saved && !view.saving")
+                    span(translate="INSTRUCTOR.SETTINGS_SAVED")
+                button.button(
+                    ng-click="save()"
+                    ng-disabled="view.saving"
+                )
+                    span(ng-if="!view.saving" translate="INSTRUCTOR.SETTINGS_SAVE")
+                    span(ng-if="view.saving" translate="INSTRUCTOR.SETTINGS_SAVING")

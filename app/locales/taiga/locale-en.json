@@ -1736,7 +1736,22 @@
         "NO_STUDENTS": "No students found in this group.",
         "STUDENT_NAME": "Student",
         "VIEW_PROJECT": "View project:",
-        "BACK_TO_EDITION": "Back to edition"
+        "BACK_TO_EDITION": "Back to edition",
+        "SETTINGS_LINK": "Settings",
+        "SETTINGS_TITLE": "Edition settings",
+        "SETTINGS_METRICS_TITLE": "Metrics visibility",
+        "SETTINGS_METRICS_HINT": "Hidden metrics are not shown in the dashboard. Metrics visible to students are accessible from student view.",
+        "SETTINGS_PROJECT_METRICS": "Project metrics",
+        "SETTINGS_TEAM_METRICS": "Team metrics",
+        "SETTINGS_HIDDEN": "Hidden",
+        "SETTINGS_VISIBLE_STUDENTS": "Visible to students",
+        "SETTINGS_ACCESS_TITLE": "Student access",
+        "SETTINGS_ALLOW_DRILLDOWN": "Allow student drill-down",
+        "SETTINGS_ALLOW_DRILLDOWN_HINT": "If enabled, students can access the detailed view of their group metrics.",
+        "SETTINGS_SAVE": "Save settings",
+        "SETTINGS_SAVING": "Saving...",
+        "SETTINGS_SAVED": "Settings saved successfully.",
+        "SAVE_ERROR": "Error saving settings."
     },
     "METRICS": {
         "PAGE_TITLE": "Metrics - {{projectName}}",

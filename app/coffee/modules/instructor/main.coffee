@@ -212,3 +212,131 @@ class InstructorGroupController extends mixOf(taiga.Controller, taiga.PageMixin)
             @scope.view.refreshing = false
 
 module.controller("InstructorGroupController", InstructorGroupController)
+
+
+class InstructorEditionSettingsController extends mixOf(taiga.Controller, taiga.PageMixin)
+    @.$inject = [
+        "$scope"
+        "$routeParams"
+        "$q"
+        "$tgHttp"
+        "$tgUrls"
+        "tgAppMetaService"
+        "$translate"
+    ]
+
+    constructor: (@scope, @params, @q, @http, @urls, @appMetaService, @translate) ->
+        @scope.editionId = parseInt(@params.editionId, 10)
+
+        @scope.view =
+            loading: true
+            error: null
+            edition: null
+            policyId: null
+            projectMetrics: []
+            teamMetrics: []
+            allowStudentDrilldown: true
+            saving: false
+            saved: false
+            saveError: null
+
+        @scope.save   = => @.save()
+        @scope.toggle = (metric, field) => metric[field] = !metric[field]
+
+        @.load()
+
+    load: ->
+        @scope.view.loading = true
+        @scope.view.error   = null
+
+        dashboardReq = @http.get(
+            @urls.resolve("academics-edition-dashboard", @scope.editionId),
+            {raw: "1"}
+        ).then (r) -> r.data
+
+        policyReq = @http.get(
+            @urls.resolve("academics-metrics-policies"),
+            {course_edition_id: @scope.editionId}
+        ).then (r) -> r.data
+
+        @q.all([dashboardReq, policyReq]).then ([dashboard, policies]) =>
+            @scope.view.edition =
+                id:  dashboard.course_edition_id
+                key: dashboard.course_edition_key
+
+            policy   = policies[0] or {}
+            hiddenIds          = policy.hidden_metric_ids or []
+            visibleStudentIds  = policy.visible_to_students_metric_ids or []
+
+            @scope.view.policyId              = policy.id or null
+            @scope.view.allowStudentDrilldown = if policy.allow_student_drilldown? then policy.allow_student_drilldown else true
+
+            allMetrics = {}
+            for group in (dashboard.groups or [])
+                for metric in (group.metrics or [])
+                    metricId = metric.id.toString()
+                    metricName = metric.name or metricId
+                    # Team metrics are per-user (e.g. "assignedtasks_sergio.utrilla").
+                    # Strip the username suffix so settings show one entry per metric type
+                    # and the policy stores base IDs that match all students via prefix check.
+                    if metric.classification == 'team'
+                        metricId = metricId.split('_')[0]
+                        metricName = metricName.replace(/\s*·\s*.+$/, '').trim()
+                    allMetrics[metricId] ?=
+                        id:             metricId
+                        name:           metricName
+                        classification: metric.classification
+                        hidden:         hiddenIds.indexOf(metricId) >= 0
+                        visibleToStudents: visibleStudentIds.indexOf(metricId) >= 0
+
+            metrics = _.values(allMetrics)
+            @scope.view.projectMetrics = metrics.filter (m) -> m.classification == 'project'
+            @scope.view.teamMetrics    = metrics.filter (m) -> m.classification == 'team'
+            @scope.view.loading        = false
+
+            @translate("INSTRUCTOR.SETTINGS_TITLE").then (title) =>
+                @appMetaService.setAll(title, "")
+        .catch (err) =>
+            status = err.status or err.statusCode
+            if status == 403
+                @scope.view.error = "INSTRUCTOR.ACCESS_DENIED"
+            else
+                @scope.view.error = "INSTRUCTOR.LOAD_ERROR"
+            @scope.view.loading = false
+
+    save: ->
+        @scope.view.saving    = true
+        @scope.view.saved     = false
+        @scope.view.saveError = null
+
+        allMetrics = @scope.view.projectMetrics.concat(@scope.view.teamMetrics)
+
+        payload =
+            hidden_metric_ids:              allMetrics.filter((m) -> m.hidden).map (m) -> m.id
+            visible_to_students_metric_ids: allMetrics.filter((m) -> m.visibleToStudents).map (m) -> m.id
+            allow_student_drilldown:        @scope.view.allowStudentDrilldown
+
+        req =
+            if @scope.view.policyId
+                payload.course_edition_id = @scope.editionId
+                @http.patch(
+                    @urls.resolve("academics-metrics-policy-detail", @scope.view.policyId),
+                    payload
+                )
+            else
+                payload.course_edition_id = @scope.editionId
+                @http.post(@urls.resolve("academics-metrics-policies"), payload)
+
+        req.then (r) =>
+            @scope.view.policyId = r.data.id
+            @scope.view.saving   = false
+            @scope.view.saved    = true
+        .catch (err) =>
+            status = err.status or err.statusCode
+            if status == 403
+                @scope.view.saveError = "INSTRUCTOR.ACCESS_DENIED"
+            else
+                @scope.view.saveError = "INSTRUCTOR.SAVE_ERROR"
+            @scope.view.saving = false
+
+module.controller("InstructorEditionSettingsController", InstructorEditionSettingsController)

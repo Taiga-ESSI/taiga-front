@@ -24,7 +24,8 @@ $instructor-text-muted: rgb(148, 163, 184);
 
 .instructor-home,
 .instructor-edition,
-.instructor-group {
+.instructor-group,
+.instructor-settings {
     background: $instructor-bg;
     min-height: calc(100vh - 60px);
     padding: 2.5rem;
@@ -485,6 +486,128 @@ $instructor-text-muted: rgb(148, 163, 184);
 
         tbody tr:hover td {
             background: rgba(0, 115, 207, .03);
+        }
+    }
+}
+
+// ─── Instructor Settings ──────────────────────────────────────────────────────
+
+.instructor-settings {
+    .settings-header {
+        margin-bottom: 2rem;
+
+        h1 {
+            color: $instructor-text-main;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: .5rem 0 0;
+        }
+    }
+
+    .settings-section {
+        background: $instructor-card-bg;
+        border: 1px solid $instructor-card-border;
+        border-radius: 10px;
+        box-shadow: $instructor-card-shadow;
+        margin-bottom: 1.5rem;
+        padding: 1.5rem;
+
+        h2 {
+            color: $instructor-text-main;
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin: 0 0 .5rem;
+        }
+
+        h3 {
+            color: $instructor-text-secondary;
+            font-size: .85rem;
+            font-weight: 600;
+            margin: 1rem 0 .5rem;
+            text-transform: uppercase;
+        }
+    }
+
+    .settings-hint {
+        color: $instructor-text-secondary;
+        font-size: .85rem;
+        margin: 0 0 1rem;
+    }
+
+    .metrics-group {
+        border-top: 1px solid $instructor-card-border;
+        margin-top: .75rem;
+        padding-top: .25rem;
+    }
+
+    .metric-toggle-row {
+        align-items: center;
+        border-bottom: 1px solid rgba(0, 115, 207, .06);
+        display: flex;
+        gap: 1rem;
+        justify-content: space-between;
+        padding: .6rem 0;
+
+        &:last-child {
+            border-bottom: none;
+        }
+    }
+
+    .metric-toggle-name {
+        color: $instructor-text-main;
+        font-size: .9rem;
+    }
+
+    .metric-toggle-controls {
+        align-items: center;
+        display: flex;
+        gap: 1.25rem;
+    }
+
+    .toggle-label {
+        align-items: center;
+        color: $instructor-text-secondary;
+        cursor: pointer;
+        display: flex;
+        font-size: .85rem;
+        gap: .4rem;
+
+        input[type="checkbox"] {
+            accent-color: $instructor-primary;
+            cursor: pointer;
+            height: 15px;
+            width: 15px;
+        }
+
+        &.toggle-label--large {
+            font-size: .95rem;
+            font-weight: 500;
+        }
+    }
+
+    .drilldown-toggle-row {
+        display: flex;
+        flex-direction: column;
+        gap: .35rem;
+    }
+
+    .settings-actions {
+        align-items: center;
+        display: flex;
+        gap: 1rem;
+        justify-content: flex-end;
+        margin-top: .5rem;
+    }
+
+    .save-feedback {
+        font-size: .875rem;
+
+        &--ok {
+            color: #16a34a;
+        }
+
+        &--error {
+            color: #dc2626;
         }
     }
 }

@@ -10,6 +10,8 @@ div.wrapper
                 div.header-left
                     h1.edition-key {{ view.edition.key }}
                 div.header-actions
+                    a.button.small(tg-nav="instructor-edition-settings:editionId=view.edition.id")
+                        span(translate="INSTRUCTOR.SETTINGS_LINK")
                     button.button.small(
                         ng-click="refresh()"
                         ng-disabled="view.refreshing"

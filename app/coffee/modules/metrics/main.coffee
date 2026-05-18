@@ -775,6 +775,7 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                     @scope.metricsView.data = viewData
 
                 @.initializeTeamOverviewState()
+                @.applyStudentPolicy(projectSlug)
 
                 @scope.metricsView.teamHistoricalSource = null
                 @scope.metricsView.teamHistoricalCharts = []
@@ -1644,6 +1645,57 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
             ]
             datasets: datasets
         }
+
+    applyStudentPolicy: (projectSlug) ->
+        return unless projectSlug
+        url = @urls.resolve("academics-metrics-policies")
+        @http.get(url, {project_slug: projectSlug}).then (response) =>
+            policies = response?.data
+            return unless angular.isArray(policies) and policies.length > 0
+            policy = policies[0]
+
+            visibleIds   = policy.visible_to_students_metric_ids or []
+            allowDrilldown = if policy.allow_student_drilldown? then policy.allow_student_drilldown else true
+
+            unless allowDrilldown
+                @scope.availableTabs = @scope.availableTabs.filter (t) -> t.id isnt 'team'
+                if @scope.metricsView.activeTab is 'team'
+                    @scope.metricsView.activeTab = 'project'
+
+            return unless visibleIds.length > 0
+
+            isVisible = (metricId) ->
+                return true unless metricId
+                mid = metricId.toString().toLowerCase()
+                for base in visibleIds
+                    b = base.toString().toLowerCase()
+                    return true if mid is b or mid.indexOf(b + "_") is 0
+                false
+
+            data = @scope.metricsView.data
+            return unless data
+
+            if angular.isArray(data.projectMetrics)
+                data.projectMetrics = data.projectMetrics.filter (m) ->
+                    return true unless m
+                    isVisible(m.id or m.externalId)
+
+            if angular.isArray(data.teamMetricGroups)
+                data.teamMetricGroups = data.teamMetricGroups.map (group) ->
+                    return group unless group and angular.isArray(group.metrics)
+                    filtered = group.metrics.filter (m) ->
+                        return true unless m
+                        isVisible(m.id or m.externalId)
+                    angular.extend({}, group, {metrics: filtered})
+                .filter (group) -> group and group.metrics and group.metrics.length > 0
+
+            if angular.isArray(data.usersMetricsList)
+                for user in data.usersMetricsList when user?
+                    if angular.isArray(user.metrics)
+                        user.metrics = user.metrics.filter (m) ->
+                            return true unless m
+                            isVisible(m.id or m.externalId)
+        .catch -> # Silently ignore: project not linked to any edition
 
     prepareProjectMetrics: (metricsArray) ->
         return [] unless angular.isArray(metricsArray)
