@@ -33,10 +33,10 @@ div.wrapper
                             div.edition-status
                                 span.status-badge(ng-class="'status-' + edition.status") {{ edition.status }}
                             div.edition-counts
-                                span {{ edition.group_count }}
+                                span {{ edition.group_count }}&nbsp;
                                 span(translate="INSTRUCTOR.GROUPS")
                                 span &nbsp;&middot;&nbsp;
-                                span {{ edition.professor_count }}
+                                span {{ edition.professor_count }}&nbsp;
                                 span(translate="INSTRUCTOR.PROFESSORS")
 
                     div.no-editions(ng-if="subject.editions.length === 0")

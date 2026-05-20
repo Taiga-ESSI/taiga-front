@@ -10,32 +10,19 @@ div.wrapper
                 div.header-left
                     h1.edition-key {{ view.edition.key }}
                 div.header-actions
-                    a.button.small(tg-nav="instructor-edition-settings:editionId=view.edition.id")
+                    a.btn-small(
+                        ng-if="view.canEditSettings"
+                        tg-nav="instructor-edition-settings:editionId=view.edition.id"
+                        variant="secondary"
+                    )
                         span(translate="INSTRUCTOR.SETTINGS_LINK")
-                    button.button.small(
+                    button.btn-small(
+                        variant="secondary"
                         ng-click="refresh()"
                         ng-disabled="view.refreshing"
                     )
                         span(ng-if="!view.refreshing" translate="INSTRUCTOR.REFRESH")
                         span(ng-if="view.refreshing" translate="INSTRUCTOR.REFRESHING")
-
-            //- Aggregated charts: one bar chart per metric comparing all groups
-            div.aggregated-section(ng-if="view.groups.length > 1")
-                h2(translate="INSTRUCTOR.AGGREGATED_TITLE")
-                div.aggregated-charts-grid
-                    div.aggregated-chart-card(ng-repeat="(metricId, data) in view.aggregated track by metricId")
-                        h4.agg-metric-name {{ data.metric_name }}
-                        div.agg-stats-row
-                            span.agg-stat
-                                span.stat-label(translate="INSTRUCTOR.AVG")
-                                span.stat-value &nbsp;{{ data.avg | number:2 }}
-                            span.agg-stat
-                                span.stat-label(translate="INSTRUCTOR.MIN")
-                                span.stat-value &nbsp;{{ data.min | number:2 }}
-                            span.agg-stat
-                                span.stat-label(translate="INSTRUCTOR.MAX")
-                                span.stat-value &nbsp;{{ data.max | number:2 }}
-                        tg-bar-chart(data="view.charts[metricId]")
 
             //- Group cards
             div.no-groups(ng-if="view.groups.length === 0")
@@ -74,5 +61,24 @@ div.wrapper
                                 max-value="1"
                                 label="{{ metric.name }}"
                                 metric-key="{{ metric.id }}"
+                                palette="metric.palette"
                             )
                             span.gauge-label {{ metric.name }}
+
+            //- Aggregated charts: one bar chart per metric comparing all groups
+            div.aggregated-section(ng-if="view.groups.length > 1")
+                h2(translate="INSTRUCTOR.AGGREGATED_TITLE")
+                div.aggregated-charts-grid
+                    div.aggregated-chart-card(ng-repeat="(metricId, data) in view.aggregated track by metricId")
+                        h4.agg-metric-name {{ data.metric_name }}
+                        div.agg-stats-row
+                            span.agg-stat
+                                span.stat-label(translate="INSTRUCTOR.AVG")
+                                span.stat-value &nbsp;{{ data.avg | number:2 }}%
+                            span.agg-stat
+                                span.stat-label(translate="INSTRUCTOR.MIN")
+                                span.stat-value &nbsp;{{ data.min | number:2 }}%
+                            span.agg-stat
+                                span.stat-label(translate="INSTRUCTOR.MAX")
+                                span.stat-value &nbsp;{{ data.max | number:2 }}%
+                        tg-bar-chart(data="view.charts[metricId]")

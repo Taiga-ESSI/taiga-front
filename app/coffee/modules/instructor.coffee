@@ -14,6 +14,7 @@ init = ($log, $tgUrls) ->
         "academics-edition-dashboard":      "academics/course-editions/%s/dashboard"
         "academics-metrics-policies":       "academics/metrics-policies"
         "academics-metrics-policy-detail":  "academics/metrics-policies/%s"
+        "academics-instructor-check":       "academics/subjects/instructor_check"
     })
 
 module.run(["$log", "$tgUrls", init])

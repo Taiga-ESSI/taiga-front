@@ -45,6 +45,7 @@ nav.navbar(ng-if="vm.isEnabledHeader")
 
     .nav-right(ng-if="vm.isAuthenticated")
         a(
+            ng-if="vm.isInstructor"
             tg-nav="instructor-home"
             ng-class="{'active': vm.active == 'instructor'}"
             title="{{'INSTRUCTOR.SECTION_NAME' | translate}}"

@@ -253,6 +253,7 @@ $instructor-text-muted: rgb(148, 163, 184);
         .gauge-label {
             color: $instructor-text-secondary;
             font-size: .65rem;
+            font-weight: 600;
             margin-top: .2rem;
             text-align: center;
             width: 90px;
@@ -426,6 +427,7 @@ $instructor-text-muted: rgb(148, 163, 184);
         .gauge-label {
             color: $instructor-text-secondary;
             font-size: .8rem;
+            font-weight: 600;
             margin-top: .35rem;
             text-align: center;
             width: 150px;

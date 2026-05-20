@@ -17,7 +17,8 @@ div.wrapper
                     h1.group-title {{ view.group.group_code }}
                         span.group-title-name  · {{ view.group.display_name }}
                 div.header-actions
-                    button.button.small(
+                    button.btn-small(
+                        variant="secondary"
                         ng-click="refresh()"
                         ng-disabled="view.refreshing"
                     )
@@ -45,11 +46,12 @@ div.wrapper
                             max-value="1"
                             label="{{ metric.name }}"
                             metric-key="{{ metric.id }}"
+                            palette="metric.palette"
                         )
                         span.gauge-label {{ metric.name }}
 
-            //- Students table
-            div.students-section
+            //- Students table (only when drilldown is enabled in settings)
+            div.students-section(ng-if="view.drilldownAllowed")
                 h2(translate="INSTRUCTOR.STUDENTS_TITLE")
 
                 div.no-students(ng-if="!view.hasStudents")

@@ -11,6 +11,48 @@ mixOf = @.taiga.mixOf
 module = angular.module("taigaInstructor")
 
 
+# Returns the same traffic-light palette used by the metrics view (getInternalGaugePalette).
+# Mirrors the logic in metrics/main.coffee so instructor speedometers match student speedometers.
+_getMetricPalette = (metricId) ->
+    id = (metricId or '').toString().toLowerCase()
+
+    isAssigned = id.indexOf('assignedtasks') isnt -1 or
+                 id.indexOf('totalus') isnt -1 or
+                 id.indexOf('assignedus') isnt -1
+
+    if isAssigned
+        return [
+            { value: 10, color: 'rgba(251, 191, 36, 0.9)' }
+            { value: 20, color: 'rgba(34, 197, 94, 0.9)' }
+            { value: 20, color: 'rgba(251, 191, 36, 0.9)' }
+            { value: 50, color: 'rgba(239, 68, 68, 0.9)' }
+        ]
+
+    isWorsening = /unassigned|deviation|commits_anonymous|pattern_check/.test(id)
+
+    if isWorsening
+        return [
+            { value: 33, color: 'rgba(34, 197, 94, 0.9)' }
+            { value: 33, color: 'rgba(251, 191, 36, 0.9)' }
+            { value: 34, color: 'rgba(239, 68, 68, 0.9)' }
+        ]
+
+    # Default: higher is better (Red → Yellow → Green)
+    return [
+        { value: 33, color: 'rgba(239, 68, 68, 0.9)' }
+        { value: 33, color: 'rgba(251, 191, 36, 0.9)' }
+        { value: 34, color: 'rgba(34, 197, 94, 0.9)' }
+    ]
+
+
+_enrichMetricsWithPalette = (groups) ->
+    (groups or []).map (group) ->
+        enriched = angular.extend({}, group)
+        enriched.metrics = (group.metrics or []).map (m) ->
+            angular.extend({}, m, { palette: _getMetricPalette(m.id) })
+        enriched
+
+
 class InstructorHomeController extends mixOf(taiga.Controller, taiga.PageMixin)
     @.$inject = [
         "$scope"
@@ -75,6 +117,7 @@ class InstructorEditionController extends mixOf(taiga.Controller, taiga.PageMixi
             edition: null
             groups: []
             aggregated: {}
+            canEditSettings: false
             refreshing: false
 
         @scope.refresh = => @.refresh()
@@ -98,10 +141,11 @@ class InstructorEditionController extends mixOf(taiga.Controller, taiga.PageMixi
             @scope.view.edition =
                 id:  data.course_edition_id
                 key: data.course_edition_key
-            @scope.view.groups     = data.groups or []
-            @scope.view.aggregated = data.aggregated or {}
-            @scope.view.charts     = @.buildBarCharts(data.aggregated or {})
-            @scope.view.loading    = false
+            @scope.view.groups          = _enrichMetricsWithPalette(data.groups)
+            @scope.view.aggregated      = data.aggregated or {}
+            @scope.view.charts          = @.buildBarCharts(data.aggregated or {})
+            @scope.view.canEditSettings = data.can_edit_settings is true
+            @scope.view.loading         = false
 
             @translate("INSTRUCTOR.EDITION_TITLE", {key: data.course_edition_key}).then (title) =>
                 @appMetaService.setAll(title, "")
@@ -119,7 +163,7 @@ class InstructorEditionController extends mixOf(taiga.Controller, taiga.PageMixi
         charts = {}
         for metricId, data of aggregated
             labels = data.values.map (v) -> v.group_code
-            values = data.values.map (v) -> v.value
+            values = data.values.map (v) -> Math.round((v.value or 0) * 10000) / 100
             colors = labels.map (_, i) => @.GROUP_COLORS[i % @.GROUP_COLORS.length]
             charts[metricId] =
                 labels: labels
@@ -160,6 +204,7 @@ class InstructorGroupController extends mixOf(taiga.Controller, taiga.PageMixin)
             edition: null
             group: null
             projectMetrics: []
+            drilldownAllowed: true
             students: []
             hasStudents: false
             refreshing: false
@@ -177,22 +222,25 @@ class InstructorGroupController extends mixOf(taiga.Controller, taiga.PageMixin)
 
         return @http.get(url, params).then (response) =>
             data  = response.data
-            group = _.find(data.groups or [], (g) => g.group_id == @scope.groupId)
+            rawGroup = _.find(data.groups or [], (g) => g.group_id == @scope.groupId)
 
-            unless group
+            unless rawGroup
                 @scope.view.error   = "INSTRUCTOR.GROUP_NOT_FOUND"
                 @scope.view.loading = false
                 return
+
+            group = _enrichMetricsWithPalette([rawGroup])[0]
 
             @scope.view.edition =
                 id:  data.course_edition_id
                 key: data.course_edition_key
 
-            @scope.view.group          = group
-            @scope.view.projectMetrics = (group.metrics or []).filter (m) -> m.classification == 'project'
-            @scope.view.students       = group.students or []
-            @scope.view.hasStudents    = @scope.view.students.length > 0
-            @scope.view.loading        = false
+            @scope.view.group             = group
+            @scope.view.projectMetrics    = (group.metrics or []).filter (m) -> m.classification == 'project'
+            @scope.view.drilldownAllowed  = rawGroup.drilldown_allowed isnt false
+            @scope.view.students          = group.students or []
+            @scope.view.hasStudents       = @scope.view.students.length > 0
+            @scope.view.loading           = false
 
             title = "#{group.group_code} · #{data.course_edition_key}"
             @appMetaService.setAll(title, "")

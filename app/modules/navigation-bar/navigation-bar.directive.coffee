@@ -6,13 +6,23 @@
 # Copyright (c) 2021-present Kaleidos INC
 ###
 
-NavigationBarDirective = (currentUserService, navigationBarService, locationService, navUrlsService, config, feedbackService) ->
+NavigationBarDirective = (currentUserService, navigationBarService, locationService, navUrlsService, config, feedbackService, http, urls) ->
     link = (scope, el, attrs, ctrl) ->
         scope.vm = {}
+        scope.vm.isInstructor = false
 
         taiga.defineImmutableProperty(scope.vm, "projects", () -> currentUserService.projects.get("recents"))
         taiga.defineImmutableProperty(scope.vm, "isAuthenticated", () -> currentUserService.isAuthenticated())
         taiga.defineImmutableProperty(scope.vm, "isEnabledHeader", () -> navigationBarService.isEnabledHeader())
+
+        checkInstructorAccess = ->
+            http.get(urls.resolve("academics-instructor-check")).then ->
+                scope.vm.isInstructor = true
+            .catch ->
+                scope.vm.isInstructor = false
+
+        scope.$watch (-> currentUserService.isAuthenticated()), (isAuth) ->
+            if isAuth then checkInstructorAccess() else scope.vm.isInstructor = false
 
         scope.vm.publicRegisterEnabled = config.get("publicRegisterEnabled")
         scope.vm.customSupportUrl = config.get("supportUrl")
@@ -87,7 +97,9 @@ NavigationBarDirective.$inject = [
     "$tgLocation",
     "$tgNavUrls",
     "$tgConfig",
-    "tgFeedbackService"
+    "tgFeedbackService",
+    "$tgHttp",
+    "$tgUrls",
 ]
 
 angular.module("taigaNavigationBar").directive("tgNavigationBar", NavigationBarDirective)

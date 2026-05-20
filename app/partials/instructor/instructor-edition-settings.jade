@@ -31,6 +31,7 @@ div.wrapper
                                 input(
                                     type="checkbox"
                                     ng-model="metric.hidden"
+                                    ng-change="metric.hidden && (metric.visibleToStudents = false)"
                                 )
                                 span(translate="INSTRUCTOR.SETTINGS_HIDDEN")
                             label.toggle-label
@@ -51,6 +52,7 @@ div.wrapper
                                 input(
                                     type="checkbox"
                                     ng-model="metric.hidden"
+                                    ng-change="metric.hidden && (metric.visibleToStudents = false)"
                                 )
                                 span(translate="INSTRUCTOR.SETTINGS_HIDDEN")
                             label.toggle-label
@@ -79,7 +81,8 @@ div.wrapper
                     span(translate="{{ view.saveError }}")
                 div.save-feedback.save-feedback--ok(ng-if="view.saved && !view.saving")
                     span(translate="INSTRUCTOR.SETTINGS_SAVED")
-                button.button(
+                button.btn-small(
+                    variant="primary"
                     ng-click="save()"
                     ng-disabled="view.saving"
                 )
