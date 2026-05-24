@@ -100,10 +100,19 @@ class InstructorHomeController extends mixOf(taiga.Controller, taiga.PageMixin)
             @scope.view.loading = false
 
     getFilteredEditions: (subject) ->
+        STATUS_ORDER = { ACTIVE: 0, PLANNED: 1, CLOSED: 2, ARCHIVED: 3 }
+        TERM_ORDER   = { Q2: 0, Q1: 1, ANNUAL: 2 }
         filter = @scope.view.statusFilter
-        if filter == 'all'
-            return subject.editions
-        return subject.editions.filter (e) -> e.status == filter
+        editions = if filter == 'all' then subject.editions else subject.editions.filter (e) -> e.status == filter
+        editions.slice().sort (a, b) ->
+            sa = if STATUS_ORDER[a.status]? then STATUS_ORDER[a.status] else 99
+            sb = if STATUS_ORDER[b.status]? then STATUS_ORDER[b.status] else 99
+            if sa != sb then return sa - sb
+            if a.academic_year > b.academic_year then return -1
+            if a.academic_year < b.academic_year then return 1
+            ta = if TERM_ORDER[a.term]? then TERM_ORDER[a.term] else 99
+            tb = if TERM_ORDER[b.term]? then TERM_ORDER[b.term] else 99
+            ta - tb
 
 module.controller("InstructorHomeController", InstructorHomeController)
 
@@ -465,12 +474,12 @@ class InstructorEditionSettingsController extends mixOf(taiga.Controller, taiga.
                     if metric.classification == 'team'
                         metricId = metricId.split('_')[0]
                         metricName = metricName.replace(/\s*·\s*.+$/, '').trim()
+                    _vis = if hiddenIds.indexOf(metricId) >= 0 then 'hidden' else if visibleStudentIds.indexOf(metricId) >= 0 then 'professors_and_students' else 'professors_only'
                     allMetrics[metricId] ?=
                         id:             metricId
                         name:           metricName
                         classification: metric.classification
-                        hidden:         hiddenIds.indexOf(metricId) >= 0
-                        visibleToStudents: visibleStudentIds.indexOf(metricId) >= 0
+                        visibility:     _vis
 
             metrics = _.values(allMetrics)
             projectMetrics = metrics.filter (m) -> m.classification == 'project'
@@ -521,8 +530,8 @@ class InstructorEditionSettingsController extends mixOf(taiga.Controller, taiga.
         allMetrics = @scope.view.projectMetrics.concat(@scope.view.teamMetrics)
 
         payload =
-            hidden_metric_ids:              allMetrics.filter((m) -> m.hidden).map (m) -> m.id
-            visible_to_students_metric_ids: allMetrics.filter((m) -> m.visibleToStudents).map (m) -> m.id
+            hidden_metric_ids:              allMetrics.filter((m) -> m.visibility == 'hidden').map (m) -> m.id
+            visible_to_students_metric_ids: allMetrics.filter((m) -> m.visibility == 'professors_and_students').map (m) -> m.id
             allow_student_drilldown:        @scope.view.allowStudentDrilldown
             project_metric_order:           @scope.view.projectMetrics.map (m) -> m.id
             team_metric_order:              @scope.view.teamMetrics.map (m) -> m.id

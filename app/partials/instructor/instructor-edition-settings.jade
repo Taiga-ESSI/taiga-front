@@ -41,20 +41,10 @@ div.wrapper
                         div.metric-toggle-info
                             span.metric-toggle-name {{ metric.name }}
                         div.metric-toggle-controls
-                            label.toggle-label
-                                input(
-                                    type="checkbox"
-                                    ng-model="metric.hidden"
-                                    ng-change="metric.hidden && (metric.visibleToStudents = false)"
-                                )
-                                span(translate="INSTRUCTOR.SETTINGS_HIDDEN")
-                            label.toggle-label
-                                input(
-                                    type="checkbox"
-                                    ng-model="metric.visibleToStudents"
-                                    ng-disabled="metric.hidden"
-                                )
-                                span(translate="INSTRUCTOR.SETTINGS_VISIBLE_STUDENTS")
+                            select.metric-visibility-select(ng-model="metric.visibility")
+                                option(value="professors_only") {{ 'INSTRUCTOR.SETTINGS_PROFESSORS_ONLY' | translate }}
+                                option(value="professors_and_students") {{ 'INSTRUCTOR.SETTINGS_PROFESSORS_STUDENTS' | translate }}
+                                option(value="hidden") {{ 'INSTRUCTOR.SETTINGS_HIDDEN_NOBODY' | translate }}
 
                 div.metrics-group(ng-if="view.teamMetrics.length > 0")
                     h3(translate="INSTRUCTOR.SETTINGS_TEAM_METRICS")
@@ -75,20 +65,10 @@ div.wrapper
                         div.metric-toggle-info
                             span.metric-toggle-name {{ metric.name }}
                         div.metric-toggle-controls
-                            label.toggle-label
-                                input(
-                                    type="checkbox"
-                                    ng-model="metric.hidden"
-                                    ng-change="metric.hidden && (metric.visibleToStudents = false)"
-                                )
-                                span(translate="INSTRUCTOR.SETTINGS_HIDDEN")
-                            label.toggle-label
-                                input(
-                                    type="checkbox"
-                                    ng-model="metric.visibleToStudents"
-                                    ng-disabled="metric.hidden"
-                                )
-                                span(translate="INSTRUCTOR.SETTINGS_VISIBLE_STUDENTS")
+                            select.metric-visibility-select(ng-model="metric.visibility")
+                                option(value="professors_only") {{ 'INSTRUCTOR.SETTINGS_PROFESSORS_ONLY' | translate }}
+                                option(value="professors_and_students") {{ 'INSTRUCTOR.SETTINGS_PROFESSORS_STUDENTS' | translate }}
+                                option(value="hidden") {{ 'INSTRUCTOR.SETTINGS_HIDDEN_NOBODY' | translate }}
 
             //- Student drilldown toggle
             div.settings-section

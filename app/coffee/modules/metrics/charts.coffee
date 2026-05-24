@@ -980,13 +980,7 @@ BarChartDirective = ($parse, $timeout) ->
                                             color: 'rgba(30, 41, 59, 0.12)'
                                 plugins:
                                     legend:
-                                        display: true
-                                        position: 'top'
-                                        labels:
-                                            color: '#1e293b'
-                                            font:
-                                                size: 12
-                                                weight: 500
+                                        display: false
                                     tooltip:
                                         callbacks:
                                             label: (context) ->
