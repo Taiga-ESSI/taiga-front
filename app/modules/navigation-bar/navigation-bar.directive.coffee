@@ -10,16 +10,19 @@ NavigationBarDirective = (currentUserService, navigationBarService, locationServ
     link = (scope, el, attrs, ctrl) ->
         scope.vm = {}
         scope.vm.isInstructor = false
+        scope.vm.instructorSingleEditionId = null
 
         taiga.defineImmutableProperty(scope.vm, "projects", () -> currentUserService.projects.get("recents"))
         taiga.defineImmutableProperty(scope.vm, "isAuthenticated", () -> currentUserService.isAuthenticated())
         taiga.defineImmutableProperty(scope.vm, "isEnabledHeader", () -> navigationBarService.isEnabledHeader())
 
         checkInstructorAccess = ->
-            http.get(urls.resolve("academics-instructor-check")).then ->
+            http.get(urls.resolve("academics-instructor-check")).then (response) ->
                 scope.vm.isInstructor = true
+                scope.vm.instructorSingleEditionId = response.data?.single_edition_id or null
             .catch ->
                 scope.vm.isInstructor = false
+                scope.vm.instructorSingleEditionId = null
 
         scope.$watch (-> currentUserService.isAuthenticated()), (isAuth) ->
             if isAuth then checkInstructorAccess() else scope.vm.isInstructor = false

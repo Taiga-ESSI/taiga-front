@@ -44,9 +44,18 @@ nav.navbar(ng-if="vm.isEnabledHeader")
         )
 
     .nav-right(ng-if="vm.isAuthenticated")
+        //- If user has exactly one edition, go directly to it; otherwise to home
         a(
-            ng-if="vm.isInstructor"
+            ng-if="vm.isInstructor && !vm.instructorSingleEditionId"
             tg-nav="instructor-home"
+            ng-class="{'active': vm.active == 'instructor'}"
+            title="{{'INSTRUCTOR.SECTION_NAME' | translate}}"
+            style="display:flex; align-items:center;"
+        )
+            span(translate="INSTRUCTOR.NAV_LINK")
+        a(
+            ng-if="vm.isInstructor && vm.instructorSingleEditionId"
+            tg-nav="instructor-edition:editionId=vm.instructorSingleEditionId"
             ng-class="{'active': vm.active == 'instructor'}"
             title="{{'INSTRUCTOR.SECTION_NAME' | translate}}"
             style="display:flex; align-items:center;"

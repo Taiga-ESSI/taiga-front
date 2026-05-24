@@ -16,14 +16,28 @@ div.wrapper
                         span(translate="INSTRUCTOR.SETTINGS_TITLE")
                     h1(translate="INSTRUCTOR.SETTINGS_TITLE")
 
-            //- Metrics visibility
+            //- Metrics visibility + order
             div.settings-section
                 h2(translate="INSTRUCTOR.SETTINGS_METRICS_TITLE")
                 p.settings-hint(translate="INSTRUCTOR.SETTINGS_METRICS_HINT")
+                p.settings-hint(translate="INSTRUCTOR.SETTINGS_ORDER_HINT")
 
                 div.metrics-group(ng-if="view.projectMetrics.length > 0")
                     h3(translate="INSTRUCTOR.SETTINGS_PROJECT_METRICS")
-                    div.metric-toggle-row(ng-repeat="metric in view.projectMetrics track by metric.id")
+                    div.metric-toggle-row(
+                        ng-repeat="metric in view.projectMetrics track by metric.id"
+                    )
+                        div.metric-order-arrows
+                            button.order-arrow(
+                                ng-click="moveMetric(view.projectMetrics, $index, -1)"
+                                ng-disabled="$index === 0"
+                                title="Move up"
+                            ) ▲
+                            button.order-arrow(
+                                ng-click="moveMetric(view.projectMetrics, $index, 1)"
+                                ng-disabled="$index === view.projectMetrics.length - 1"
+                                title="Move down"
+                            ) ▼
                         div.metric-toggle-info
                             span.metric-toggle-name {{ metric.name }}
                         div.metric-toggle-controls
@@ -44,7 +58,20 @@ div.wrapper
 
                 div.metrics-group(ng-if="view.teamMetrics.length > 0")
                     h3(translate="INSTRUCTOR.SETTINGS_TEAM_METRICS")
-                    div.metric-toggle-row(ng-repeat="metric in view.teamMetrics track by metric.id")
+                    div.metric-toggle-row(
+                        ng-repeat="metric in view.teamMetrics track by metric.id"
+                    )
+                        div.metric-order-arrows
+                            button.order-arrow(
+                                ng-click="moveMetric(view.teamMetrics, $index, -1)"
+                                ng-disabled="$index === 0"
+                                title="Move up"
+                            ) ▲
+                            button.order-arrow(
+                                ng-click="moveMetric(view.teamMetrics, $index, 1)"
+                                ng-disabled="$index === view.teamMetrics.length - 1"
+                                title="Move down"
+                            ) ▼
                         div.metric-toggle-info
                             span.metric-toggle-name {{ metric.name }}
                         div.metric-toggle-controls

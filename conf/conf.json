@@ -1,12 +1,12 @@
 {
-    "api": "https://essidoc.epsevg.upc.edu/api/v1/",
-    "eventsUrl": "wss://essidoc.epsevg.upc.edu/events",
+    "api": "http://localhost:9000/api/v1/",
+    "eventsUrl": "ws://localhost:9000/events",
     "baseHref": "/",
     "eventsMaxMissedHeartbeats": 5,
     "eventsHeartbeatIntervalTime": 60000,
     "eventsReconnectTryInterval": 10000,
-    "debug": false,
-    "debugInfo": false,
+    "debug": true,
+    "debugInfo": true,
     "defaultLanguage": "en",
     "themes": ["taiga"],
     "defaultTheme": "taiga",
@@ -14,8 +14,8 @@
     "publicRegisterEnabled": true,
     "googleAuth": {
         "enabled": true,
-        "clientId": "271185463588-qrlj676h7675bk8ft1kb8ohgg9k16cqr.apps.googleusercontent.com",
-        "allowedDomains": ["upc.edu", "estudiantat.upc.edu", "essidoc.epsevg.upc.edu"]
+        "clientId": "52160798443-3imdlkr9g6otii9vkbc4eqmntigibbnl.apps.googleusercontent.com",
+        "allowedDomains": ["upc.edu", "estudiantat.upc.edu"]
     },
     "feedbackEnabled": true,
     "supportUrl": "https://community.taiga.io/",
