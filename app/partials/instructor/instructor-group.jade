@@ -52,6 +52,7 @@ div.wrapper
                                         max-value="1"
                                         label="{{ metric.name }}"
                                         metric-key="{{ metric.id }}"
+                                        color="metric.color"
                                         palette="metric.palette"
                                     )
                                 div.project-metric-insights
@@ -85,7 +86,7 @@ div.wrapper
                         tr
                             th(translate="INSTRUCTOR.STUDENT_NAME")
                             th(ng-repeat="metric in view.students[0].metrics track by metric.id"
-                               ng-if="metric.classification === 'team'") {{ metric.name }}
+                               ng-if="metric.classification === 'team'") {{ metric.base_name || metric.name }}
                     tbody
                         tr(ng-repeat="student in view.students track by student.username")
                             td.student-name {{ student.displayName || student.name || student.username }}
@@ -105,9 +106,10 @@ div.wrapper
                                     value="metric.value"
                                     raw-value="metric.value"
                                     max-value="1"
-                                    label="{{ metric.name }}"
+                                    label="{{ metric.base_name || metric.name }}"
                                     metric-key="{{ metric.id }}"
+                                    color="metric.color"
                                     palette="metric.palette"
                                 )
                                 span.gauge-metric-value {{ metric.value | number:2 }}
-                                span.gauge-metric-label {{ metric.name }}
+                                span.gauge-metric-label {{ metric.base_name || metric.name }}

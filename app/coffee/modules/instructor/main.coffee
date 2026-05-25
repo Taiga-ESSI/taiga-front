@@ -45,11 +45,77 @@ _getMetricPalette = (metricId) ->
     ]
 
 
+_buildCategoryPalettes = (categoriesData) ->
+    grouped = {}
+    return grouped unless categoriesData? and angular.isArray(categoriesData)
+    for entry in categoriesData when entry?
+        nameKey = (entry.name or entry.category or entry.displayName or '').toString().trim().toLowerCase()
+        continue unless nameKey
+        upper = parseFloat(entry.upperThreshold)
+        grouped[nameKey] ?= []
+        grouped[nameKey].push({
+            color: entry.color or entry.hex or '#2563EB'
+            upperThreshold: if isFinite(upper) then Math.max(0, upper) else null
+        })
+    for nameKey, palette of grouped
+        valid = palette.filter (item) -> item.upperThreshold? and isFinite(item.upperThreshold)
+        grouped[nameKey] = if valid.length > 0 \
+            then valid.sort((a, b) -> a.upperThreshold - b.upperThreshold) \
+            else palette.slice()
+    grouped
+
+_resolveCategoryColor = (palettes, categoryKey, value) ->
+    return null unless categoryKey?
+    key = categoryKey.toString().trim().toLowerCase()
+    palette = palettes?[key]
+    return null unless palette? and palette.length
+    ratio = Math.max(0, parseFloat(value) or 0)
+    matchedColor = null
+    for item in palette when item?.upperThreshold? and isFinite(item.upperThreshold)
+        if ratio <= item.upperThreshold + 1e-9
+            matchedColor = item.color
+            break
+    matchedColor or palette[palette.length - 1]?.color or null
+
+_buildCategorySegments = (palettes, categoryKey) ->
+    return null unless categoryKey?
+    key = categoryKey.toString().trim().toLowerCase()
+    palette = palettes?[key]
+    return null unless palette? and palette.length
+    segments = []
+    lastThreshold = 0
+    for entry in palette when entry?
+        upper = Number(entry.upperThreshold)
+        continue unless isFinite(upper)
+        clamped = Math.max(lastThreshold, Math.min(Math.max(upper, 0), 1))
+        segmentRatio = clamped - lastThreshold
+        continue unless segmentRatio > 0
+        segments.push({ color: entry.color or '#2563EB', value: segmentRatio, upperThreshold: clamped })
+        lastThreshold = clamped
+    if lastThreshold < 1
+        remainderRatio = 1 - lastThreshold
+        if remainderRatio > 0
+            fallbackColor = palette[palette.length - 1]?.color or '#CBD5F5'
+            segments.push({ color: fallbackColor, value: remainderRatio, upperThreshold: 1 })
+    if segments.length then segments else null
+
 _enrichMetricsWithPalette = (groups) ->
     (groups or []).map (group) ->
         enriched = angular.extend({}, group)
+        isExternal = group.metrics_provider is 'external'
+        palettes = if isExternal then _buildCategoryPalettes(group.metrics_categories or []) else {}
         enriched.metrics = (group.metrics or []).map (m) ->
-            angular.extend({}, m, { palette: _getMetricPalette(m.id) })
+            if isExternal
+                # Mirror the student view: use categoryName first, then first qualityFactor as fallback.
+                categoryKey = m.categoryName or (m.qualityFactors or [])[0] or m.id
+                categoryColor = _resolveCategoryColor(palettes, categoryKey, m.value)
+                categorySegments = _buildCategorySegments(palettes, categoryKey)
+                angular.extend({}, m, {
+                    palette: categorySegments
+                    color: categoryColor or 'rgb(37, 99, 235)'
+                })
+            else
+                angular.extend({}, m, { palette: _getMetricPalette(m.id), color: null })
         enriched
 
 
@@ -375,10 +441,21 @@ class InstructorGroupController extends mixOf(taiga.Controller, taiga.PageMixin)
             @scope.view.group             = group
             @scope.view.projectMetrics    = (group.metrics or []).filter (m) -> m.classification == 'project'
             @scope.view.drilldownAllowed  = rawGroup.drilldown_allowed isnt false
+            isExternalGroup = rawGroup.metrics_provider is 'external'
+            groupPalettes = if isExternalGroup then _buildCategoryPalettes(rawGroup.metrics_categories or []) else {}
             @scope.view.students          = (group.students or []).map (student) ->
                 enriched = angular.extend({}, student)
                 enriched.metrics = (student.metrics or []).map (m) ->
-                    angular.extend({}, m, { palette: _getMetricPalette(m.id) })
+                    if isExternalGroup
+                        categoryKey = m.categoryName or (m.qualityFactors or [])[0] or m.id
+                        categoryColor = _resolveCategoryColor(groupPalettes, categoryKey, m.value)
+                        categorySegments = _buildCategorySegments(groupPalettes, categoryKey)
+                        angular.extend({}, m, {
+                            palette: categorySegments
+                            color: categoryColor or 'rgb(37, 99, 235)'
+                        })
+                    else
+                        angular.extend({}, m, { palette: _getMetricPalette(m.id), color: null })
                 enriched
             @scope.view.hasStudents       = @scope.view.students.length > 0
             @scope.view.loading           = false

@@ -2316,10 +2316,26 @@ class MetricsController extends mixOf(taiga.Controller, taiga.PageMixin)
                     metrics: sortedMetrics
                 })
 
-        result.sort (a, b) ->
-            aLabel = (a?.label or "").toString().toLowerCase()
-            bLabel = (b?.label or "").toString().toLowerCase()
-            if aLabel < bLabel then -1 else if aLabel > bLabel then 1 else 0
+        teamOrder = if isTeam then (@localConfig?.teamMetricsOrder or @metricsConfig?.teamMetricsOrder or []) else []
+        if isTeam and teamOrder.length > 0
+            result.sort (a, b) =>
+                getGroupRank = (group) =>
+                    firstId = group?.metrics?[0]?.id
+                    return teamOrder.length unless firstId
+                    for entry, i in teamOrder
+                        return i if @.matchesConfiguredMetric(entry, firstId, null, true)
+                    return teamOrder.length
+                aRank = getGroupRank(a)
+                bRank = getGroupRank(b)
+                if aRank isnt bRank then return aRank - bRank
+                aLabel = (a?.label or "").toString().toLowerCase()
+                bLabel = (b?.label or "").toString().toLowerCase()
+                if aLabel < bLabel then -1 else if aLabel > bLabel then 1 else 0
+        else
+            result.sort (a, b) ->
+                aLabel = (a?.label or "").toString().toLowerCase()
+                bLabel = (b?.label or "").toString().toLowerCase()
+                if aLabel < bLabel then -1 else if aLabel > bLabel then 1 else 0
 
         if angular.isArray(unassignedList) and unassignedList.length > 0
             # For internal provider and team metrics, also group unassigned by user

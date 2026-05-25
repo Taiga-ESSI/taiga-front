@@ -716,6 +716,11 @@ $instructor-text-muted: rgb(148, 163, 184);
             text-align: left;
         }
 
+        th:not(:first-child),
+        td:not(.student-name) {
+            text-align: center;
+        }
+
         th {
             background: rgba(0, 115, 207, .05);
             color: $instructor-text-secondary;
