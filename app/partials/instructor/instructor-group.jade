@@ -11,7 +11,7 @@ div.wrapper
                     nav.breadcrumb
                         a(tg-nav="instructor-home") {{ 'INSTRUCTOR.SECTION_NAME' | translate }}
                         span.breadcrumb-sep  ›
-                        a(tg-nav="instructor-edition:editionId=editionId") {{ view.edition.key }}
+                        a(tg-nav="instructor-edition:editionKey=editionKey") {{ view.edition.key }}
                         span.breadcrumb-sep  ›
                         span {{ view.group.group_code }}
                     h1.group-title {{ view.group.group_code }}

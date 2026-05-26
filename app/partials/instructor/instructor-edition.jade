@@ -24,7 +24,7 @@ div.wrapper
                 div.header-actions
                     a.btn-small(
                         ng-if="view.canEditSettings"
-                        tg-nav="instructor-edition-settings:editionId=view.edition.id"
+                        tg-nav="instructor-edition-settings:editionKey=view.edition.key"
                         variant="secondary"
                     )
                         span(translate="INSTRUCTOR.SETTINGS_LINK")
@@ -44,7 +44,7 @@ div.wrapper
             div.groups-grid(ng-if="view.groups.length > 0")
                 div.group-card(
                     ng-repeat="group in view.groups track by group.group_id"
-                    tg-nav="instructor-group:editionId=view.edition.id,groupId=group.group_id"
+                    tg-nav="instructor-group:editionKey=view.edition.key,groupCode=group.group_code"
                     style="cursor:pointer;"
                 )
                     div.group-card-header
@@ -82,7 +82,7 @@ div.wrapper
             div.aggregated-section(ng-if="view.groups.length > 1")
                 div.aggregated-header
                     h2(translate="INSTRUCTOR.AGGREGATED_TITLE")
-                    //- Comparison filter
+                    //- Team filter
                     div.comparison-filter
                         span.comparison-filter-label(translate="INSTRUCTOR.COMPARISON_FILTER_TITLE")
                         div.comparison-filter-chips
@@ -92,6 +92,16 @@ div.wrapper
                                 ng-click="toggleGroupInComparison(group.group_id)"
                             ) {{ group.group_code }}
                         span.comparison-count {{ getSelectedGroupCount() }}/{{ view.groups.length }} teams selected
+                    //- Metric filter
+                    div.comparison-filter(ng-if="view.allChartsList.length > 1")
+                        span.comparison-filter-label(translate="INSTRUCTOR.COMPARISON_METRIC_FILTER_TITLE")
+                        div.comparison-filter-chips
+                            button.comparison-chip(
+                                ng-repeat="item in view.allChartsList track by item.metric_id"
+                                ng-class="{'active': isMetricInComparison(item.metric_id)}"
+                                ng-click="toggleMetricInComparison(item.metric_id)"
+                            ) {{ item.metric_name }}
+                        span.comparison-count {{ getSelectedMetricCount() }}/{{ view.allChartsList.length }} metrics selected
 
                 div.aggregated-charts-grid
                     div.aggregated-chart-card(ng-repeat="item in view.filteredChartsList track by item.metric_id + '_' + view.chartVersion")

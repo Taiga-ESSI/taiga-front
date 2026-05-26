@@ -1764,11 +1764,11 @@
         "FILTER_ACTIVE": "Active",
         "FILTER_PLANNED": "Planned",
         "FILTER_CLOSED": "Closed",
-        "FILTER_ARCHIVED": "Archived",
         "EDITION_EMPTY_TOOLTIP": "This edition has no teams yet",
         "VIEW_AS_PROFESSOR": "My teams",
         "VIEW_AS_COORDINATOR": "All teams",
-        "COMPARISON_FILTER_TITLE": "Filter teams in comparison"
+        "COMPARISON_FILTER_TITLE": "Filter teams in comparison",
+        "COMPARISON_METRIC_FILTER_TITLE": "Filter metrics in comparison"
     },
     "METRICS": {
         "PAGE_TITLE": "Metrics - {{projectName}}",

@@ -336,7 +336,7 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
         }
     )
 
-    $routeProvider.when("/instructor/edition/:editionId",
+    $routeProvider.when("/instructor/edition/:editionKey",
         {
             templateUrl: "instructor/instructor-edition.html",
             controller: "InstructorEditionController",
@@ -346,7 +346,7 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
         }
     )
 
-    $routeProvider.when("/instructor/edition/:editionId/group/:groupId",
+    $routeProvider.when("/instructor/edition/:editionKey/group/:groupCode",
         {
             templateUrl: "instructor/instructor-group.html",
             controller: "InstructorGroupController",
@@ -356,7 +356,7 @@ configure = ($routeProvider, $locationProvider, $httpProvider, $provide, $tgEven
         }
     )
 
-    $routeProvider.when("/instructor/edition/:editionId/settings",
+    $routeProvider.when("/instructor/edition/:editionKey/settings",
         {
             templateUrl: "instructor/instructor-edition-settings.html",
             controller: "InstructorEditionSettingsController",

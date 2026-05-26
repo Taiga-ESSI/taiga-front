@@ -166,7 +166,7 @@ class InstructorHomeController extends mixOf(taiga.Controller, taiga.PageMixin)
             @scope.view.loading = false
 
     getFilteredEditions: (subject) ->
-        STATUS_ORDER = { ACTIVE: 0, PLANNED: 1, CLOSED: 2, ARCHIVED: 3 }
+        STATUS_ORDER = { ACTIVE: 0, PLANNED: 1, CLOSED: 2 }
         TERM_ORDER   = { Q2: 0, Q1: 1, ANNUAL: 2 }
         filter = @scope.view.statusFilter
         editions = if filter == 'all' then subject.editions else subject.editions.filter (e) -> e.status == filter
@@ -195,7 +195,7 @@ class InstructorEditionController extends mixOf(taiga.Controller, taiga.PageMixi
     ]
 
     constructor: (@scope, @params, @http, @urls, @appMetaService, @translate, @timeout) ->
-        @scope.editionId = parseInt(@params.editionId, 10)
+        @scope.editionKey = @params.editionKey
 
         @scope.view =
             loading: true
@@ -205,6 +205,7 @@ class InstructorEditionController extends mixOf(taiga.Controller, taiga.PageMixi
             aggregated: {}
             filteredAggregated: {}
             filteredCharts: {}
+            allChartsList: []
             filteredChartsList: []
             chartVersion: 0
             canEditSettings: false
@@ -213,7 +214,8 @@ class InstructorEditionController extends mixOf(taiga.Controller, taiga.PageMixi
             isProfessor: false
             showViewToggle: false
             professorView: false
-            comparisonGroupIds: null   # null = all groups selected
+            comparisonGroupIds: null    # null = all groups selected
+            comparisonMetricIds: null   # null = all metrics selected
 
         @scope.refresh = => @.refresh()
         @scope.switchToProfessorView = => @.switchView(true)
@@ -221,6 +223,9 @@ class InstructorEditionController extends mixOf(taiga.Controller, taiga.PageMixi
         @scope.toggleGroupInComparison = (groupId) => @.toggleGroupInComparison(groupId)
         @scope.isGroupInComparison = (groupId) => @.isGroupInComparison(groupId)
         @scope.getSelectedGroupCount = => @.getSelectedGroupCount()
+        @scope.toggleMetricInComparison = (metricId) => @.toggleMetricInComparison(metricId)
+        @scope.isMetricInComparison = (metricId) => @.isMetricInComparison(metricId)
+        @scope.getSelectedMetricCount = => @.getSelectedMetricCount()
 
         @.load(false, true)
 
@@ -233,7 +238,7 @@ class InstructorEditionController extends mixOf(taiga.Controller, taiga.PageMixi
         @scope.view.loading = true
         @scope.view.error = null
 
-        url = @urls.resolve("academics-edition-dashboard", @scope.editionId)
+        url = @urls.resolve("academics-edition-dashboard", @scope.editionKey)
         params = {}
         if force then params.refresh = "1"
         if professorView then params.professor_view = "1"
@@ -252,8 +257,9 @@ class InstructorEditionController extends mixOf(taiga.Controller, taiga.PageMixi
             @scope.view.professorView   = professorView
             @scope.view.loading         = false
 
-            # Reset comparison filter when data reloads
+            # Reset comparison filters when data reloads
             @scope.view.comparisonGroupIds = null
+            @scope.view.comparisonMetricIds = null
             @.updateFilteredCharts()
 
             @translate("INSTRUCTOR.EDITION_TITLE", {key: data.course_edition_key}).then (title) =>
@@ -333,9 +339,8 @@ class InstructorEditionController extends mixOf(taiga.Controller, taiga.PageMixi
                     )
 
         chartsData = @.buildBarCharts(rawAggregated, selectedCodes)
-        @scope.view.filteredAggregated = aggData
-        @scope.view.filteredCharts = chartsData
-        @scope.view.filteredChartsList = Object.keys(chartsData).map (metricId) =>
+
+        allChartsList = Object.keys(chartsData).map (metricId) =>
             agg = aggData[metricId] or {}
             {
                 metric_id: metricId
@@ -345,6 +350,17 @@ class InstructorEditionController extends mixOf(taiga.Controller, taiga.PageMixi
                 max: agg.max or 0
                 chartData: chartsData[metricId]
             }
+
+        selectedMetricIds = @scope.view.comparisonMetricIds
+        filteredChartsList = if selectedMetricIds?
+            allChartsList.filter (item) -> selectedMetricIds.indexOf(item.metric_id) >= 0
+        else
+            allChartsList
+
+        @scope.view.filteredAggregated = aggData
+        @scope.view.filteredCharts = chartsData
+        @scope.view.allChartsList = allChartsList
+        @scope.view.filteredChartsList = filteredChartsList
         @scope.view.chartVersion += 1
 
     toggleGroupInComparison: (groupId) ->
@@ -373,6 +389,32 @@ class InstructorEditionController extends mixOf(taiga.Controller, taiga.PageMixi
             return @scope.view.groups.length
         return @scope.view.comparisonGroupIds.length
 
+    toggleMetricInComparison: (metricId) ->
+        if @scope.view.comparisonMetricIds is null
+            allIds = @scope.view.allChartsList.map (m) -> m.metric_id
+            newIds = allIds.filter (id) -> id != metricId
+            return if newIds.length == 0
+            @scope.view.comparisonMetricIds = newIds
+        else
+            idx = @scope.view.comparisonMetricIds.indexOf(metricId)
+            if idx >= 0
+                return if @scope.view.comparisonMetricIds.length <= 1
+                @scope.view.comparisonMetricIds.splice(idx, 1)
+            else
+                @scope.view.comparisonMetricIds.push(metricId)
+            if @scope.view.comparisonMetricIds.length == @scope.view.allChartsList.length
+                @scope.view.comparisonMetricIds = null
+        @.updateFilteredCharts()
+
+    isMetricInComparison: (metricId) ->
+        @scope.view.comparisonMetricIds is null or
+        @scope.view.comparisonMetricIds.indexOf(metricId) >= 0
+
+    getSelectedMetricCount: ->
+        if @scope.view.comparisonMetricIds is null
+            return @scope.view.allChartsList.length
+        return @scope.view.comparisonMetricIds.length
+
     switchView: (professorView) ->
         if professorView == @scope.view.professorView then return
         @.load(false, professorView)
@@ -396,8 +438,8 @@ class InstructorGroupController extends mixOf(taiga.Controller, taiga.PageMixin)
     ]
 
     constructor: (@scope, @params, @http, @urls, @appMetaService, @translate) ->
-        @scope.editionId = parseInt(@params.editionId, 10)
-        @scope.groupId   = parseInt(@params.groupId, 10)
+        @scope.editionKey = @params.editionKey
+        @scope.groupCode  = @params.groupCode
 
         @scope.view =
             loading: true
@@ -420,12 +462,12 @@ class InstructorGroupController extends mixOf(taiga.Controller, taiga.PageMixin)
         @scope.view.loading = true
         @scope.view.error = null
 
-        url    = @urls.resolve("academics-edition-dashboard", @scope.editionId)
+        url    = @urls.resolve("academics-edition-dashboard", @scope.editionKey)
         params = if force then {refresh: "1"} else {}
 
         return @http.get(url, params).then (response) =>
             data  = response.data
-            rawGroup = _.find(data.groups or [], (g) => g.group_id == @scope.groupId)
+            rawGroup = _.find(data.groups or [], (g) => g.group_code == @scope.groupCode)
 
             unless rawGroup
                 @scope.view.error   = "INSTRUCTOR.GROUP_NOT_FOUND"
@@ -492,7 +534,7 @@ class InstructorEditionSettingsController extends mixOf(taiga.Controller, taiga.
     ]
 
     constructor: (@scope, @params, @q, @http, @urls, @appMetaService, @translate) ->
-        @scope.editionId = parseInt(@params.editionId, 10)
+        @scope.editionKey = @params.editionKey
 
         @scope.view =
             loading: true
@@ -517,13 +559,13 @@ class InstructorEditionSettingsController extends mixOf(taiga.Controller, taiga.
         @scope.view.error   = null
 
         dashboardReq = @http.get(
-            @urls.resolve("academics-edition-dashboard", @scope.editionId),
+            @urls.resolve("academics-edition-dashboard", @scope.editionKey),
             {raw: "1"}
         ).then (r) -> r.data
 
         policyReq = @http.get(
             @urls.resolve("academics-metrics-policies"),
-            {course_edition_id: @scope.editionId}
+            {course_edition_key: @scope.editionKey}
         ).then (r) -> r.data
 
         @q.all([dashboardReq, policyReq]).then ([dashboard, policies]) =>
@@ -615,13 +657,13 @@ class InstructorEditionSettingsController extends mixOf(taiga.Controller, taiga.
 
         req =
             if @scope.view.policyId
-                payload.course_edition_id = @scope.editionId
+                payload.course_edition_id = @scope.view.edition.id
                 @http.patch(
                     @urls.resolve("academics-metrics-policy-detail", @scope.view.policyId),
                     payload
                 )
             else
-                payload.course_edition_id = @scope.editionId
+                payload.course_edition_id = @scope.view.edition.id
                 @http.post(@urls.resolve("academics-metrics-policies"), payload)
 
         req.then (r) =>

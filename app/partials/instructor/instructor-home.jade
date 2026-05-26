@@ -36,11 +36,6 @@ div.wrapper
                         ng-click="setStatusFilter('CLOSED')"
                         translate="INSTRUCTOR.FILTER_CLOSED"
                     )
-                    button.filter-btn(
-                        ng-class="{'active': view.statusFilter === 'ARCHIVED'}"
-                        ng-click="setStatusFilter('ARCHIVED')"
-                        translate="INSTRUCTOR.FILTER_ARCHIVED"
-                    )
 
                 div.subject-block(ng-repeat="subject in view.subjects track by subject.id")
                     div.subject-header
@@ -55,7 +50,7 @@ div.wrapper
                             //- Clickable card (has teams)
                             a.edition-card(
                                 ng-if="edition.team_count > 0"
-                                tg-nav="instructor-edition:editionId=edition.id"
+                                tg-nav="instructor-edition:editionKey=edition.key"
                             )
                                 div.edition-key {{ edition.key }}
                                 div.edition-meta
