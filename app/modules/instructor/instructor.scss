@@ -839,6 +839,11 @@ $instructor-text-muted: rgb(148, 163, 184);
         }
     }
 
+    .metric-toggle-info {
+        flex: 1;
+        text-align: left;
+    }
+
     .metric-toggle-name {
         color: $instructor-text-main;
         font-size: .9rem;
