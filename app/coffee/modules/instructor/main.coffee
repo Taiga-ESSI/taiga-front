@@ -579,8 +579,7 @@ class InstructorEditionSettingsController extends mixOf(taiga.Controller, taiga.
             projectOrder       = policy.project_metric_order or []
             teamOrder          = policy.team_metric_order or []
 
-            @scope.view.policyId              = policy.id or null
-            @scope.view.allowStudentDrilldown = if policy.allow_student_drilldown? then policy.allow_student_drilldown else true
+            @scope.view.policyId = policy.id or null
 
             allMetrics = {}
             for group in (dashboard.groups or [])
@@ -651,7 +650,6 @@ class InstructorEditionSettingsController extends mixOf(taiga.Controller, taiga.
         payload =
             hidden_metric_ids:              allMetrics.filter((m) -> m.visibility == 'hidden').map (m) -> m.id
             visible_to_students_metric_ids: allMetrics.filter((m) -> m.visibility == 'professors_and_students').map (m) -> m.id
-            allow_student_drilldown:        @scope.view.allowStudentDrilldown
             project_metric_order:           @scope.view.projectMetrics.map (m) -> m.id
             team_metric_order:              @scope.view.teamMetrics.map (m) -> m.id
 

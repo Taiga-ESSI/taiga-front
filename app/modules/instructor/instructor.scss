@@ -768,6 +768,7 @@ $instructor-text-muted: rgb(148, 163, 184);
         border-radius: 10px;
         box-shadow: $instructor-card-shadow;
         margin-bottom: 1.5rem;
+        max-width: 680px;
         padding: 1.5rem;
 
         h2 {
@@ -898,8 +899,8 @@ $instructor-text-muted: rgb(148, 163, 184);
         align-items: center;
         display: flex;
         gap: 1rem;
-        justify-content: flex-end;
-        margin-top: .5rem;
+        justify-content: flex-start;
+        margin-top: 1.5rem;
     }
 
     .save-feedback {

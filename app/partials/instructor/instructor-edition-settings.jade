@@ -72,24 +72,8 @@ div.wrapper
                                 option(value="professors_and_students") {{ 'INSTRUCTOR.SETTINGS_PROFESSORS_STUDENTS' | translate }}
                                 option(value="hidden") {{ 'INSTRUCTOR.SETTINGS_HIDDEN_NOBODY' | translate }}
 
-            //- Student drilldown toggle
-            div.settings-section
-                h2(translate="INSTRUCTOR.SETTINGS_ACCESS_TITLE")
-                div.drilldown-toggle-row
-                    label.toggle-label.toggle-label--large
-                        input(
-                            type="checkbox"
-                            ng-model="view.allowStudentDrilldown"
-                        )
-                        span(translate="INSTRUCTOR.SETTINGS_ALLOW_DRILLDOWN")
-                    p.settings-hint(translate="INSTRUCTOR.SETTINGS_ALLOW_DRILLDOWN_HINT")
-
             //- Save button + feedback
             div.settings-actions
-                div.save-feedback.save-feedback--error(ng-if="view.saveError")
-                    span(translate="{{ view.saveError }}")
-                div.save-feedback.save-feedback--ok(ng-if="view.saved && !view.saving")
-                    span(translate="INSTRUCTOR.SETTINGS_SAVED")
                 button.btn-small(
                     variant="primary"
                     ng-click="save()"
@@ -97,3 +81,7 @@ div.wrapper
                 )
                     span(ng-if="!view.saving" translate="INSTRUCTOR.SETTINGS_SAVE")
                     span(ng-if="view.saving" translate="INSTRUCTOR.SETTINGS_SAVING")
+                div.save-feedback.save-feedback--error(ng-if="view.saveError")
+                    span(translate="{{ view.saveError }}")
+                div.save-feedback.save-feedback--ok(ng-if="view.saved && !view.saving")
+                    span(translate="INSTRUCTOR.SETTINGS_SAVED")
