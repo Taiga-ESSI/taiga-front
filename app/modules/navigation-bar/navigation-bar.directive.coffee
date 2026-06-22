@@ -6,13 +6,26 @@
 # Copyright (c) 2021-present Kaleidos INC
 ###
 
-NavigationBarDirective = (currentUserService, navigationBarService, locationService, navUrlsService, config, feedbackService) ->
+NavigationBarDirective = (currentUserService, navigationBarService, locationService, navUrlsService, config, feedbackService, http, urls) ->
     link = (scope, el, attrs, ctrl) ->
         scope.vm = {}
+        scope.vm.isInstructor = false
+        scope.vm.instructorSingleEditionKey = null
 
         taiga.defineImmutableProperty(scope.vm, "projects", () -> currentUserService.projects.get("recents"))
         taiga.defineImmutableProperty(scope.vm, "isAuthenticated", () -> currentUserService.isAuthenticated())
         taiga.defineImmutableProperty(scope.vm, "isEnabledHeader", () -> navigationBarService.isEnabledHeader())
+
+        checkInstructorAccess = ->
+            http.get(urls.resolve("academics-instructor-check")).then (response) ->
+                scope.vm.isInstructor = true
+                scope.vm.instructorSingleEditionKey = response.data?.single_edition_key or null
+            .catch ->
+                scope.vm.isInstructor = false
+                scope.vm.instructorSingleEditionKey = null
+
+        scope.$watch (-> currentUserService.isAuthenticated()), (isAuth) ->
+            if isAuth then checkInstructorAccess() else scope.vm.isInstructor = false
 
         scope.vm.publicRegisterEnabled = config.get("publicRegisterEnabled")
         scope.vm.customSupportUrl = config.get("supportUrl")
@@ -68,7 +81,9 @@ NavigationBarDirective = (currentUserService, navigationBarService, locationServ
                 when "/projects/"
                     scope.vm.active = 'projects'
                 else
-                    if path.startsWith('/project')
+                    if path.startsWith('/instructor')
+                        scope.vm.active = 'instructor'
+                    else if path.startsWith('/project')
                         scope.vm.active = 'project'
 
     directive = {
@@ -85,7 +100,9 @@ NavigationBarDirective.$inject = [
     "$tgLocation",
     "$tgNavUrls",
     "$tgConfig",
-    "tgFeedbackService"
+    "tgFeedbackService",
+    "$tgHttp",
+    "$tgUrls",
 ]
 
 angular.module("taigaNavigationBar").directive("tgNavigationBar", NavigationBarDirective)

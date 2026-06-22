@@ -1,0 +1,87 @@
+//- Sergio Utrilla added - Instructor Dashboard: panel de configuración de métricas y visibilidad por edition
+div.wrapper
+    section.main.instructor-settings
+        div.error-message(ng-if="view.error && !view.loading")
+            div.alert.alert-error
+                p(translate="{{ view.error }}")
+
+        div.settings-dashboard(ng-if="!view.loading && !view.error")
+            header.settings-header
+                div.header-left
+                    nav.breadcrumb
+                        a(tg-nav="instructor-home") {{ 'INSTRUCTOR.SECTION_NAME' | translate }}
+                        span.breadcrumb-sep  ›
+                        a(tg-nav="instructor-edition:editionKey=editionKey") {{ view.edition.key }}
+                        span.breadcrumb-sep  ›
+                        span(translate="INSTRUCTOR.SETTINGS_TITLE")
+                    h1(translate="INSTRUCTOR.SETTINGS_TITLE")
+
+            //- Metrics visibility + order
+            div.settings-section
+                h2(translate="INSTRUCTOR.SETTINGS_METRICS_TITLE")
+                p.settings-hint(translate="INSTRUCTOR.SETTINGS_METRICS_HINT")
+                p.settings-hint(translate="INSTRUCTOR.SETTINGS_ORDER_HINT")
+
+                div.metrics-group(ng-if="view.projectMetrics.length > 0")
+                    h3(translate="INSTRUCTOR.SETTINGS_PROJECT_METRICS")
+                    div.metric-toggle-row(
+                        ng-repeat="metric in view.projectMetrics track by metric.id"
+                    )
+                        div.metric-order-arrows
+                            button.order-arrow(
+                                ng-click="moveMetric(view.projectMetrics, $index, -1)"
+                                ng-disabled="$index === 0"
+                                title="Move up"
+                            ) ▲
+                            button.order-arrow(
+                                ng-click="moveMetric(view.projectMetrics, $index, 1)"
+                                ng-disabled="$index === view.projectMetrics.length - 1"
+                                title="Move down"
+                            ) ▼
+                        div.metric-toggle-info
+                            span.metric-toggle-name {{ metric.name }}
+                        div.metric-toggle-controls
+                            span.visibility-dot(ng-class="'visibility-dot--' + metric.visibility")
+                            select.metric-visibility-select(ng-model="metric.visibility")
+                                option(value="professors_only") {{ 'INSTRUCTOR.SETTINGS_PROFESSORS_ONLY' | translate }}
+                                option(value="professors_and_students") {{ 'INSTRUCTOR.SETTINGS_PROFESSORS_STUDENTS' | translate }}
+                                option(value="hidden") {{ 'INSTRUCTOR.SETTINGS_HIDDEN_NOBODY' | translate }}
+
+                div.metrics-group(ng-if="view.teamMetrics.length > 0")
+                    h3(translate="INSTRUCTOR.SETTINGS_TEAM_METRICS")
+                    div.metric-toggle-row(
+                        ng-repeat="metric in view.teamMetrics track by metric.id"
+                    )
+                        div.metric-order-arrows
+                            button.order-arrow(
+                                ng-click="moveMetric(view.teamMetrics, $index, -1)"
+                                ng-disabled="$index === 0"
+                                title="Move up"
+                            ) ▲
+                            button.order-arrow(
+                                ng-click="moveMetric(view.teamMetrics, $index, 1)"
+                                ng-disabled="$index === view.teamMetrics.length - 1"
+                                title="Move down"
+                            ) ▼
+                        div.metric-toggle-info
+                            span.metric-toggle-name {{ metric.name }}
+                        div.metric-toggle-controls
+                            span.visibility-dot(ng-class="'visibility-dot--' + metric.visibility")
+                            select.metric-visibility-select(ng-model="metric.visibility")
+                                option(value="professors_only") {{ 'INSTRUCTOR.SETTINGS_PROFESSORS_ONLY' | translate }}
+                                option(value="professors_and_students") {{ 'INSTRUCTOR.SETTINGS_PROFESSORS_STUDENTS' | translate }}
+                                option(value="hidden") {{ 'INSTRUCTOR.SETTINGS_HIDDEN_NOBODY' | translate }}
+
+            //- Save button + feedback
+            div.settings-actions
+                button.btn-small(
+                    variant="primary"
+                    ng-click="save()"
+                    ng-disabled="view.saving"
+                )
+                    span(ng-if="!view.saving" translate="INSTRUCTOR.SETTINGS_SAVE")
+                    span(ng-if="view.saving" translate="INSTRUCTOR.SETTINGS_SAVING")
+                div.save-feedback.save-feedback--error(ng-if="view.saveError")
+                    span(translate="{{ view.saveError }}")
+                div.save-feedback.save-feedback--ok(ng-if="view.saved && !view.saving")
+                    span(translate="INSTRUCTOR.SETTINGS_SAVED")

@@ -5,22 +5,17 @@
     "eventsMaxMissedHeartbeats": 5,
     "eventsHeartbeatIntervalTime": 60000,
     "eventsReconnectTryInterval": 10000,
-    "debug": false,
-    "debugInfo": false,
+    "debug": true,
+    "debugInfo": true,
     "defaultLanguage": "en",
-    "themes": [
-        "taiga"
-    ],
+    "themes": ["taiga"],
     "defaultTheme": "taiga",
     "defaultLoginEnabled": true,
     "publicRegisterEnabled": true,
     "googleAuth": {
         "enabled": true,
-        "clientId": "286907234950-enq7c1j4085fbj662otfptqqo24hk93u.apps.googleusercontent.com",
-        "allowedDomains": [
-            "upc.edu",
-            "estudiantat.upc.edu"
-        ]
+        "clientId": "52160798443-3imdlkr9g6otii9vkbc4eqmntigibbnl.apps.googleusercontent.com",
+        "allowedDomains": ["upc.edu", "estudiantat.upc.edu"]
     },
     "feedbackEnabled": true,
     "supportUrl": "https://community.taiga.io/",
@@ -28,18 +23,6 @@
     "termsOfServiceUrl": null,
     "maxUploadFileSize": null,
     "contribPlugins": [],
-    "tagManager": {
-        "accountId": null
-    },
-    "tribeHost": null,
-    "enableAsanaImporter": false,
-    "enableGithubImporter": false,
-    "enableJiraImporter": false,
-    "enableTrelloImporter": false,
     "gravatar": false,
-    "rtlLanguages": [
-        "ar",
-        "fa",
-        "he"
-    ]
+    "rtlLanguages": ["ar", "fa", "he"]
 }

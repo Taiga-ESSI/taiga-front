@@ -903,19 +903,17 @@ module.directive("tgPieChart", ["$parse", "$timeout", PieChartDirective])
 #############################################################################
 
 BarChartDirective = ($parse, $timeout) ->
-    link = (scope, element, attrs) ->
-        console.log("BarChart directive linking")
-        
+    link = (scope, element) ->
         canvasId = "bar-#{Date.now()}-#{Math.random().toString(36).substr(2, 9)}"
         canvas = document.createElement('canvas')
         canvas.id = canvasId
         canvas.width = 600
         canvas.height = 400
         element.append(canvas)
-        
+
         chart = null
-        isRendering = false
-        
+        pendingTimeout = null
+
         destroyChart = ->
             if chart?
                 try
@@ -923,28 +921,31 @@ BarChartDirective = ($parse, $timeout) ->
                 catch e
                     console.error("Error destroying bar chart:", e)
                 chart = null
-        
+
         renderChart = (data) ->
-            console.log("BarChart renderChart:", data)
-            
             if !data or !(data.datasets and data.datasets.length > 0)
+                if pendingTimeout
+                    $timeout.cancel(pendingTimeout)
+                    pendingTimeout = null
                 destroyChart()
                 return
-            
-            return if isRendering
-            isRendering = true
-            
+
+            # Cancel any in-flight render so the latest data always wins
+            if pendingTimeout
+                $timeout.cancel(pendingTimeout)
+                pendingTimeout = null
+
             ensureChartReady().then (ChartLib) ->
-                $timeout ->
+                pendingTimeout = $timeout ->
+                    pendingTimeout = null
                     try
                         ctx = canvas.getContext('2d')
                         if !ctx
                             console.error("Could not get canvas context for bar chart")
-                            isRendering = false
                             return
-                        
+
                         destroyChart()
-                        
+
                         config =
                             type: 'bar'
                             data:
@@ -979,13 +980,7 @@ BarChartDirective = ($parse, $timeout) ->
                                             color: 'rgba(30, 41, 59, 0.12)'
                                 plugins:
                                     legend:
-                                        display: true
-                                        position: 'top'
-                                        labels:
-                                            color: '#1e293b'
-                                            font:
-                                                size: 12
-                                                weight: 500
+                                        display: false
                                     tooltip:
                                         callbacks:
                                             label: (context) ->
@@ -1002,31 +997,42 @@ BarChartDirective = ($parse, $timeout) ->
                                 config.options = angular.merge({}, config.options, customOptions)
                             else
                                 config.options = angular.extend({}, config.options, customOptions)
-                        
+
                         chart = new ChartLib(ctx, config)
-                        console.log("✓ Bar chart created")
-                        
+
                     catch error
                         console.error("Error creating bar chart:", error)
-                    finally
-                        isRendering = false
-                , 150
+                , 50
             .catch (error) ->
                 console.error("Chart.js not available for bar chart:", error)
-                isRendering = false
-        
+
+        updateChartInPlace = (newVal) ->
+            chart.data.labels = newVal.labels or []
+            if newVal.datasets and newVal.datasets.length > 0
+                chart.data.datasets[0].data             = newVal.datasets[0].data or []
+                chart.data.datasets[0].backgroundColor  = newVal.datasets[0].backgroundColor or []
+                chart.data.datasets[0].borderColor      = newVal.datasets[0].borderColor or []
+                chart.data.datasets[0].label            = newVal.datasets[0].label or ''
+            chart.update()
+
         scope.$watch 'data', (newVal, oldVal) ->
-            return if newVal is oldVal and chart?
-            
-            if newVal and newVal.datasets and newVal.datasets.length > 0
-                renderChart(newVal)
-            else
+            return if angular.equals(newVal, oldVal) and chart?
+
+            if !newVal or !(newVal.datasets and newVal.datasets.length > 0)
                 destroyChart()
-        , false
-        
+                return
+
+            if chart?
+                updateChartInPlace(newVal)
+            else
+                renderChart(newVal)
+        , true
+
         scope.$on '$destroy', ->
+            if pendingTimeout
+                $timeout.cancel(pendingTimeout)
             destroyChart()
-    
+
     return {
         restrict: 'E'
         link: link
@@ -1225,7 +1231,7 @@ AreaChartDirective = ($parse, $timeout) ->
                                         borderColor: dataset.borderColor || areaColor
                                         backgroundColor: dataset.backgroundColor || (areaColor + '40')  # 25% opacity
                                         borderWidth: dataset.borderWidth || 2
-                                        fill: true  # This creates the area effect
+                                        fill: false  # This creates the area effect
                                         tension: dataset.tension || 0.35  # Smooth curve
                                         pointRadius: dataset.pointRadius || 3
                                         pointHoverRadius: dataset.pointHoverRadius || 5

@@ -1,0 +1,90 @@
+//- Sergio Utrilla added - Instructor Dashboard: vista principal con lista de subjects y editions
+div.wrapper
+    section.main.instructor-home
+        header.subheader
+            div.header-container
+                h1(translate="INSTRUCTOR.SECTION_NAME")
+
+        div.instructor-content
+            div.error-message(ng-if="view.error && !view.loading")
+                div.alert.alert-error
+                    p(translate="{{ view.error }}")
+
+            div.subjects-list(ng-if="!view.loading && !view.error")
+                div.no-data(ng-if="view.subjects.length === 0")
+                    p(translate="INSTRUCTOR.NO_SUBJECTS")
+
+                //- Status filter bar
+                div.edition-filters(ng-if="view.subjects.length > 0")
+                    button.filter-btn(
+                        ng-class="{'active': view.statusFilter === 'all'}"
+                        ng-click="setStatusFilter('all')"
+                        translate="INSTRUCTOR.FILTER_ALL"
+                    )
+                    button.filter-btn(
+                        ng-class="{'active': view.statusFilter === 'ACTIVE'}"
+                        ng-click="setStatusFilter('ACTIVE')"
+                        translate="INSTRUCTOR.FILTER_ACTIVE"
+                    )
+                    button.filter-btn(
+                        ng-class="{'active': view.statusFilter === 'PLANNED'}"
+                        ng-click="setStatusFilter('PLANNED')"
+                        translate="INSTRUCTOR.FILTER_PLANNED"
+                    )
+                    button.filter-btn(
+                        ng-class="{'active': view.statusFilter === 'CLOSED'}"
+                        ng-click="setStatusFilter('CLOSED')"
+                        translate="INSTRUCTOR.FILTER_CLOSED"
+                    )
+
+                div.subject-block(ng-repeat="subject in view.subjects track by subject.id")
+                    div.subject-header
+                        h2.subject-name {{ subject.name }}
+                        span.subject-code {{ subject.code }}
+
+                    div.editions-grid(ng-if="getFilteredEditions(subject).length > 0")
+                        //- Wrapper for each edition so ng-repeat only runs once
+                        div.edition-card-item(
+                            ng-repeat="edition in getFilteredEditions(subject) track by edition.id"
+                        )
+                            //- Clickable card (has teams)
+                            a.edition-card(
+                                ng-if="edition.team_count > 0"
+                                tg-nav="instructor-edition:editionKey=edition.key"
+                            )
+                                div.edition-key {{ edition.key }}
+                                div.edition-meta
+                                    span.edition-year {{ edition.academic_year }}
+                                    span.edition-term {{ edition.term }}
+                                div.edition-status
+                                    span.status-badge(ng-class="'status-' + edition.status") {{ edition.status }}
+                                div.edition-counts
+                                    span {{ edition.team_count }}&nbsp;
+                                    span(translate="INSTRUCTOR.TEAMS")
+                                    span &nbsp;&middot;&nbsp;
+                                    span {{ edition.professor_count }}&nbsp;
+                                    span(translate="INSTRUCTOR.PROFESSORS")
+
+                            //- Non-clickable card (no teams yet)
+                            div.edition-card.edition-card--empty(
+                                ng-if="edition.team_count === 0"
+                                title="{{ 'INSTRUCTOR.EDITION_EMPTY_TOOLTIP' | translate }}"
+                            )
+                                div.edition-key {{ edition.key }}
+                                div.edition-meta
+                                    span.edition-year {{ edition.academic_year }}
+                                    span.edition-term {{ edition.term }}
+                                div.edition-status
+                                    span.status-badge(ng-class="'status-' + edition.status") {{ edition.status }}
+                                div.edition-counts
+                                    span 0&nbsp;
+                                    span(translate="INSTRUCTOR.TEAMS")
+                                    span &nbsp;&middot;&nbsp;
+                                    span {{ edition.professor_count }}&nbsp;
+                                    span(translate="INSTRUCTOR.PROFESSORS")
+
+                    div.no-editions(ng-if="getFilteredEditions(subject).length === 0 && subject.editions.length > 0")
+                        p(translate="INSTRUCTOR.NO_EDITIONS_FILTERED")
+
+                    div.no-editions(ng-if="subject.editions.length === 0")
+                        p(translate="INSTRUCTOR.NO_EDITIONS")

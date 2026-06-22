@@ -1,0 +1,115 @@
+//- Sergio Utrilla added - Instructor Dashboard: vista de detalle de un grupo con métricas y tabla de estudiantes
+div.wrapper
+    section.main.instructor-group
+        div.error-message(ng-if="view.error && !view.loading")
+            div.alert.alert-error
+                p(translate="{{ view.error }}")
+
+        div.group-dashboard(ng-if="!view.loading && !view.error")
+            header.group-header
+                div.header-left
+                    nav.breadcrumb
+                        a(tg-nav="instructor-home") {{ 'INSTRUCTOR.SECTION_NAME' | translate }}
+                        span.breadcrumb-sep  ›
+                        a(tg-nav="instructor-edition:editionKey=editionKey") {{ view.edition.key }}
+                        span.breadcrumb-sep  ›
+                        span {{ view.group.group_code }}
+                    h1.group-title {{ view.group.group_code }}
+                        span.group-title-name  · {{ view.group.display_name }}
+                div.header-actions
+                    button.btn-small(
+                        variant="secondary"
+                        ng-click="refresh()"
+                        ng-disabled="view.refreshing"
+                    )
+                        span(ng-if="!view.refreshing" translate="INSTRUCTOR.REFRESH")
+                        span(ng-if="view.refreshing" translate="INSTRUCTOR.REFRESHING")
+
+            //- Project links (team metrics + project metrics)
+            div.group-project-links(ng-if="view.group.project_slug")
+                a.project-link-btn(href="/project/{{ view.group.project_slug }}/metrics/team")
+                    span(translate="INSTRUCTOR.VIEW_TEAM_METRICS")
+                a.project-link-btn(href="/project/{{ view.group.project_slug }}/metrics/project")
+                    span(translate="INSTRUCTOR.VIEW_PROJECT_METRICS")
+
+            //- New project notice
+            div.group-new-project-notice(ng-if="view.group.is_new_project")
+                p(translate="INSTRUCTOR.GROUP_NEW_PROJECT")
+
+            //- Project metrics (speedometers)
+            div.group-metrics-section(ng-if="!view.group.is_new_project && view.projectMetrics.length > 0")
+                h2(translate="INSTRUCTOR.PROJECT_METRICS_TITLE")
+                div.project-metrics-grid
+                    div.project-metric-card(ng-repeat="metric in view.projectMetrics track by metric.id")
+                        div.project-metric-header
+                            h3.metric-name {{ metric.name }}
+                        div.project-metric-gauge
+                            div.project-metric-body
+                                div.project-metric-chart
+                                    tg-speedometer-chart(
+                                        value="metric.value"
+                                        raw-value="metric.value"
+                                        max-value="1"
+                                        label="{{ metric.name }}"
+                                        metric-key="{{ metric.id }}"
+                                        color="metric.color"
+                                        palette="metric.palette"
+                                    )
+                                div.project-metric-insights
+                                    div.metric-value-wrapper
+                                        span.metric-value {{ metric.value * 100 | number:1 }}%
+
+            //- Students section (only when drilldown is enabled in settings)
+            div.students-section(ng-if="view.drilldownAllowed")
+                div.students-section-header
+                    h2(translate="INSTRUCTOR.STUDENTS_TITLE")
+                    div.students-view-toggle
+                        button.students-subtab(
+                            type="button"
+                            ng-class="{'active': view.studentViewMode === 'table'}"
+                            ng-click="setStudentViewMode('table')"
+                            translate="INSTRUCTOR.STUDENTS_VIEW_TABLE"
+                        )
+                        button.students-subtab(
+                            type="button"
+                            ng-class="{'active': view.studentViewMode === 'gauges'}"
+                            ng-click="setStudentViewMode('gauges')"
+                            translate="INSTRUCTOR.STUDENTS_VIEW_GAUGES"
+                        )
+
+                div.no-students(ng-if="!view.hasStudents")
+                    p(translate="INSTRUCTOR.NO_STUDENTS")
+
+                //- Table view
+                table.students-table(ng-if="view.hasStudents && view.studentViewMode === 'table'")
+                    thead
+                        tr
+                            th(translate="INSTRUCTOR.STUDENT_NAME")
+                            th(ng-repeat="metric in view.students[0].metrics track by metric.id"
+                               ng-if="metric.classification === 'team'") {{ metric.base_name || metric.name }}
+                    tbody
+                        tr(ng-repeat="student in view.students track by student.username")
+                            td.student-name {{ student.displayName || student.name || student.username }}
+                            td(ng-repeat="metric in student.metrics track by metric.id"
+                               ng-if="metric.classification === 'team'") {{ metric.value | number:2 }}
+
+                //- Gauges view
+                div.students-gauges-grid(ng-if="view.hasStudents && view.studentViewMode === 'gauges'")
+                    div.student-gauge-card(ng-repeat="student in view.students track by student.username")
+                        div.student-card-name {{ student.displayName || student.name || student.username }}
+                        div.student-metrics-gauges
+                            div.student-metric-gauge(
+                                ng-repeat="metric in student.metrics track by metric.id"
+                                ng-if="metric.classification === 'team'"
+                            )
+                                tg-speedometer-chart(
+                                    value="metric.value"
+                                    raw-value="metric.value"
+                                    max-value="1"
+                                    label="{{ metric.base_name || metric.name }}"
+                                    metric-key="{{ metric.id }}"
+                                    color="metric.color"
+                                    palette="metric.palette"
+                                )
+                                span.gauge-metric-value {{ metric.value | number:2 }}
+                                span.gauge-metric-label {{ metric.base_name || metric.name }}
