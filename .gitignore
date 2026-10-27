@@ -18,3 +18,4 @@ e2e/reports/
 app/modules/compile-modules/
 yarn.lock
 package-lock.json
+conf/conf.json
